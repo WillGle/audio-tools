@@ -4,9 +4,9 @@ import json
 import shutil
 from pathlib import Path
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 # Add current folder to sys.path
@@ -34,6 +34,16 @@ app = FastAPI(
     description="Web App kiểm định chuẩn Hi-Res, phân loại thư viện và tích hợp Navidrome",
     version="1.0.0"
 )
+
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path == "/" or path.endswith((".html", ".js", ".css")):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 TOOLS_DIR = Path(__file__).resolve().parent
 ROOT_DIR = Path(os.environ.get('HIRES_VAULT_DIR', '/mnt/vault/GleVault/Hires')).resolve()
@@ -313,6 +323,58 @@ def get_spectrogram(filepath: str):
             
     return FileResponse(out_png, media_type="image/png")
 
+@app.get("/api/stream")
+def stream_audio(filepath: str):
+    p = ROOT_DIR / filepath
+    if not p.is_file():
+        p = Path(filepath)
+    if not p.is_file():
+        raise HTTPException(status_code=404, detail="Không tìm thấy tệp âm thanh")
+
+    ext = p.suffix.lower()
+
+    # DSD formats (.dsf, .dff): transcode on-the-fly to 24-bit PCM WAV for browser playback
+    if ext in ['.dsf', '.dff']:
+        import subprocess
+        cmd = [
+            'ffmpeg', '-v', 'error',
+            '-i', str(p),
+            '-f', 'wav',
+            '-ar', '48000',
+            '-acodec', 'pcm_s24le',
+            'pipe:1'
+        ]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        def iter_proc():
+            try:
+                while True:
+                    chunk = proc.stdout.read(64 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+            finally:
+                proc.stdout.close()
+                proc.kill()
+        return StreamingResponse(iter_proc(), media_type="audio/wav")
+
+    mime_map = {
+        '.flac': 'audio/flac',
+        '.mp3': 'audio/mpeg',
+        '.m4a': 'audio/mp4',
+        '.aac': 'audio/aac',
+        '.wav': 'audio/wav',
+        '.ogg': 'audio/ogg',
+        '.opus': 'audio/opus',
+        '.aif': 'audio/aiff',
+        '.aiff': 'audio/aiff'
+    }
+    media_type = mime_map.get(ext, 'application/octet-stream')
+    return FileResponse(
+        str(p),
+        media_type=media_type,
+        headers={"Accept-Ranges": "bytes"}
+    )
+
 @app.post("/api/navidrome/test")
 def test_navidrome(cfg: NavidromeConfig):
     res = test_navidrome_connection(cfg.server_url, cfg.username, cfg.password)
@@ -453,6 +515,10 @@ class TagRollbackRequest(BaseModel):
 class TagRollbackAllRequest(BaseModel):
     navidrome_config: Optional[NavidromeConfig] = None
 
+class BatchTagRequest(BaseModel):
+    filepaths: List[str]
+    navidrome_config: Optional[NavidromeConfig] = None
+
 class TieringExecuteRequest(BaseModel):
     mode: str = 'symlink' # 'symlink' or 'move'
     plan_items: Optional[List[dict]] = None
@@ -553,6 +619,72 @@ def audiophile_rollback_all_tags(req: Optional[TagRollbackAllRequest] = None):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi hoàn tác toàn bộ tag: {str(e)}")
+
+@app.post("/api/tag/batch")
+def batch_tag_files(req: BatchTagRequest):
+    results = []
+    success_count = 0
+    for fp in req.filepaths:
+        p = ROOT_DIR / fp
+        if not p.is_file():
+            p = Path(fp)
+        if not p.is_file():
+            results.append({"filepath": fp, "success": False, "message": "Tệp không tồn tại"})
+            continue
+        try:
+            analysis = analyze_audio_file(str(p))
+            ok, msg = apply_quality_tag(str(p), analysis)
+            if ok:
+                success_count += 1
+            results.append({"filepath": fp, "success": ok, "message": msg})
+        except Exception as e:
+            results.append({"filepath": fp, "success": False, "message": str(e)})
+
+    scan_res = None
+    if success_count > 0 and req.navidrome_config and req.navidrome_config.server_url:
+        cfg = req.navidrome_config
+        scan_res = trigger_navidrome_scan(cfg.server_url, cfg.username or '', cfg.password or '')
+
+    return {
+        "success": True,
+        "total": len(req.filepaths),
+        "tagged_count": success_count,
+        "results": results,
+        "navidrome_scan": scan_res
+    }
+
+@app.post("/api/audiophile/tag/batch")
+def batch_audiophile_tag(req: BatchTagRequest):
+    results = []
+    success_count = 0
+    for fp in req.filepaths:
+        p = ROOT_DIR / fp
+        if not p.is_file():
+            p = Path(fp)
+        if not p.is_file():
+            results.append({"filepath": fp, "success": False, "message": "Tệp không tồn tại"})
+            continue
+        try:
+            audit = run_full_audiophile_audit(str(p))
+            ok, msg = apply_audiophile_tags(str(p), audit)
+            if ok:
+                success_count += 1
+            results.append({"filepath": fp, "success": ok, "message": msg})
+        except Exception as e:
+            results.append({"filepath": fp, "success": False, "message": str(e)})
+
+    scan_res = None
+    if success_count > 0 and req.navidrome_config and req.navidrome_config.server_url:
+        cfg = req.navidrome_config
+        scan_res = trigger_navidrome_scan(cfg.server_url, cfg.username or '', cfg.password or '')
+
+    return {
+        "success": True,
+        "total": len(req.filepaths),
+        "tagged_count": success_count,
+        "results": results,
+        "navidrome_scan": scan_res
+    }
 
 @app.get("/api/vault/tiering/plan")
 def get_vault_tiering_plan():

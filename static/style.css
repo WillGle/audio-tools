@@ -1679,3 +1679,558 @@ body {
     color: #fb7185;
     border: 1px solid rgba(244, 63, 94, 0.3);
 }
+
+/* ==============================================================================
+   CHECKBOX & MULTI-SELECT STYLING
+   ============================================================================== */
+.track-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-indigo);
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.table-header-row th.th-checkbox,
+.tracks-table td.td-checkbox {
+    width: 36px;
+    text-align: center;
+    padding: 0.6rem 0.4rem;
+}
+
+.tracks-table tr.row-selected {
+    background: rgba(99, 102, 241, 0.12) !important;
+}
+
+/* ==============================================================================
+   FLOATING BATCH ACTIONS BAR
+   ============================================================================== */
+.floating-batch-bar {
+    position: fixed;
+    bottom: 84px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(99, 102, 241, 0.5);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(99, 102, 241, 0.3);
+    border-radius: var(--radius-xl);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    z-index: 85;
+    animation: slideUpBatch 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpBatch {
+    from { transform: translate(-50%, 40px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.batch-count-group {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+}
+
+.batch-selected-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--accent-emerald);
+    box-shadow: 0 0 10px var(--accent-emerald);
+}
+
+.batch-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+/* ==============================================================================
+   TABLE ICON ACTIONS
+   ============================================================================== */
+.actions-cell {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+}
+
+.btn-action-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 0.88rem;
+}
+
+.btn-action-icon:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn-action-icon.btn-play-track:hover {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.btn-action-icon.btn-play-track.is-playing {
+    background: var(--accent-emerald);
+    color: #080c14;
+    border-color: var(--accent-emerald);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.btn-action-icon.btn-inspect:hover {
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+.btn-action-icon.btn-lab-jump:hover {
+    color: #38bdf8;
+    border-color: rgba(6, 182, 212, 0.4);
+}
+
+.btn-action-icon.btn-tag-file:hover {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+.btn-action-icon.btn-untag-file:hover {
+    color: #f43f5e;
+    border-color: rgba(244, 63, 94, 0.4);
+}
+
+/* ==============================================================================
+   PAGINATION EXTENSIONS
+   ============================================================================== */
+.pagination-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.page-size-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.page-size-select {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    outline: none;
+    cursor: pointer;
+}
+
+.pagination-current-page {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 0 0.5rem;
+}
+
+/* ==============================================================================
+   BOTTOM AUDIOPHILE PLAYER BAR
+   ============================================================================== */
+.audio-player-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    background: rgba(8, 12, 20, 0.94);
+    backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.75rem;
+    z-index: 95;
+    animation: slideUpPlayer 0.25s ease-out;
+}
+
+@keyframes slideUpPlayer {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.player-track-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+    min-width: 0;
+    max-width: 420px;
+}
+
+.player-play-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--accent-emerald);
+    color: #080c14;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    flex-shrink: 0;
+}
+
+.player-play-btn:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 22px rgba(16, 185, 129, 0.6);
+}
+
+.player-meta {
+    min-width: 0;
+    flex: 1;
+}
+
+.player-title {
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.player-subtitle {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.player-spec-badge {
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.player-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex: 2;
+    max-width: 580px;
+    padding: 0 1rem;
+}
+
+.player-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    min-width: 42px;
+}
+
+.player-scrubber-container {
+    position: relative;
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.player-scrubber {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+    margin: 0;
+}
+
+.player-scrubber-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-indigo), var(--accent-emerald));
+    border-radius: 3px;
+    pointer-events: none;
+    position: relative;
+    transition: width 0.05s linear;
+}
+
+.player-extra-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.player-volume-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.player-vol-range {
+    width: 80px;
+    height: 4px;
+    accent-color: var(--accent-emerald);
+    cursor: pointer;
+}
+
+/* A/B Switch in Player */
+.player-ab-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 2px 6px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+}
+
+.ab-label {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    padding-left: 2px;
+}
+
+.ab-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ab-btn.active {
+    background: var(--accent-indigo);
+    color: white;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+}
+
+/* ==============================================================================
+   LAB COMBOBOX
+   ============================================================================== */
+.combobox-input-box {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.6rem 0.9rem;
+    width: 100%;
+    transition: border-color 0.2s ease;
+}
+
+.combobox-input-box:focus-within {
+    border-color: var(--accent-indigo);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.combobox-input {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 0.9rem;
+    width: 100%;
+    outline: none;
+}
+
+.combobox-clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px;
+}
+
+.combobox-clear-btn:hover {
+    color: white;
+}
+
+.combobox-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    background: #0f172a;
+    border: 1px solid var(--border-highlight);
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+    z-index: 100;
+}
+
+.combobox-item {
+    padding: 0.7rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.15s ease;
+}
+
+.combobox-item:hover,
+.combobox-item.active {
+    background: rgba(99, 102, 241, 0.22);
+}
+
+.combobox-item-title {
+    font-size: 0.88rem;
+    color: white;
+    font-weight: 500;
+}
+
+.combobox-item-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* ==============================================================================
+   DR METER GRADUATED MULTI-COLOR SCALE
+   ============================================================================== */
+.dr-meter-scale-bar {
+    position: relative;
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(
+        to right,
+        #ef4444 0%,
+        #ef4444 35%,
+        #f59e0b 35%,
+        #f59e0b 58%,
+        #10b981 58%,
+        #10b981 74%,
+        #06b6d4 74%,
+        #8b5cf6 100%
+    );
+    margin: 0.75rem 0 0.5rem 0;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.dr-needle-indicator {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    width: 4px;
+    background: white;
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0,0,0,0.6);
+    transform: translateX(-50%);
+    transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ==============================================================================
+   TOAST NOTIFICATIONS
+   ============================================================================== */
+.toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.toast {
+    pointer-events: auto;
+    background: rgba(15, 23, 42, 0.96);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1.25rem;
+    min-width: 300px;
+    max-width: 440px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    animation: toastSlideIn 0.25s ease-out;
+    color: white;
+    font-size: 0.88rem;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+@keyframes toastSlideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.toast.toast-success {
+    border-left: 4px solid var(--accent-emerald);
+}
+
+.toast.toast-error {
+    border-left: 4px solid var(--accent-rose);
+}
+
+.toast.toast-info {
+    border-left: 4px solid var(--accent-indigo);
+}
+
+.toast-msg {
+    flex: 1;
+    line-height: 1.45;
+}
+
+.toast-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px;
+}
+
+.toast-close:hover {
+    color: white;
+}
+
+/* Custom Confirm Modal */
+.modal-confirm-card {
+    max-width: 480px !important;
+}

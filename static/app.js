@@ -3,11 +3,15 @@ let currentTab = 'tab-library';
 let currentFilter = 'all';
 let searchQuery = '';
 let currentOffset = 0;
-const pageLimit = 50;
+let pageLimit = 50;
 let currentSelectedTrack = null;
 let duplicatesData = null;
 let currentDupeType = 'byte';
 let userSelectedKeep = {}; // hash -> selected relative path to keep
+
+// Multi-select & Batch State
+let selectedTrackPaths = new Set();
+let currentTotalTracks = 0;
 
 // Column Search & Filter State
 let colFilters = {
@@ -25,18 +29,291 @@ let allLibraryTracks = []; // for lab selector
 let currentAuditResult = null;
 let currentTieringPlan = null;
 let selectedTieringMode = 'symlink';
+let tierPlanFilter = 'all';
+let tierPlanSearch = '';
+
+// Audio Player Global State
+let audioPlayer = {
+    element: null,
+    isPlaying: false,
+    currentPath: null,
+    currentTitle: '',
+    currentArtist: '',
+    currentSpecs: '',
+    abActive: false,
+    channelA: null,
+    channelB: null,
+    currentChannel: 'A'
+};
+
+// ==============================================================================
+// TOAST NOTIFICATIONS & CONFIRMATION MODAL HELPERS
+// ==============================================================================
+function showToast(message, type = 'info', duration = 3500) {
+    const container = document.getElementById('toast-container');
+    if (!container) {
+        alert(message);
+        return;
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    let icon = 'ℹ️';
+    if (type === 'success') icon = '✅';
+    else if (type === 'error') icon = '❌';
+    else if (type === 'warning') icon = '⚠️';
+
+    toast.innerHTML = `
+        <span style="font-size: 1.1rem; line-height: 1;">${icon}</span>
+        <div class="toast-msg">${escapeHtml(message)}</div>
+        <button class="toast-close">&times;</button>
+    `;
+
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.remove();
+    });
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(50px)';
+        setTimeout(() => toast.remove(), 250);
+    }, duration);
+}
+
+function showConfirm(title, message) {
+    return new Promise(resolve => {
+        const modal = document.getElementById('confirm-modal');
+        const titleEl = document.getElementById('confirm-modal-title');
+        const msgEl = document.getElementById('confirm-modal-message');
+        const btnOk = document.getElementById('confirm-modal-btn-ok');
+        const btnCancel = document.getElementById('confirm-modal-btn-cancel');
+        const btnClose = document.getElementById('confirm-modal-close');
+
+        if (!modal) {
+            resolve(window.confirm(message));
+            return;
+        }
+
+        if (titleEl) titleEl.textContent = title;
+        if (msgEl) msgEl.innerHTML = message.replace(/\n/g, '<br>');
+        modal.style.display = 'flex';
+
+        const cleanup = (val) => {
+            modal.style.display = 'none';
+            btnOk.onclick = null;
+            btnCancel.onclick = null;
+            btnClose.onclick = null;
+            resolve(val);
+        };
+
+        btnOk.onclick = () => cleanup(true);
+        btnCancel.onclick = () => cleanup(false);
+        btnClose.onclick = () => cleanup(false);
+    });
+}
+
+function getNavidromeConfigFromStorage() {
+    return {
+        server_url: localStorage.getItem('navidrome_server_url') || document.getElementById('navi-url')?.value || '',
+        username: localStorage.getItem('navidrome_username') || document.getElementById('navi-user')?.value || '',
+        password: document.getElementById('navi-pass')?.value || ''
+    };
+}
+
+// ==============================================================================
+// GLOBAL AUDIO PLAYER & A/B COMPARISON SYSTEM
+// ==============================================================================
+function initAudioPlayer() {
+    const audio = document.getElementById('global-audio-element');
+    if (!audio) return;
+    audioPlayer.element = audio;
+
+    const btnPlayPause = document.getElementById('player-btn-play-pause');
+    const iconPlay = document.getElementById('player-icon-play');
+    const iconPause = document.getElementById('player-icon-pause');
+    const timeCur = document.getElementById('player-current-time');
+    const timeDur = document.getElementById('player-duration-time');
+    const slider = document.getElementById('player-seek-slider');
+    const scrubberFill = document.getElementById('player-scrubber-fill');
+    const volSlider = document.getElementById('player-volume-slider');
+    const btnVol = document.getElementById('player-btn-volume');
+    const btnClose = document.getElementById('player-btn-close');
+
+    const btnAbA = document.getElementById('btn-ab-a');
+    const btnAbB = document.getElementById('btn-ab-b');
+
+    const updatePlayState = (playing) => {
+        audioPlayer.isPlaying = playing;
+        if (iconPlay) iconPlay.style.display = playing ? 'none' : 'block';
+        if (iconPause) iconPause.style.display = playing ? 'block' : 'none';
+        
+        // Update table playing indicators
+        document.querySelectorAll('.btn-play-track').forEach(btn => {
+            const isThis = btn.dataset.path === audioPlayer.currentPath;
+            btn.classList.toggle('is-playing', isThis && playing);
+            btn.innerHTML = (isThis && playing) ? '⏸' : '▶';
+        });
+    };
+
+    btnPlayPause?.addEventListener('click', () => {
+        if (!audio.src) return;
+        if (audio.paused) {
+            audio.play().then(() => updatePlayState(true)).catch(e => console.error(e));
+        } else {
+            audio.pause();
+            updatePlayState(false);
+        }
+    });
+
+    audio.addEventListener('play', () => updatePlayState(true));
+    audio.addEventListener('pause', () => updatePlayState(false));
+    audio.addEventListener('ended', () => {
+        updatePlayState(false);
+        if (slider) slider.value = 0;
+        if (scrubberFill) scrubberFill.style.width = '0%';
+    });
+
+    const formatTime = (secs) => {
+        if (isNaN(secs) || secs < 0) return '0:00';
+        const m = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60);
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
+    };
+
+    audio.addEventListener('timeupdate', () => {
+        if (audio.duration && !slider.matches(':active')) {
+            const pct = (audio.currentTime / audio.duration) * 100;
+            if (slider) slider.value = pct;
+            if (scrubberFill) scrubberFill.style.width = `${pct}%`;
+            if (timeCur) timeCur.textContent = formatTime(audio.currentTime);
+        }
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+        if (timeDur) timeDur.textContent = formatTime(audio.duration);
+    });
+
+    slider?.addEventListener('input', () => {
+        const pct = slider.value;
+        if (scrubberFill) scrubberFill.style.width = `${pct}%`;
+        if (audio.duration) {
+            audio.currentTime = (pct / 100) * audio.duration;
+            if (timeCur) timeCur.textContent = formatTime(audio.currentTime);
+        }
+    });
+
+    volSlider?.addEventListener('input', () => {
+        audio.volume = parseFloat(volSlider.value);
+    });
+
+    btnVol?.addEventListener('click', () => {
+        audio.muted = !audio.muted;
+        btnVol.style.opacity = audio.muted ? '0.4' : '1';
+    });
+
+    btnClose?.addEventListener('click', () => {
+        audio.pause();
+        updatePlayState(false);
+        const bar = document.getElementById('audio-player-bar');
+        if (bar) bar.style.display = 'none';
+    });
+
+    // A/B Channel toggle
+    const switchChannel = (targetChannel) => {
+        if (!audioPlayer.abActive || audioPlayer.currentChannel === targetChannel) return;
+        const targetData = (targetChannel === 'A') ? audioPlayer.channelA : audioPlayer.channelB;
+        if (!targetData) return;
+
+        const curTime = audio.currentTime;
+        const wasPlaying = !audio.paused;
+
+        audioPlayer.currentChannel = targetChannel;
+        audioPlayer.currentPath = targetData.path;
+
+        if (btnAbA) btnAbA.classList.toggle('active', targetChannel === 'A');
+        if (btnAbB) btnAbB.classList.toggle('active', targetChannel === 'B');
+
+        document.getElementById('player-track-title').textContent = targetData.title || targetData.path.split('/').pop();
+        document.getElementById('player-track-spec').textContent = targetData.specs || targetChannel;
+
+        audio.src = `/api/stream?filepath=${encodeURIComponent(targetData.path)}`;
+        audio.addEventListener('loadedmetadata', function onLoaded() {
+            audio.currentTime = curTime;
+            if (wasPlaying) {
+                audio.play().catch(e => console.error(e));
+            }
+            audio.removeEventListener('loadedmetadata', onLoaded);
+        });
+
+        showToast(`🎚️ Đã chuyển sang nghe Kênh ${targetChannel}: ${targetData.title || targetData.path.split('/').pop()}`, 'info', 2000);
+    };
+
+    btnAbA?.addEventListener('click', () => switchChannel('A'));
+    btnAbB?.addEventListener('click', () => switchChannel('B'));
+    audioPlayer.switchChannel = switchChannel;
+}
+
+function playTrack(path, title, artist, specs, abData = null) {
+    const audio = audioPlayer.element || document.getElementById('global-audio-element');
+    const bar = document.getElementById('audio-player-bar');
+    if (!audio || !bar) return;
+
+    audioPlayer.currentPath = path;
+    audioPlayer.currentTitle = title || path.split('/').pop();
+    audioPlayer.currentArtist = artist || '';
+    audioPlayer.currentSpecs = specs || '';
+
+    bar.style.display = 'flex';
+    document.getElementById('player-track-title').textContent = audioPlayer.currentTitle;
+    document.getElementById('player-track-subtitle').textContent = audioPlayer.currentArtist || path;
+    document.getElementById('player-track-spec').textContent = audioPlayer.currentSpecs || 'AUDIO';
+
+    const abBox = document.getElementById('player-ab-box');
+    if (abData && abData.fileA && abData.fileB) {
+        audioPlayer.abActive = true;
+        audioPlayer.channelA = abData.fileA;
+        audioPlayer.channelB = abData.fileB;
+        audioPlayer.currentChannel = 'A';
+        if (abBox) abBox.style.display = 'inline-flex';
+        const btnAbA = document.getElementById('btn-ab-a');
+        const btnAbB = document.getElementById('btn-ab-b');
+        if (btnAbA) btnAbA.classList.add('active');
+        if (btnAbB) btnAbB.classList.remove('active');
+    } else {
+        audioPlayer.abActive = false;
+        if (abBox) abBox.style.display = 'none';
+    }
+
+    audio.src = `/api/stream?filepath=${encodeURIComponent(path)}`;
+    audio.play().catch(e => {
+        console.warn("Autoplay block or stream error:", e);
+    });
+
+    document.querySelectorAll('.btn-play-track').forEach(btn => {
+        const isThis = btn.dataset.path === path;
+        btn.classList.toggle('is-playing', isThis);
+        btn.innerHTML = isThis ? '⏸' : '▶';
+    });
+}
 
 // DOM Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     initStats();
     initExplorer();
+    initBatchActions();
+    initAudioPlayer();
     initAudiophileLab();
+    initLabCombobox();
     initVaultTiering();
     initDuplicates();
     initNavidrome();
+    initNavidromeStorage();
     initOrganize();
     initModal();
+    initKeyboardShortcuts();
     // Load first page immediately
     loadTracks();
 });
@@ -236,7 +513,139 @@ function initExplorer() {
         currentOffset += pageLimit;
         loadTracks();
     });
+
+    // Page size selector
+    document.getElementById('select-page-size')?.addEventListener('change', (e) => {
+        pageLimit = parseInt(e.target.value, 10) || 50;
+        currentOffset = 0;
+        loadTracks();
+    });
 }
+
+function initBatchActions() {
+    const chkAll = document.getElementById('check-all-tracks');
+    chkAll?.addEventListener('change', () => {
+        const cbs = document.querySelectorAll('.track-row-checkbox');
+        cbs.forEach(cb => {
+            cb.checked = chkAll.checked;
+            const path = cb.dataset.path;
+            const row = cb.closest('tr');
+            if (chkAll.checked) {
+                selectedTrackPaths.add(path);
+                row?.classList.add('row-selected');
+            } else {
+                selectedTrackPaths.delete(path);
+                row?.classList.remove('row-selected');
+            }
+        });
+        updateBatchBar();
+    });
+
+    document.getElementById('btn-batch-clear-selection')?.addEventListener('click', () => {
+        selectedTrackPaths.clear();
+        document.querySelectorAll('.track-row-checkbox').forEach(cb => {
+            cb.checked = false;
+            cb.closest('tr')?.classList.remove('row-selected');
+        });
+        if (chkAll) chkAll.checked = false;
+        updateBatchBar();
+    });
+
+    document.getElementById('btn-batch-tag')?.addEventListener('click', async () => {
+        if (selectedTrackPaths.size === 0) return;
+        const count = selectedTrackPaths.size;
+        const confirmed = await showConfirm(
+            'Xác nhận ghi Tag hàng loạt',
+            `Bạn có chắc chắn muốn ghi tag chất lượng vào ${count} bài hát đã chọn?`
+        );
+        if (!confirmed) return;
+
+        const btn = document.getElementById('btn-batch-tag');
+        btn.disabled = true;
+        btn.textContent = '⏳ Đang ghi...';
+
+        try {
+            const naviCfg = getNavidromeConfigFromStorage();
+            const res = await fetch('/api/tag/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filepaths: Array.from(selectedTrackPaths),
+                    navidrome_config: naviCfg
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(`✅ Đã ghi tag thành công cho ${data.tagged_count} / ${count} bài hát!`, 'success');
+                selectedTrackPaths.clear();
+                updateBatchBar();
+                loadTracks();
+            } else {
+                showToast(`❌ Lỗi ghi tag hàng loạt`, 'error');
+            }
+        } catch (e) {
+            showToast(`❌ Lỗi: ${e.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🏷️ Ghi Tag Metadata';
+        }
+    });
+
+    document.getElementById('btn-batch-audiophile-tag')?.addEventListener('click', async () => {
+        if (selectedTrackPaths.size === 0) return;
+        const count = selectedTrackPaths.size;
+        const confirmed = await showConfirm(
+            'Xác nhận kiểm định & ghi Tag 7 chuẩn hàng loạt',
+            `Hệ thống sẽ đo lường DR, EBU R128, Audio MD5 và ghi tag đầy đủ cho ${count} bài hát đã chọn. Bạn có muốn tiếp tục?`
+        );
+        if (!confirmed) return;
+
+        const btn = document.getElementById('btn-batch-audiophile-tag');
+        btn.disabled = true;
+        btn.textContent = '⏳ Đang kiểm định...';
+
+        try {
+            const naviCfg = getNavidromeConfigFromStorage();
+            const res = await fetch('/api/audiophile/tag/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filepaths: Array.from(selectedTrackPaths),
+                    navidrome_config: naviCfg
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(`🔬 Đã kiểm định và ghi tag 7 chuẩn cho ${data.tagged_count} / ${count} bài!`, 'success');
+                selectedTrackPaths.clear();
+                updateBatchBar();
+                loadTracks();
+            } else {
+                showToast(`❌ Lỗi kiểm định 7 chuẩn hàng loạt`, 'error');
+            }
+        } catch (e) {
+            showToast(`❌ Lỗi: ${e.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🔬 Ghi Tag 7 Chuẩn';
+        }
+    });
+}
+
+function updateBatchBar() {
+    const bar = document.getElementById('floating-batch-bar');
+    const countEl = document.getElementById('batch-selected-count');
+    const chkAll = document.getElementById('check-all-tracks');
+    const size = selectedTrackPaths.size;
+    if (countEl) countEl.textContent = size;
+    if (bar) bar.style.display = size > 0 ? 'flex' : 'none';
+
+    const visibleCbs = document.querySelectorAll('.track-row-checkbox');
+    if (chkAll && visibleCbs.length > 0) {
+        chkAll.checked = Array.from(visibleCbs).every(cb => cb.checked);
+    }
+}
+
 
 function updateSortIndicators() {
     document.querySelectorAll('.sortable-th').forEach(th => {
@@ -350,7 +759,7 @@ function setFilter(filterName) {
 async function loadTracks() {
     const tbody = document.getElementById('tracks-tbody');
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-muted">Đang tải danh sách bài hát...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-muted">Đang tải danh sách bài hát...</td></tr>`;
 
     let url = `/api/tracks?filter=${encodeURIComponent(currentFilter)}&offset=${currentOffset}&limit=${pageLimit}`;
     if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
@@ -368,10 +777,18 @@ async function loadTracks() {
         const data = await res.json();
         const tracks = data.tracks || [];
         const total = data.total || 0;
+        currentTotalTracks = total;
 
         const infoEl = document.getElementById('pagination-info');
         if (infoEl) {
             infoEl.textContent = `Hiển thị ${tracks.length > 0 ? currentOffset + 1 : 0} - ${Math.min(currentOffset + tracks.length, total)} trên tổng số ${total} bài`;
+        }
+
+        const pageNum = Math.floor(currentOffset / pageLimit) + 1;
+        const totalPages = Math.max(1, Math.ceil(total / pageLimit));
+        const pageDisplay = document.getElementById('pagination-page-display');
+        if (pageDisplay) {
+            pageDisplay.textContent = `Trang ${pageNum} / ${totalPages}`;
         }
         
         const btnPrev = document.getElementById('btn-prev-page');
@@ -380,7 +797,7 @@ async function loadTracks() {
         if (btnNext) btnNext.disabled = (currentOffset + pageLimit) >= total;
 
         if (tracks.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-muted">Không tìm thấy bài hát nào phù hợp với bộ lọc cột hoặc từ khóa tìm kiếm.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-muted">Không tìm thấy bài hát nào phù hợp với bộ lọc cột hoặc từ khóa tìm kiếm.</td></tr>`;
             return;
         }
 
@@ -417,8 +834,14 @@ async function loadTracks() {
             }
 
             const rowNum = currentOffset + idx + 1;
+            const isSelected = selectedTrackPaths.has(track.original_path);
+            const isPlayingThis = (audioPlayer.currentPath === track.original_path && audioPlayer.isPlaying);
+
             html += `
-                <tr>
+                <tr class="${isSelected ? 'row-selected' : ''}">
+                    <td class="td-checkbox">
+                        <input type="checkbox" class="track-checkbox track-row-checkbox" data-path="${escapeHtml(track.original_path)}" ${isSelected ? 'checked' : ''}>
+                    </td>
                     <td class="text-muted text-center" style="font-size: 0.8rem; font-family: 'JetBrains Mono', monospace;">${rowNum}</td>
                     <td>
                         <div class="track-main-info">
@@ -435,21 +858,24 @@ async function loadTracks() {
                     <td>${verdictBadge}</td>
                     <td class="text-right">
                         <div class="actions-cell">
-                            <button class="btn btn-sm btn-secondary btn-inspect" data-path="${escapeHtml(track.original_path)}" data-title="${escapeHtml(track.title || track.original_path)}" data-specs="${escapeHtml(track.specs)}" title="Xem Spectrogram & Thông Số">
-                                Phổ Âm
+                            <button class="btn-action-icon btn-play-track ${isPlayingThis ? 'is-playing' : ''}" data-path="${escapeHtml(track.original_path)}" data-title="${escapeHtml(track.title || track.original_path)}" data-artist="${escapeHtml(track.artist || '')}" data-specs="${escapeHtml(track.specs || '')}" title="Phát nghe thử trực tiếp">
+                                ${isPlayingThis ? '⏸' : '▶'}
                             </button>
-                            <button class="btn btn-sm btn-secondary btn-lab-jump" data-path="${escapeHtml(track.original_path)}" title="Mở trong Phòng Kiểm Định 7 Chuẩn">
-                                7 Chuẩn
+                            <button class="btn-action-icon btn-inspect" data-path="${escapeHtml(track.original_path)}" data-title="${escapeHtml(track.title || track.original_path)}" data-specs="${escapeHtml(track.specs)}" title="Xem Spectrogram & Thông Số">
+                                📊
+                            </button>
+                            <button class="btn-action-icon btn-lab-jump" data-path="${escapeHtml(track.original_path)}" title="Mở trong Phòng Kiểm Định 7 Chuẩn">
+                                🔬
                             </button>
                             ${track.is_duplicate_meta ? `
-                            <button class="btn btn-sm btn-outline btn-jump-dupes" data-title="${escapeHtml(track.title || track.original_path)}" title="Mở chi tiết so sánh & dọn dẹp các bản trùng trong tab Trùng Lặp">
-                                🔍 Trùng
+                            <button class="btn-action-icon btn-jump-dupes" data-title="${escapeHtml(track.title || track.original_path)}" title="Mở chi tiết so sánh & dọn dẹp các bản trùng trong tab Trùng Lặp">
+                                🔍
                             </button>
                             ` : ''}
-                            <button class="btn btn-sm btn-secondary btn-tag-file" data-path="${escapeHtml(track.original_path)}" title="Ghi tag metadata">
-                                Tag
+                            <button class="btn-action-icon btn-tag-file" data-path="${escapeHtml(track.original_path)}" title="Ghi tag metadata">
+                                🏷️
                             </button>
-                            <button class="btn btn-sm btn-outline-rose btn-untag-file" data-path="${escapeHtml(track.original_path)}" title="Hoàn tác / Khôi phục metadata gốc">
+                            <button class="btn-action-icon btn-untag-file" data-path="${escapeHtml(track.original_path)}" title="Hoàn tác / Khôi phục metadata gốc">
                                 ↩️
                             </button>
                         </div>
@@ -459,6 +885,39 @@ async function loadTracks() {
         });
 
         tbody.innerHTML = html;
+
+        // Attach play button events
+        document.querySelectorAll('.btn-play-track').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (audioPlayer.currentPath === btn.dataset.path && audioPlayer.isPlaying) {
+                    audioPlayer.element?.pause();
+                } else {
+                    playTrack(btn.dataset.path, btn.dataset.title, btn.dataset.artist, btn.dataset.specs);
+                }
+            });
+        });
+
+        // Attach row checkbox events
+        document.querySelectorAll('.track-row-checkbox').forEach(cb => {
+            cb.addEventListener('change', () => {
+                const p = cb.dataset.path;
+                const row = cb.closest('tr');
+                if (cb.checked) {
+                    selectedTrackPaths.add(p);
+                    row?.classList.add('row-selected');
+                } else {
+                    selectedTrackPaths.delete(p);
+                    row?.classList.remove('row-selected');
+                }
+                updateBatchBar();
+            });
+        });
+
+        // Update master checkbox
+        const chkAll = document.getElementById('check-all-tracks');
+        if (chkAll) {
+            chkAll.checked = tracks.length > 0 && tracks.every(t => selectedTrackPaths.has(t.original_path));
+        }
 
         // Attach button events
         document.querySelectorAll('.btn-inspect').forEach(btn => {
@@ -519,7 +978,7 @@ async function loadTracks() {
         });
 
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-rose">Lỗi khi tải dữ liệu bài hát: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-rose">Lỗi khi tải dữ liệu bài hát: ${e.message}</td></tr>`;
     }
 }
 
@@ -527,17 +986,6 @@ async function loadTracks() {
 // 4. AUDIOPHILE 7-PILLAR STUDIO LAB
 // ==============================================================================
 function initAudiophileLab() {
-    const btnAudit = document.getElementById('btn-run-audiophile-audit');
-    btnAudit?.addEventListener('click', () => {
-        const select = document.getElementById('lab-track-select');
-        const path = select?.value;
-        if (!path) {
-            alert('Vui lòng chọn một bài hát từ danh sách!');
-            return;
-        }
-        runAudiophileAuditForPath(path);
-    });
-
     const btnTagNow = document.getElementById('btn-audiophile-tag-now');
     btnTagNow?.addEventListener('click', async () => {
         if (!currentAuditResult) return;
@@ -556,13 +1004,13 @@ function initAudiophileLab() {
             });
             const data = await res.json();
             if (data.success) {
-                alert(`✅ ${data.message}`);
+                showToast(`✅ ${data.message}`, 'success');
                 if (typeof loadTracks === 'function') loadTracks();
             } else {
-                alert(`❌ Lỗi: ${data.message}`);
+                showToast(`❌ Lỗi: ${data.message}`, 'error');
             }
         } catch (e) {
-            alert(`❌ Lỗi: ${e.message}`);
+            showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btnTagNow.disabled = false;
             btnTagNow.textContent = '🏷️ Ghi Toàn Bộ Tag Vào Metadata';
@@ -576,22 +1024,117 @@ function initAudiophileLab() {
     });
 }
 
-async function ensureLabTracksPopulated() {
-    const select = document.getElementById('lab-track-select');
-    if (!select || select.children.length > 2) return;
+function initLabCombobox() {
+    const input = document.getElementById('lab-combobox-input');
+    const dropdown = document.getElementById('lab-combobox-dropdown');
+    const clearBtn = document.getElementById('lab-combobox-clear');
+    const hiddenPath = document.getElementById('lab-selected-path');
 
-    try {
-        const res = await fetch('/api/tracks?filter=all&offset=0&limit=500');
-        const data = await res.json();
-        const tracks = data.tracks || [];
-        allLibraryTracks = tracks;
+    let debounce = null;
 
-        let optionsHtml = '<option value="">-- Chọn bài hát để kiểm định 7 tiêu chuẩn --</option>';
-        tracks.forEach(t => {
-            const label = `${t.title || t.original_path} [${t.specs || 'Audio'}] - ${t.artist || 'Unknown'}`;
-            optionsHtml += `<option value="${escapeHtml(t.original_path)}">${escapeHtml(label)}</option>`;
+    const renderDropdownItems = (filtered) => {
+        if (!dropdown) return;
+        if (filtered.length === 0) {
+            dropdown.innerHTML = `<div class="p-3 text-center text-muted" style="font-size: 0.85rem;">Không tìm thấy bài hát nào</div>`;
+            dropdown.style.display = 'block';
+            return;
+        }
+
+        let html = '';
+        filtered.slice(0, 25).forEach(t => {
+            const title = t.title || t.original_path;
+            const artist = t.artist || 'Unknown';
+            const specs = t.specs || '';
+            const path = t.original_path;
+            html += `
+                <div class="combobox-item" data-path="${escapeHtml(path)}" data-title="${escapeHtml(title)}">
+                    <div>
+                        <div class="combobox-item-title">${escapeHtml(title)}</div>
+                        <div class="combobox-item-sub">${escapeHtml(artist)} &bull; <code>${escapeHtml(path)}</code></div>
+                    </div>
+                    <span class="track-specs-badge">${escapeHtml(specs)}</span>
+                </div>
+            `;
         });
-        select.innerHTML = optionsHtml;
+        dropdown.innerHTML = html;
+        dropdown.style.display = 'block';
+
+        dropdown.querySelectorAll('.combobox-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const path = item.dataset.path;
+                const title = item.dataset.title;
+                if (hiddenPath) hiddenPath.value = path;
+                if (input) input.value = title;
+                if (clearBtn) clearBtn.style.display = 'block';
+                dropdown.style.display = 'none';
+            });
+        });
+    };
+
+    input?.addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+        clearTimeout(debounce);
+        debounce = setTimeout(() => {
+            if (!q) {
+                dropdown.style.display = 'none';
+                return;
+            }
+            if (allLibraryTracks.length === 0) {
+                ensureLabTracksPopulated().then(() => {
+                    const filtered = allLibraryTracks.filter(t => 
+                        (t.title || '').toLowerCase().includes(q) ||
+                        (t.artist || '').toLowerCase().includes(q) ||
+                        (t.original_path || '').toLowerCase().includes(q)
+                    );
+                    renderDropdownItems(filtered);
+                });
+            } else {
+                const filtered = allLibraryTracks.filter(t => 
+                    (t.title || '').toLowerCase().includes(q) ||
+                    (t.artist || '').toLowerCase().includes(q) ||
+                    (t.original_path || '').toLowerCase().includes(q)
+                );
+                renderDropdownItems(filtered);
+            }
+        }, 150);
+    });
+
+    input?.addEventListener('focus', () => {
+        if (input.value.trim()) {
+            input.dispatchEvent(new Event('input'));
+        }
+    });
+
+    clearBtn?.addEventListener('click', () => {
+        if (input) input.value = '';
+        if (hiddenPath) hiddenPath.value = '';
+        clearBtn.style.display = 'none';
+        dropdown.style.display = 'none';
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.track-picker-card')) {
+            if (dropdown) dropdown.style.display = 'none';
+        }
+    });
+
+    document.getElementById('btn-run-audiophile-audit')?.addEventListener('click', () => {
+        const path = hiddenPath?.value || input?.value.trim();
+        if (!path) {
+            showToast('Vui lòng tìm và chọn một bài hát trước khi kiểm định!', 'warning');
+            return;
+        }
+        runAudiophileAuditForPath(path);
+    });
+}
+
+async function ensureLabTracksPopulated() {
+    if (allLibraryTracks.length > 0) return;
+    try {
+        const res = await fetch('/api/tracks?filter=all&offset=0&limit=2000');
+        const data = await res.json();
+        allLibraryTracks = data.tracks || [];
     } catch (e) {
         console.error("Lỗi nạp danh sách vào Audiophile Lab:", e);
     }
@@ -599,25 +1142,17 @@ async function ensureLabTracksPopulated() {
 
 function jumpToAudiophileLab(filepath) {
     switchTab('tab-audiophile');
+    const input = document.getElementById('lab-combobox-input');
+    const hiddenPath = document.getElementById('lab-selected-path');
+    const clearBtn = document.getElementById('lab-combobox-clear');
+    if (input) input.value = filepath.split('/').pop();
+    if (hiddenPath) hiddenPath.value = filepath;
+    if (clearBtn) clearBtn.style.display = 'block';
+
     ensureLabTracksPopulated().then(() => {
-        const select = document.getElementById('lab-track-select');
-        if (select) {
-            // Kiểm tra xem option đã có chưa, nếu chưa thêm vào
-            let found = false;
-            for (let opt of select.options) {
-                if (opt.value === filepath) {
-                    select.value = filepath;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                const newOpt = document.createElement('option');
-                newOpt.value = filepath;
-                newOpt.textContent = filepath;
-                newOpt.selected = true;
-                select.appendChild(newOpt);
-            }
+        const matched = allLibraryTracks.find(t => t.original_path === filepath);
+        if (matched && input) {
+            input.value = matched.title || matched.original_path;
         }
         runAudiophileAuditForPath(filepath);
     });
@@ -763,9 +1298,44 @@ function initVaultTiering() {
         selectedTieringMode = 'move';
     });
 
+    // Interactive Click on 3 Tier Cards to filter plan table
+    document.querySelectorAll('.clickable-tier').forEach(card => {
+        card.addEventListener('click', () => {
+            const tier = card.dataset.tier;
+            document.querySelectorAll('.clickable-tier').forEach(c => c.style.outline = 'none');
+            card.style.outline = '2px solid var(--accent-indigo)';
+
+            tierPlanFilter = tier;
+            const badge = document.getElementById('plan-filter-active-badge');
+            if (badge) {
+                badge.textContent = `Đang lọc: ${card.querySelector('h3')?.textContent || tier}`;
+                badge.style.display = 'inline-block';
+            }
+            renderVaultTieringPlanTable();
+        });
+    });
+
+    document.getElementById('btn-tier-filter-all')?.addEventListener('click', () => {
+        tierPlanFilter = 'all';
+        document.querySelectorAll('.clickable-tier').forEach(c => c.style.outline = 'none');
+        const badge = document.getElementById('plan-filter-active-badge');
+        if (badge) badge.style.display = 'none';
+        renderVaultTieringPlanTable();
+    });
+
+    const searchInput = document.getElementById('tiering-search-input');
+    let searchDebounce = null;
+    searchInput?.addEventListener('input', (e) => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+            tierPlanSearch = e.target.value.trim().toLowerCase();
+            renderVaultTieringPlanTable();
+        }, 200);
+    });
+
     document.getElementById('btn-execute-tiering')?.addEventListener('click', async () => {
         if (!currentTieringPlan || !currentTieringPlan.items) {
-            alert('Chưa có dữ liệu kế hoạch phân cấp. Đang tải lại...');
+            showToast('Chưa có dữ liệu kế hoạch phân cấp. Đang tải lại...', 'warning');
             await loadVaultTieringPlan();
         }
 
@@ -773,9 +1343,11 @@ function initVaultTiering() {
             'TẠO LIÊN KẾT MỀM (SYMLINK)\n👉 An toàn tuyệt đối 100%: File gốc KHÔNG bị di chuyển hay thay đổi vị trí!' :
             'DI CHUYỂN THẬT (MOVE)\n👉 Các file sẽ được di chuyển vào 3 thư mục tương ứng. Hệ thống tự động tạo file rollback để khôi phục bất cứ lúc nào!';
 
-        if (!confirm(`Bạn có chắc chắn muốn thực thi phân loại ${currentTieringPlan.total_files} bài hát theo chế độ:\n\n${modeText}`)) {
-            return;
-        }
+        const confirmed = await showConfirm(
+            `Xác nhận thực thi phân cấp (${currentTieringPlan.total_files} bài)`,
+            `Bạn có chắc chắn muốn thực thi phân loại ${currentTieringPlan.total_files} bài hát theo chế độ:\n\n${modeText}`
+        );
+        if (!confirmed) return;
 
         const btn = document.getElementById('btn-execute-tiering');
         btn.disabled = true;
@@ -795,12 +1367,14 @@ function initVaultTiering() {
             const data = await res.json();
             if (data.success) {
                 statusMsg.innerHTML = `<span class="text-emerald">✅ ${data.message}</span> (Thư mục đích: <code>${data.target_base}</code>)`;
-                alert(`✅ ${data.message}`);
+                showToast(`✅ ${data.message}`, 'success', 5000);
             } else {
                 statusMsg.innerHTML = `<span class="text-rose">❌ Lỗi: ${data.message}</span>`;
+                showToast(`❌ Lỗi: ${data.message}`, 'error');
             }
         } catch (e) {
             statusMsg.innerHTML = `<span class="text-rose">❌ Lỗi: ${e.message}</span>`;
+            showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = '⚡ 1-Click Thực Thi Phân Cấp Kho Nhạc';
@@ -808,9 +1382,11 @@ function initVaultTiering() {
     });
 
     document.getElementById('btn-rollback-tiering')?.addEventListener('click', async () => {
-        if (!confirm('Hệ thống sẽ đối chiếu .vault_tiering_rollback.json và khôi phục toàn bộ các tệp đã di chuyển về lại đúng vị trí thư mục nguyên bản. Bạn có muốn tiếp tục?')) {
-            return;
-        }
+        const confirmed = await showConfirm(
+            'Khôi phục vị trí thư mục (Rollback)',
+            'Hệ thống sẽ đối chiếu .vault_tiering_rollback.json và khôi phục toàn bộ các tệp đã di chuyển về lại đúng vị trí thư mục nguyên bản. Bạn có muốn tiếp tục?'
+        );
+        if (!confirmed) return;
 
         const btn = document.getElementById('btn-rollback-tiering');
         btn.disabled = true;
@@ -820,13 +1396,13 @@ function initVaultTiering() {
             const res = await fetch('/api/vault/tiering/rollback', { method: 'POST' });
             const data = await res.json();
             if (data.success) {
-                alert(`✅ ${data.message}`);
+                showToast(`✅ ${data.message}`, 'success');
                 await loadVaultTieringPlan();
             } else {
-                alert(`❌ ${data.message}`);
+                showToast(`❌ ${data.message}`, 'error');
             }
         } catch (e) {
-            alert(`❌ Lỗi: ${e.message}`);
+            showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = '🔄 Khôi Phục (Rollback)';
@@ -860,36 +1436,57 @@ async function loadVaultTieringPlan() {
 
         document.getElementById('plan-total-badge').textContent = `${data.total_files || 0} tệp (${data.total_size_gb || 0} GB)`;
 
-        // Render sample preview (first 100 items)
-        const items = data.items || [];
-        let html = '';
-        items.slice(0, 100).forEach(item => {
-            let tierTag = '';
-            if (item.tier === 'tier_1') {
-                tierTag = `<span class="stat-tag tag-cyan">Tầng 1 &bull; Hi-Res</span>`;
-            } else if (item.tier === 'tier_2') {
-                tierTag = `<span class="stat-tag tag-indigo">Tầng 2 &bull; CD</span>`;
-            } else {
-                tierTag = `<span class="stat-tag tag-rose">Tầng 3 &bull; Quarantine</span>`;
-            }
-
-            html += `
-                <tr>
-                    <td>
-                        <div style="font-weight: 500; color: #e2e8f0;">${escapeHtml(item.title || item.original_path)}</div>
-                        <div class="text-muted" style="font-size: 0.75rem;">${escapeHtml(item.original_path)}</div>
-                    </td>
-                    <td>${tierTag}</td>
-                    <td><span class="text-secondary" style="font-size: 0.8rem;">${escapeHtml(item.reason || '')}</span></td>
-                    <td><code class="dupe-path-code" style="font-size: 0.75rem;">${escapeHtml(item.dest_path)}</code></td>
-                </tr>
-            `;
-        });
-
-        tbody.innerHTML = html;
+        renderVaultTieringPlanTable();
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-rose">Lỗi tải kế hoạch: ${e.message}</td></tr>`;
     }
+}
+
+function renderVaultTieringPlanTable() {
+    const tbody = document.getElementById('tiering-preview-tbody');
+    if (!tbody || !currentTieringPlan) return;
+
+    let items = currentTieringPlan.items || [];
+    if (tierPlanFilter !== 'all') {
+        items = items.filter(it => it.tier === tierPlanFilter || it.tier_id === tierPlanFilter);
+    }
+    if (tierPlanSearch) {
+        items = items.filter(it => 
+            (it.title || '').toLowerCase().includes(tierPlanSearch) ||
+            (it.original_path || '').toLowerCase().includes(tierPlanSearch) ||
+            (it.dest_path || '').toLowerCase().includes(tierPlanSearch)
+        );
+    }
+
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-muted">Không có bài hát nào phù hợp với bộ lọc hoặc từ khóa tìm kiếm.</td></tr>`;
+        return;
+    }
+
+    let html = '';
+    items.slice(0, 100).forEach(item => {
+        let tierTag = '';
+        if (item.tier === '01_Hi-Res & DSD' || item.tier === 'tier_1') {
+            tierTag = `<span class="stat-tag tag-cyan">Tầng 1 &bull; Hi-Res</span>`;
+        } else if (item.tier === '02_Lossless_CD' || item.tier === 'tier_2') {
+            tierTag = `<span class="stat-tag tag-indigo">Tầng 2 &bull; CD</span>`;
+        } else {
+            tierTag = `<span class="stat-tag tag-rose">Tầng 3 &bull; Quarantine</span>`;
+        }
+
+        html += `
+            <tr>
+                <td>
+                    <div style="font-weight: 500; color: #e2e8f0;">${escapeHtml(item.title || item.original_path)}</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">${escapeHtml(item.original_path)}</div>
+                </td>
+                <td>${tierTag}</td>
+                <td><span class="text-secondary" style="font-size: 0.8rem;">${escapeHtml(item.reason || '')}</span></td>
+                <td><code class="dupe-path-code" style="font-size: 0.75rem;">${escapeHtml(item.dest_path)}</code></td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
 }
 
 // ==============================================================================
@@ -961,6 +1558,48 @@ function initDuplicates() {
     // 5. Batch Archive Button (works for Byte, Meta, and Name duplicates!)
     document.getElementById('btn-archive-byte-dupes')?.addEventListener('click', async () => {
         await executeBatchArchiveDuplicates();
+    });
+
+    // 6. Auto-pick best audio quality for all duplicate groups
+    document.getElementById('btn-auto-pick-best-dupes')?.addEventListener('click', () => {
+        let rawList = getActiveDuplicatesList();
+        let changed = 0;
+        rawList.forEach((item, idx) => {
+            const gId = item.id || item.hash || (`grp_${idx}`);
+            const files = item.files || [];
+            if (files.length <= 1) return;
+
+            let bestFile = null;
+            let bestScore = -999;
+            files.forEach(f => {
+                const filePath = typeof f === 'string' ? f : f.path;
+                const ext = (filePath.split('.').pop() || '').toLowerCase();
+                let score = 0;
+                if (['flac', 'dsf', 'dff'].includes(ext)) score += 100;
+                else if (['wav', 'alac', 'ape'].includes(ext)) score += 80;
+                else if (['m4a', 'aac'].includes(ext)) score += 40;
+                else if (ext === 'mp3') score += 20;
+
+                const specs = (typeof f === 'object' && f.specs) ? f.specs : '';
+                if (specs.includes('24bit') || specs.includes('96k') || specs.includes('192k')) score += 50;
+                if (specs.includes('320k')) score += 10;
+                if (typeof f === 'object' && f.album && !f.album.toLowerCase().includes('unknown') && !f.album.toLowerCase().includes('single')) score += 15;
+                if (filePath.match(/\(\d+\)/)) score -= 15; // secondary copy with (1)
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestFile = filePath;
+                }
+            });
+
+            if (bestFile) {
+                userSelectedKeep[gId] = bestFile;
+                changed++;
+            }
+        });
+
+        renderDuplicates();
+        showToast(`⚡ Đã tự động chọn bản chất lượng tối ưu nhất cho ${changed} nhóm trùng lặp!`, 'success');
     });
 }
 
@@ -1126,8 +1765,13 @@ function renderDuplicates() {
                         <span class="text-secondary" style="font-size: 0.82rem;">
                             Đang giữ: <strong class="text-emerald" id="lbl-kept-${groupId}">${escapeHtml(keptFilename)}</strong>
                         </span>
+                        ${files.length >= 2 ? `
+                        <button class="btn btn-sm btn-emerald btn-group-play-ab" data-groupid="${groupId}" title="Nghe và chuyển đổi tức thì giữa bản giữ và bản phụ">
+                            ▶ Nghe A/B
+                        </button>
+                        ` : ''}
                         <button class="btn btn-sm btn-secondary btn-archive-single-group" data-groupid="${groupId}">
-                            📦 Archive nhóm này (${numToArchive} bản)
+                            📦 Archive (${numToArchive} bản)
                         </button>
                     </div>
                 </div>
@@ -1179,6 +1823,9 @@ function renderDuplicates() {
                                 ${album ? `<span class="dupe-tag-pill dupe-tag-album">${escapeHtml(album)}</span>` : ''}
                                 ${sizeMb ? `<span class="text-secondary" style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; white-space: nowrap;">${sizeMb}</span>` : ''}
                                 ${hasNum ? `<span class="dupe-tag-pill dupe-tag-number">Đuôi (${fileName.match(/\((\d+)\)/)?.[1] || 'số'})</span>` : ''}
+                                <button class="btn btn-xs btn-outline btn-row-play" title="Phát nghe thử tệp âm thanh này" data-file="${escapeHtml(filePath)}" data-title="${escapeHtml(fileName)}" data-specs="${escapeHtml(specs || ext)}">
+                                    ▶ Nghe
+                                </button>
                                 <button class="btn btn-xs btn-outline btn-row-spectrogram" title="Mở phổ âm kiểm tra tần số cut-off" data-file="${escapeHtml(filePath)}" data-title="${escapeHtml(fileName)}" data-specs="${escapeHtml(specs || ext)}">
                                     📊 Phổ Âm
                                 </button>
@@ -1195,8 +1842,7 @@ function renderDuplicates() {
     // 1. Attach interactive click event on each file row
     container.querySelectorAll('.dupe-file-row').forEach(row => {
         row.addEventListener('click', (e) => {
-            // If clicked on spectrogram button, don't change selection
-            if (e.target.closest('.btn-row-spectrogram')) return;
+            if (e.target.closest('.btn-row-spectrogram') || e.target.closest('.btn-row-play')) return;
 
             const gId = row.dataset.groupid;
             const file = row.dataset.file;
@@ -1204,7 +1850,6 @@ function renderDuplicates() {
 
             userSelectedKeep[gId] = file;
 
-            // Update UI within this card
             const card = row.closest('.dupe-card');
             if (card) {
                 card.querySelectorAll('.dupe-file-row').forEach(r => {
@@ -1241,7 +1886,38 @@ function renderDuplicates() {
         });
     });
 
-    // 2. Attach spectrogram button event
+    // 2. Attach row play buttons
+    container.querySelectorAll('.btn-row-play').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            playTrack(btn.dataset.file, btn.dataset.title, '', btn.dataset.specs);
+        });
+    });
+
+    // 3. Attach group A/B comparison buttons
+    container.querySelectorAll('.btn-group-play-ab').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const gId = btn.dataset.groupid;
+            const item = currentFilteredDuplicates.find(it => (it.id || it.hash || '') === gId) ||
+                         currentFilteredDuplicates[parseInt(gId.replace('grp_', ''), 10)];
+            if (!item || !item.files || item.files.length < 2) return;
+
+            const kept = userSelectedKeep[gId] || (typeof item.files[0] === 'string' ? item.files[0] : item.files[0].path);
+            const other = item.files.find(f => {
+                const p = typeof f === 'string' ? f : f.path;
+                return p !== kept;
+            });
+            const otherPath = typeof other === 'string' ? other : (other ? other.path : '');
+
+            playTrack(kept, `${item.title || kept.split('/').pop()} (Kênh A)`, item.artist || '', 'Bản A', {
+                fileA: { path: kept, title: `${item.title || kept.split('/').pop()} [Bản A - Giữ]`, specs: 'Bản A' },
+                fileB: { path: otherPath, title: `${item.title || otherPath.split('/').pop()} [Bản B - Phụ]`, specs: 'Bản B' }
+            });
+        });
+    });
+
+    // 4. Attach spectrogram button event
     container.querySelectorAll('.btn-row-spectrogram').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1252,7 +1928,7 @@ function renderDuplicates() {
         });
     });
 
-    // 3. Attach single group archive buttons
+    // 5. Attach single group archive buttons
     container.querySelectorAll('.btn-archive-single-group').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -1267,39 +1943,54 @@ function renderDuplicates() {
                 .filter(p => p !== kept);
 
             if (toArchive.length === 0) {
-                alert("Không có bản phụ nào trong nhóm này để di chuyển!");
+                showToast("Không có bản phụ nào trong nhóm này để di chuyển!", 'warning');
                 return;
             }
 
             const title = item.title ? `${item.artist} - ${item.title}` : (item.filename || 'nhóm này');
-            const confirmMsg = `Bạn có chắc chắn muốn giữ lại bản:\n👉 ${kept}\n\nVà di chuyển ${toArchive.length} bản phụ của bài "${title}" vào thư mục '_Duplicates_Archive/'?`;
-            if (!confirm(confirmMsg)) return;
+            const confirmed = await showConfirm(
+                'Lưu trữ bản phụ nhóm trùng lặp',
+                `Di chuyển ${toArchive.length} bản phụ của bài "${title}" vào thư mục "_Duplicates_Archive/"?\n\nFile giữ lại: ${kept}`
+            );
+            if (!confirmed) return;
 
-            btn.disabled = true;
-            btn.textContent = '⏳ Đang di chuyển...';
-            try {
-                const res = await fetch('/api/duplicates/archive-byte-dupes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ files_to_archive: toArchive })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    await loadDuplicates(true);
-                } else {
-                    alert(`❌ Lỗi: ${data.message}`);
-                    btn.disabled = false;
-                    btn.textContent = '📦 Archive nhóm này';
-                }
-            } catch (err) {
-                alert(`❌ Lỗi: ${err.message}`);
-                btn.disabled = false;
-                btn.textContent = '📦 Archive nhóm này';
-            }
+            await archiveSingleGroup(toArchive, btn);
         });
     });
 
     updateDupeArchiveButton(filteredList);
+}
+
+async function archiveSingleGroup(toArchive, btn) {
+    if (!toArchive || toArchive.length === 0) return;
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Đang di chuyển...';
+    }
+    try {
+        const res = await fetch('/api/duplicates/archive-byte-dupes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ files_to_archive: toArchive })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`✅ Đã di chuyển ${data.archived_count || toArchive.length} bản phụ vào _Duplicates_Archive`, 'success');
+            await loadDuplicates(true);
+        } else {
+            showToast(`❌ Lỗi: ${data.message || 'Không thể di chuyển file'}`, 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '📦 Archive nhóm này';
+            }
+        }
+    } catch (err) {
+        showToast(`❌ Lỗi: ${err.message}`, 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '📦 Archive nhóm này';
+        }
+    }
 }
 
 function updateDupeArchiveButton(activeList) {
@@ -1359,22 +2050,23 @@ async function executeBatchArchiveDuplicates() {
     });
 
     if (filesToArchive.length === 0) {
-        alert("Không có bản phụ nào được chọn để di chuyển!");
+        showToast("Không có bản phụ nào được chọn để di chuyển!", 'warning');
         return;
     }
 
     const typeDesc = currentDupeType === 'meta' ? 'trùng Metadata' : (currentDupeType === 'name' ? 'trùng Tên tệp' : 'trùng 100% Byte');
     const filterContext = dupeSubFilter !== 'all' ? ` [Bộ lọc: ${dupeSubFilter}]` : (dupeSearchQuery ? ` [Tìm kiếm: "${dupeSearchQuery}"]` : '');
-    const confirmMsg = `Hệ thống sẽ:\n` +
-        `• Giữ lại ${activeList.length} bản chất lượng cao nhất bạn đã chọn\n` +
-        `• Di chuyển an toàn ${filesToArchive.length} bản phụ (${typeDesc}${filterContext}) vào thư mục '_Duplicates_Archive/' (bảo toàn cấu trúc thư mục gốc)\n\n` +
-        `Bạn có chắc chắn muốn thực hiện?`;
-
-    if (!confirm(confirmMsg)) return;
+    const confirmed = await showConfirm(
+        'Xác nhận di chuyển bản phụ hàng loạt',
+        `Hệ thống sẽ:\n• Giữ lại ${activeList.length} bản chất lượng cao nhất bạn đã chọn\n• Di chuyển an toàn ${filesToArchive.length} bản phụ (${typeDesc}${filterContext}) vào thư mục '_Duplicates_Archive/'\n\nBạn có chắc chắn muốn thực hiện?`
+    );
+    if (!confirmed) return;
 
     const btn = document.getElementById('btn-archive-byte-dupes');
-    btn.disabled = true;
-    btn.textContent = '⏳ Đang di chuyển bản phụ...';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Đang di chuyển bản phụ...';
+    }
 
     try {
         const res = await fetch('/api/duplicates/archive-byte-dupes', {
@@ -1384,15 +2076,15 @@ async function executeBatchArchiveDuplicates() {
         });
         const data = await res.json();
         if (data.success) {
-            alert(`✅ ${data.message}`);
+            showToast(`✅ ${data.message}`, 'success');
             await loadDuplicates(true);
         } else {
-            alert(`❌ Lỗi: ${data.message}`);
+            showToast(`❌ Lỗi: ${data.message}`, 'error');
         }
     } catch (e) {
-        alert(`❌ Lỗi: ${e.message}`);
+        showToast(`❌ Lỗi: ${e.message}`, 'error');
     } finally {
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
     }
 }
 
@@ -1508,9 +2200,12 @@ function initOrganize() {
     });
 
     document.getElementById('btn-tag-navidrome-all')?.addEventListener('click', async () => {
-        if (!confirm('Gắn tag Audiophile (Dynamic Range, True Hi-Res...) vào toàn bộ các bài hát trong thư viện?\n\nBản sao lưu metadata gốc sẽ được tạo tự động để bạn có thể hoàn tác bất kỳ lúc nào.')) {
-            return;
-        }
+        const confirmed = await showConfirm(
+            'Gắn tag Audiophile toàn bộ thư viện',
+            'Gắn tag Audiophile (Dynamic Range, True Hi-Res...) vào toàn bộ các bài hát trong thư viện?\n\nBản sao lưu metadata gốc sẽ được tạo tự động để bạn có thể hoàn tác bất kỳ lúc nào.'
+        );
+        if (!confirmed) return;
+
         const btn = document.getElementById('btn-tag-navidrome-all');
         const box = document.getElementById('organize-status-box');
         btn.disabled = true;
@@ -1536,11 +2231,11 @@ function initOrganize() {
                 } catch (err) {}
             }
             if (box) box.innerHTML = `<div class="text-emerald">✅ Đã gắn tag và sao lưu metadata cho ${success}/${tracks.length} bài hát!</div>`;
-            alert(`✅ Đã gắn tag thành công cho ${success}/${tracks.length} bài hát!`);
+            showToast(`✅ Đã gắn tag thành công cho ${success}/${tracks.length} bài hát!`, 'success');
             if (typeof loadTracks === 'function') loadTracks();
         } catch (e) {
-            if (box) box.innerHTML = `<div class="text-rose">❌ Lỗi: ${e.message}</div>`;
-            alert(`❌ Lỗi: ${e.message}`);
+            if (box) box.innerHTML = `<div class="text-rose">❌ Lỗi: ${escapeHtml(e.message)}</div>`;
+            showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = 'Ghi Metadata Tag Vào File Âm Thanh';
@@ -1548,9 +2243,12 @@ function initOrganize() {
     });
 
     document.getElementById('btn-rollback-all-tags')?.addEventListener('click', async () => {
-        if (!confirm('Hệ thống sẽ đối chiếu cơ sở dữ liệu sao lưu metadata và khôi phục TOÀN BỘ các file âm thanh đã từng được gắn tag về trạng thái nguyên bản ban đầu.\n\nBạn có chắc chắn muốn thực hiện hoàn tác toàn bộ?')) {
-            return;
-        }
+        const confirmed = await showConfirm(
+            'Hoàn tác toàn bộ metadata',
+            'Hệ thống sẽ đối chiếu cơ sở dữ liệu sao lưu metadata và khôi phục TOÀN BỘ các file âm thanh đã từng được gắn tag về trạng thái nguyên bản ban đầu.\n\nBạn có chắc chắn muốn thực hiện hoàn tác toàn bộ?'
+        );
+        if (!confirmed) return;
+
         const btn = document.getElementById('btn-rollback-all-tags');
         const box = document.getElementById('organize-status-box');
         btn.disabled = true;
@@ -1567,17 +2265,17 @@ function initOrganize() {
             const data = await res.json();
             if (data.success) {
                 if (box) box.innerHTML = `<div class="text-emerald">✅ ${escapeHtml(data.message)}</div>`;
-                alert(`✅ ${data.message}`);
+                showToast(`✅ ${data.message}`, 'success');
                 if (typeof loadTracks === 'function') {
                     loadTracks();
                 }
             } else {
                 if (box) box.innerHTML = `<div class="text-rose">❌ Lỗi: ${escapeHtml(data.message || data.detail)}</div>`;
-                alert(`❌ Lỗi: ${data.message || data.detail}`);
+                showToast(`❌ Lỗi: ${data.message || data.detail}`, 'error');
             }
         } catch (e) {
             if (box) box.innerHTML = `<div class="text-rose">❌ Lỗi: ${escapeHtml(e.message)}</div>`;
-            alert(`❌ Lỗi: ${e.message}`);
+            showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = '↩️ Hoàn Tác Toàn Bộ Tag Đã Ghi (Khôi phục Metadata gốc)';
@@ -1602,6 +2300,12 @@ function initModal() {
         }
     });
 
+    document.getElementById('modal-btn-play-preview')?.addEventListener('click', () => {
+        if (currentSelectedTrack) {
+            playTrack(currentSelectedTrack.path, currentSelectedTrack.title, '', currentSelectedTrack.specs);
+        }
+    });
+
     document.getElementById('modal-btn-open-lab')?.addEventListener('click', () => {
         if (currentSelectedTrack) {
             modal.classList.remove('active');
@@ -1622,6 +2326,11 @@ function initModal() {
             await tagSingleTrack(currentSelectedTrack.path, btn);
         }
     });
+}
+
+function closeSpectrogramModal() {
+    const modal = document.getElementById('spectrogram-modal');
+    if (modal) modal.classList.remove('active');
 }
 
 async function openSpectrogramModal(filepath, title, specs) {
@@ -1714,13 +2423,13 @@ async function tagSingleTrack(filepath, btnElement = null) {
         });
         const data = await res.json();
         if (data.success) {
-            alert(`✅ ${data.message}`);
+            showToast(`✅ ${data.message}`, 'success');
             if (typeof loadTracks === 'function') loadTracks();
         } else {
-            alert(`❌ Lỗi: ${data.message}`);
+            showToast(`❌ Lỗi: ${data.message}`, 'error');
         }
     } catch (e) {
-        alert(`❌ Lỗi: ${e.message}`);
+        showToast(`❌ Lỗi: ${e.message}`, 'error');
     } finally {
         if (btnElement) {
             btnElement.textContent = 'Tag';
@@ -1731,9 +2440,12 @@ async function tagSingleTrack(filepath, btnElement = null) {
 
 async function rollbackSingleTrack(filepath, btnElement = null) {
     if (!filepath) return;
-    if (!confirm(`Bạn có chắc muốn hoàn tác (undo) và khôi phục metadata gốc cho tệp:\n${filepath} ?`)) {
-        return;
-    }
+    const confirmed = await showConfirm(
+        'Hoàn tác metadata file',
+        `Bạn có chắc muốn hoàn tác (undo) và khôi phục metadata gốc cho tệp:\n${filepath} ?`
+    );
+    if (!confirmed) return;
+
     const origText = btnElement ? btnElement.innerHTML : '';
     if (btnElement) {
         btnElement.textContent = '⏳...';
@@ -1748,15 +2460,15 @@ async function rollbackSingleTrack(filepath, btnElement = null) {
         });
         const data = await res.json();
         if (data.success) {
-            alert(`✅ ${data.message}`);
+            showToast(`✅ ${data.message}`, 'success');
             if (typeof loadTracks === 'function') {
                 loadTracks();
             }
         } else {
-            alert(`❌ Lỗi: ${data.message || data.detail}`);
+            showToast(`❌ Lỗi: ${data.message || data.detail}`, 'error');
         }
     } catch (e) {
-        alert(`❌ Lỗi: ${e.message}`);
+        showToast(`❌ Lỗi: ${e.message}`, 'error');
     } finally {
         if (btnElement) {
             btnElement.innerHTML = origText;
@@ -1773,4 +2485,87 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function switchABChannel(targetChannel) {
+    if (typeof audioPlayer.switchChannel === 'function') {
+        audioPlayer.switchChannel(targetChannel);
+    }
+}
+
+function initNavidromeStorage() {
+    const elUrl = document.getElementById('navi-url');
+    const elUser = document.getElementById('navi-user');
+    const elPass = document.getElementById('navi-pass');
+
+    const savedUrl = localStorage.getItem('navi_url') || localStorage.getItem('navidrome_server_url');
+    const savedUser = localStorage.getItem('navi_user') || localStorage.getItem('navidrome_username');
+    const savedPass = localStorage.getItem('navi_pass') || localStorage.getItem('navidrome_password');
+
+    if (elUrl && savedUrl) elUrl.value = savedUrl;
+    if (elUser && savedUser) elUser.value = savedUser;
+    if (elPass && savedPass) elPass.value = savedPass;
+
+    [elUrl, elUser, elPass].forEach(el => {
+        if (!el) return;
+        el.addEventListener('input', () => {
+            saveNavidromeConfig(getNavidromeConfigFromInputs());
+        });
+    });
+}
+
+function initKeyboardShortcuts() {
+    window.addEventListener('keydown', (e) => {
+        const activeTag = document.activeElement ? document.activeElement.tagName : '';
+        const isEditing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) ||
+                          (document.activeElement && document.activeElement.isContentEditable);
+
+        // Escape: close modals / dropdowns
+        if (e.key === 'Escape') {
+            const confirmModal = document.getElementById('confirm-modal');
+            if (confirmModal && confirmModal.style.display === 'flex') {
+                confirmModal.style.display = 'none';
+                return;
+            }
+            const specModal = document.getElementById('spectrogram-modal');
+            if (specModal && specModal.classList.contains('active')) {
+                closeSpectrogramModal();
+                return;
+            }
+            const labDropdown = document.getElementById('lab-combobox-dropdown');
+            if (labDropdown && !labDropdown.classList.contains('hidden')) {
+                labDropdown.classList.add('hidden');
+                return;
+            }
+        }
+
+        // Search shortcut: '/'
+        if (e.key === '/' && !isEditing) {
+            e.preventDefault();
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
+            }
+            return;
+        }
+
+        // Play/Pause shortcut: Space
+        if (e.code === 'Space' && !isEditing) {
+            const bar = document.getElementById('audio-player-bar');
+            if (bar && bar.style.display !== 'none' && audioPlayer.element) {
+                e.preventDefault();
+                const btnPlayPause = document.getElementById('player-btn-play-pause');
+                if (btnPlayPause) btnPlayPause.click();
+            }
+            return;
+        }
+
+        // A/B switch shortcut: 'a' or 'b'
+        if ((e.key === 'a' || e.key === 'b' || e.key === 'A' || e.key === 'B') && !isEditing) {
+            if (audioPlayer.abActive) {
+                switchABChannel(e.key.toUpperCase());
+            }
+        }
+    });
 }
