@@ -1565,31 +1565,27 @@ function initDuplicates() {
         await executeBatchArchiveDuplicates();
     });
 
-    // 6. Auto-pick best audio quality for all duplicate groups
+    // 6. Auto-pick best audio quality for all duplicate groups using Audiophile Quality Standards
     document.getElementById('btn-auto-pick-best-dupes')?.addEventListener('click', () => {
-        let rawList = getActiveDuplicatesList();
+        let allGroups = [];
+        if (duplicatesData) {
+            allGroups = [
+                ...(duplicatesData.byte_duplicates || []),
+                ...(duplicatesData.meta_duplicates || []),
+                ...(duplicatesData.name_duplicates || [])
+            ];
+        }
         let changed = 0;
-        rawList.forEach((item, idx) => {
+        allGroups.forEach((item, idx) => {
             const gId = item.id || item.hash || (`grp_${idx}`);
             const files = item.files || [];
             if (files.length <= 1) return;
 
             let bestFile = null;
-            let bestScore = -999;
+            let bestScore = -Infinity;
             files.forEach(f => {
                 const filePath = typeof f === 'string' ? f : f.path;
-                const ext = (filePath.split('.').pop() || '').toLowerCase();
-                let score = 0;
-                if (['flac', 'dsf', 'dff'].includes(ext)) score += 100;
-                else if (['wav', 'alac', 'ape'].includes(ext)) score += 80;
-                else if (['m4a', 'aac'].includes(ext)) score += 40;
-                else if (ext === 'mp3') score += 20;
-
-                const specs = (typeof f === 'object' && f.specs) ? f.specs : '';
-                if (specs.includes('24bit') || specs.includes('96k') || specs.includes('192k')) score += 50;
-                if (specs.includes('320k')) score += 10;
-                if (typeof f === 'object' && f.album && !f.album.toLowerCase().includes('unknown') && !f.album.toLowerCase().includes('single')) score += 15;
-                if (filePath.match(/\(\d+\)/)) score -= 15; // secondary copy with (1)
+                const score = scoreAudiophileQuality(f);
 
                 if (score > bestScore) {
                     bestScore = score;
@@ -1604,8 +1600,94 @@ function initDuplicates() {
         });
 
         renderDuplicates();
-        showToast(`⚡ Đã tự động chọn bản chất lượng tối ưu nhất cho ${changed} nhóm trùng lặp!`, 'success');
+        showToast(`⚡ Đã tự động chọn bản tối ưu theo chuẩn Audiophile cho ${changed} nhóm trùng lặp!`, 'success');
     });
+}
+
+function scoreAudiophileQuality(f) {
+    const path = typeof f === 'string' ? f : (f.path || '');
+    const filename = path.split('/').pop() || '';
+    const fnLower = filename.toLowerCase();
+    const ext = (filename.split('.').pop() || '').toLowerCase();
+    const specs = ((typeof f === 'object' && f.specs) ? f.specs : '').toLowerCase();
+    const sizeMb = (typeof f === 'object' && f.size_mb) ? parseFloat(f.size_mb) : 0;
+    const art = ((typeof f === 'object' && f.artist) ? f.artist : '').trim().toLowerCase();
+    const tit = ((typeof f === 'object' && f.title) ? f.title : '').trim().toLowerCase();
+    const alb = ((typeof f === 'object' && f.album) ? f.album : '').trim().toLowerCase();
+
+    let score = 1000.0;
+
+    // 1. Format Tier (Thứ hạng định dạng)
+    if (['dsf', 'dff'].includes(ext)) {
+        score += 5000.0;
+    } else if (['flac', 'wav', 'aif', 'aiff', 'alac', 'ape'].includes(ext)) {
+        if (specs.includes('24bit') || specs.includes('32bit') || specs.includes('96k') || specs.includes('192k') || specs.includes('88.2k') || specs.includes('176.4k')) {
+            score += 4500.0;
+        } else {
+            score += 3500.0;
+        }
+    } else if (['m4a', 'aac', 'ogg', 'opus'].includes(ext)) {
+        score += 1800.0;
+    } else if (ext === 'mp3') {
+        score += 1200.0;
+    } else {
+        score += 800.0;
+    }
+
+    // 2. Technical specs precision
+    if (specs.includes('24bit') || specs.includes('32bit')) score += 600.0;
+    if (specs.includes('192k') || specs.includes('176.4k')) score += 500.0;
+    else if (specs.includes('96k') || specs.includes('88.2k')) score += 400.0;
+    else if (specs.includes('48k')) score += 100.0;
+
+    if (specs.includes('320k')) score += 250.0;
+    else if (specs.includes('256k')) score += 150.0;
+    else if (specs.includes('128k')) score -= 300.0;
+
+    // File size bonus (chống file bị cắt cụt)
+    score += Math.min(sizeMb * 2.0, 300.0);
+
+    // 3. Trừ điểm rất nặng bản sao lưu tải trùng
+    if (/\(\s*\d+\s*\)/.test(filename)) score -= 8000.0;
+    if (/\[\s*\d+\s*\](?!\s*[\.\w])/.test(filename)) score -= 6000.0;
+    if (/[-_\s]copy\b/i.test(fnLower)) score -= 8000.0;
+    if (/_1\.[a-z0-9]+$/i.test(fnLower)) score -= 5000.0;
+
+    // 4. Trừ điểm tệp dán nhãn web rip / tag video rác
+    if (/nhacpro\.net|chiasenhac|nhaccuatui|zingmp3|y2mate|tubidy/i.test(fnLower)) score -= 3000.0;
+    if (/\((official\s*(?:mv|music\s*video|audio|video)|lyric\s*video)\)/i.test(fnLower)) score -= 1500.0;
+    if (/\((128\s*kbps)\)/i.test(fnLower)) score -= 2500.0;
+    if (/\((320\s*kbps)\)/i.test(fnLower)) score -= 300.0;
+    if (filename.startsWith('#') || filename.startsWith('.')) score -= 500.0;
+    if (filename.includes(' - - ') || filename.includes('--')) score -= 300.0;
+
+    // 5. Cấu trúc thư mục: ưu tiên nằm trong album hoàn chỉnh
+    const parts = path.split('/').filter(Boolean);
+    const depth = parts.length - 1;
+    if (depth >= 2) {
+        score += 500.0;
+        const parent = parts[parts.length - 2].toLowerCase();
+        if (/\[\d{4}\]|\(\d{4}\)|\b(19\d\d|20\d\d)\b/.test(parent)) score += 300.0;
+        if (/album|disc|cd|vinyl|remaster|soundtrack|ost/.test(parent)) score += 200.0;
+    } else if (depth === 1) {
+        score += 200.0;
+    } else {
+        score -= 400.0; // file vứt mồ côi ở root
+    }
+
+    // Track number ở đầu tên file (01., 10.)
+    if (/^\d{2,3}[\.\s_-]/.test(filename)) score += 150.0;
+
+    // 6. Metadata đầy đủ
+    if (tit && !['track', 'untitled', 'no title'].includes(tit)) score += 150.0;
+    if (art && !['unknown', 'unknown artist', 'none'].includes(art)) score += 150.0;
+    if (alb && !['unknown', 'unknown album', 'none', 'singles'].includes(alb)) score += 150.0;
+
+    // Tiếng Việt chuẩn có dấu
+    const vnChars = /[àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ]/i;
+    if (vnChars.test(filename)) score += 200.0;
+
+    return score;
 }
 
 async function loadDuplicates(refresh = false) {
@@ -1808,6 +1890,9 @@ function renderDuplicates() {
                             hasNum = f.has_number_suffix || false;
                         }
 
+                        const qScore = Math.round(scoreAudiophileQuality(f));
+                        const scoreDisplay = (qScore > 0 ? '+' : '') + qScore;
+
                         let extBadgeClass = 'tag-slate';
                         if (['FLAC', 'APE'].includes(ext)) extBadgeClass = 'tag-emerald';
                         else if (['DSF', 'DFF'].includes(ext)) extBadgeClass = 'tag-cyan';
@@ -1815,10 +1900,10 @@ function renderDuplicates() {
                         else if (['M4A', 'AAC'].includes(ext)) extBadgeClass = 'tag-amber';
 
                         return `
-                            <div class="dupe-file-row ${isKept ? 'is-kept' : 'is-archive'}" data-groupid="${groupId}" data-file="${escapeHtml(filePath)}">
+                            <div class="dupe-file-row ${isKept ? 'is-kept' : 'is-archive'}" data-groupid="${groupId}" data-file="${escapeHtml(filePath)}" data-score="${scoreDisplay}">
                                 <input type="radio" name="dupe_radio_${groupId}" class="dupe-radio-custom" value="${escapeHtml(filePath)}" ${isKept ? 'checked' : ''}>
                                 <span class="${isKept ? 'dupe-badge-keep' : 'dupe-badge-archive'}">
-                                    ${isKept ? '🟢 ĐỀ XUẤT GIỮ' : '🗑️ BẢN PHỤ'}
+                                    ${isKept ? '🟢 ĐỀ XUẤT GIỮ' : '🗑️ BẢN PHỤ'} <span class="dupe-score-tag" style="opacity: 0.85; font-size: 0.72rem; margin-left: 3px;">(${scoreDisplay}đ)</span>
                                 </span>
                                 <span class="stat-tag ${extBadgeClass}" style="font-size: 0.72rem; padding: 2px 7px; font-weight: 600;">
                                     .${ext}
@@ -1861,6 +1946,7 @@ function renderDuplicates() {
                     const rFile = r.dataset.file;
                     const radio = r.querySelector('input[type="radio"]');
                     const badge = r.querySelector('.dupe-badge-keep, .dupe-badge-archive');
+                    const sVal = r.dataset.score || '';
                     
                     if (rFile === file) {
                         r.classList.add('is-kept');
@@ -1868,7 +1954,7 @@ function renderDuplicates() {
                         if (radio) radio.checked = true;
                         if (badge) {
                             badge.className = 'dupe-badge-keep';
-                            badge.textContent = '🟢 ĐỀ XUẤT GIỮ';
+                            badge.innerHTML = `🟢 ĐỀ XUẤT GIỮ <span class="dupe-score-tag" style="opacity: 0.85; font-size: 0.72rem; margin-left: 3px;">(${sVal}đ)</span>`;
                         }
                     } else {
                         r.classList.remove('is-kept');
@@ -1876,7 +1962,7 @@ function renderDuplicates() {
                         if (radio) radio.checked = false;
                         if (badge) {
                             badge.className = 'dupe-badge-archive';
-                            badge.textContent = '🗑️ BẢN PHỤ';
+                            badge.innerHTML = `🗑️ BẢN PHỤ <span class="dupe-score-tag" style="opacity: 0.85; font-size: 0.72rem; margin-left: 3px;">(${sVal}đ)</span>`;
                         }
                     }
                 });

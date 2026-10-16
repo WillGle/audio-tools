@@ -426,8 +426,8 @@
                         <div class="pillar-title-group">
                             <div class="pillar-icon-badge">🔬</div>
                             <div>
-                                <h3 class="pillar-title">3. Phát Hiện "24-bit Giả"</h3>
-                                <p class="pillar-subtitle">Bit Padding / Zero-Padded LSB Histogram</p>
+                                <h3 class="pillar-title">3. Phát Hiện "24-bit Giả" &amp; Cắt Tần (fakeflac)</h3>
+                                <p class="pillar-subtitle">Zero-Padded LSB Histogram &amp; Reverse Spectral Sweeping</p>
                             </div>
                         </div>
                         <span class="stat-tag tag-rose" id="pillar-bitdepth-badge">Chờ quét</span>
@@ -447,8 +447,19 @@
                         </div>
                     </div>
 
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem;">
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Điểm Cắt Tần (fakeflac)</div>
+                            <div class="dr-stat-val" id="pillar-cutoff-hz">-- Hz</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Độ Sụt Năng Lượng</div>
+                            <div class="dr-stat-val" id="pillar-cutoff-drop">-- dB</div>
+                        </div>
+                    </div>
+
                     <p class="mt-3 text-secondary" style="font-size: 0.82rem;" id="bitdepth-msg-desc">
-                        Bóc trần các bản thu 16-bit bị chèn 8 bit 0 ở đuôi để làm phình dung lượng container 24-bit.
+                        Bóc trần các bản thu 16-bit bị chèn 8 bit 0 ở đuôi hoặc upsampled từ MP3 320k / CD bằng thuật toán quét phổ ngược fakeflac.
                     </p>
                 </div>
 
@@ -825,7 +836,7 @@
                         <span style="font-weight: 600; color: #e2e8f0; font-size: 0.9rem;">Thông Số Audiophile Chi Tiết:</span>
                         <span id="modal-dr-badge-header" class="dr-score-pill dr-score-mid">DR--</span>
                     </div>
-                    <div id="modal-audiophile-metrics-row" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; font-size: 0.82rem;">
+                    <div id="modal-audiophile-metrics-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; font-size: 0.82rem;">
                         <div class="dr-stat-mini">
                             <div class="dr-stat-label">Audio MD5 Streaminfo</div>
                             <div class="dr-stat-val" id="modal-audit-md5" style="font-size: 0.75rem;">Đang đọc...</div>
@@ -833,6 +844,14 @@
                         <div class="dr-stat-mini">
                             <div class="dr-stat-label">ReplayGain 2.0 Gain</div>
                             <div class="dr-stat-val" id="modal-audit-gain">-- dB</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Cắt Tần (fakeflac)</div>
+                            <div class="dr-stat-val" id="modal-audit-cutoff">-- kHz</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Vân Tay Âm Học</div>
+                            <div class="dr-stat-val" id="modal-audit-fp" style="font-size: 0.75rem;">Đang đọc...</div>
                         </div>
                         <div class="dr-stat-mini">
                             <div class="dr-stat-label">Phân Cấp Vault</div>

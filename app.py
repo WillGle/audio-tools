@@ -506,6 +506,73 @@ def archive_byte_duplicates(payload: Optional[ArchiveDupesRequest] = None):
 from core.audiophile_engine import run_full_audiophile_audit, audit_album_gapless_and_dr
 from core.tagger import apply_audiophile_tags, revert_audiophile_tags, rollback_all_audiophile_tags
 from core.vault_tiering import scan_and_generate_tiering_plan, execute_tiering, rollback_vault_tiering
+from core.fingerprint import compare_audio_files, get_audio_fingerprint, lookup_acoustid_metadata
+
+class CompareFingerprintRequest(BaseModel):
+    file1: str
+    file2: str
+
+@app.post("/api/fingerprint/compare")
+def compare_fingerprints_endpoint(req: CompareFingerprintRequest):
+    p1 = ROOT_DIR / req.file1
+    if not p1.is_file(): p1 = Path(req.file1)
+    p2 = ROOT_DIR / req.file2
+    if not p2.is_file(): p2 = Path(req.file2)
+
+    if not p1.is_file() or not p2.is_file():
+        raise HTTPException(status_code=404, detail="Một hoặc cả hai tệp âm thanh không tồn tại")
+
+    match_pct = compare_audio_files(str(p1), str(p2))
+    is_identical = match_pct >= 80.0
+    
+    if match_pct >= 90.0:
+        badge = f"🟢 Trùng Âm Học Tuyệt Đối ({match_pct}%)"
+        badge_color = "#10b981"
+        verdict = "IDENTICAL_RECORDING"
+        explanation = "Hai tệp là cùng một bản ghi âm gốc (khớp vân tay Chromaprint tuyệt đối)."
+    elif match_pct >= 80.0:
+        badge = f"🟢 Trùng Bản Thu ({match_pct}%)"
+        badge_color = "#06b6d4"
+        verdict = "SAME_RECORDING_VARIATION"
+        explanation = "Cùng một bản thu, có thể khác master, bitrate hoặc nén âm lượng."
+    elif match_pct >= 60.0:
+        badge = f"🟡 Tương Đồng Một Phần ({match_pct}%)"
+        badge_color = "#eab308"
+        verdict = "SIMILAR_RECORDING"
+        explanation = "Có đoạn tương đồng (bản live khác hoặc remix)."
+    else:
+        badge = f"⚪ Khác Bản Thu ({match_pct}%)"
+        badge_color = "#94a3b8"
+        verdict = "DIFFERENT_RECORDING"
+        explanation = "Nội dung âm thanh khác biệt hoàn toàn."
+
+    return {
+        'file1': req.file1,
+        'file2': req.file2,
+        'match_pct': match_pct,
+        'is_identical': is_identical,
+        'verdict': verdict,
+        'badge': badge,
+        'badge_color': badge_color,
+        'explanation': explanation
+    }
+
+@app.get("/api/fingerprint/info")
+def get_fingerprint_info(filepath: str):
+    p = ROOT_DIR / filepath
+    if not p.is_file(): p = Path(filepath)
+    if not p.is_file():
+        raise HTTPException(status_code=404, detail="Không tìm thấy tệp")
+
+    fp_res = get_audio_fingerprint(str(p))
+    return {
+        'filepath': filepath,
+        'filename': p.name,
+        'is_available': fp_res.get('is_available', False),
+        'duration': fp_res.get('duration', 0.0),
+        'sample_count': fp_res.get('sample_count', 0),
+        'error': fp_res.get('error')
+    }
 
 class AudiophileAuditRequest(BaseModel):
     filepath: str

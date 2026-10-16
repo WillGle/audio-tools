@@ -6,11 +6,12 @@ import re
 from pathlib import Path
 from collections import defaultdict
 import mutagen
+from core.fingerprint import compare_audio_files
 
 AUDIO_EXTENSIONS = {'.flac', '.wav', '.dsf', '.dff', '.m4a', '.mp3', '.ape', '.ogg', '.opus', '.wma'}
 IGNORE_DIRS = {'.git', '.agents', '.gemini', 'brain', 'scratch', 'tools', 'cache', '_Duplicates_Archive'}
 
-def get_cache_db(root_dir):
+def get_cache_db(root_dir=None):
     cache_path = Path(__file__).resolve().parent.parent / 'cache' / 'scan_cache.sqlite'
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(cache_path)
@@ -26,9 +27,18 @@ def get_cache_db(root_dir):
         title TEXT,
         album TEXT,
         duration REAL,
-        ext TEXT
+        ext TEXT,
+        fingerprint TEXT
     )
     """)
+    # Migration if table exists without fingerprint column
+    c.execute("PRAGMA table_info(file_cache)")
+    cols = [col[1] for col in c.fetchall()]
+    if 'fingerprint' not in cols:
+        try:
+            c.execute("ALTER TABLE file_cache ADD COLUMN fingerprint TEXT")
+        except Exception:
+            pass
     conn.commit()
     return conn
 
@@ -54,85 +64,116 @@ def clean_title_for_clustering(title, artist, rel_path):
     t = re.sub(r'[\(\[](?:official\s*(?:mv|music\s*video|audio|video)|320\s*kbps|128\s*kbps)[\)\]]', '', t, flags=re.I)
     return normalize_text(t)
 
-def score_file_for_keeping(rel_path, cache_row=None):
+def score_file_for_keeping(rel_path, cache_row=None, specs=''):
     """
     Chấm điểm mức độ ưu tiên GIỮ LẠI của tệp (Điểm càng cao càng ưu tiên giữ lại).
-    Các tiêu chuẩn:
-    1. Trừ điểm RẤT NẶNG nếu tên tệp có chứa (số) như (1), (2), [1], _1, - Copy.
-       -> Mặc định các bản này là bản trùng, bị xếp xuống dưới để chuyển vào Archive.
-    2. Ưu tiên tệp có Metadata đầy đủ hơn (Title, Artist, Album).
-    3. Ưu tiên tệp nằm trong thư mục Album hoàn chỉnh (độ sâu >= 2) thay vì vứt bừa ngoài thư mục gốc.
-    4. Ưu tiên tên tệp tiếng Việt chuẩn có dấu, trừ điểm file lỗi font / gãy ký tự / tiền tố # rác.
-    5. Ưu tiên nhẹ file có ngày sửa đổi cũ hơn (bản gốc tải về trước).
+    Bộ tiêu chuẩn chất âm Audiophile & Độ tin cậy tệp:
+    1. Định dạng âm thanh: DSD (SACD) > Hi-Res Lossless 24-bit > CD Lossless 16-bit (WAV/FLAC) > High Lossy (AAC/M4A/320k) > Low Lossy.
+    2. Thông số kỹ thuật: Ưu tiên Bit-depth (24bit > 16bit) và Sample rate (192k > 96k > 48k > 44.1k).
+    3. Trừ điểm RẤT NẶNG tệp bản sao tải trùng: (1), (2), [1], _1, - Copy (-8000đ).
+    4. Trừ điểm nặng tệp rip trôi nổi từ web kèm tên miền: NhacPro.net, ChiaSeNhac, NhacCuaTui, ZingMP3, Y2mate (-3000đ).
+    5. Cấu trúc thư mục: Ưu tiên tệp nằm trong thư mục Album hoàn chỉnh có năm phát hành [1984], [2016] thay vì vứt bừa ngoài thư mục gốc.
+    6. Độ trọn vẹn Metadata & tiếng Việt có dấu.
     """
     score = 1000.0
     p = Path(rel_path)
     fn = p.name
     fn_lower = fn.lower()
+    ext = p.suffix.lower().lstrip('.')
     parts = p.parts
 
-    # 1. Trừ điểm rất nặng file có (số) trong tên hoặc copy
-    if re.search(r'\(\s*\d+\s*\)', fn):
-        score -= 5000.0
-    if re.search(r'\[\s*\d+\s*\](?!\s*[\.\w])', fn):
-        score -= 3000.0
-    if re.search(r'[-_\s]copy\b', fn_lower):
-        score -= 5000.0
-    if re.search(r'_1\.[a-zA-Z0-9]+$', fn_lower):
-        score -= 2000.0
+    specs_lower = (specs or '').lower()
+    size_mb = 0.0
 
-    # 2. Cấu trúc thư mục: Ưu tiên nằm trong album thay vì root
+    if cache_row:
+        # cache_row: [rel, mtime, size, header_hash, full_md5, artist, title, album, duration, ext]
+        if len(cache_row) > 2 and cache_row[2]:
+            size_mb = round(cache_row[2] / (1024 * 1024), 2)
+        if len(cache_row) > 9 and cache_row[9]:
+            ext = cache_row[9].lower().lstrip('.')
+
+    # 1. Format Tier (Thứ hạng định dạng)
+    if ext in ('dsf', 'dff'):
+        score += 5000.0
+    elif ext in ('flac', 'wav', 'aif', 'aiff', 'alac', 'ape'):
+        if any(h in specs_lower for h in ('24bit', '32bit', '96k', '192k', '88.2k', '176.4k')):
+            score += 4500.0
+        else:
+            score += 3500.0
+    elif ext in ('m4a', 'aac', 'ogg', 'opus'):
+        score += 1800.0
+    elif ext == 'mp3':
+        score += 1200.0
+    else:
+        score += 800.0
+
+    # 2. Specs Precision (Độ phân giải & Tần số lấy mẫu)
+    if '24bit' in specs_lower or '32bit' in specs_lower: score += 600.0
+    if '192k' in specs_lower or '176.4k' in specs_lower: score += 500.0
+    elif '96k' in specs_lower or '88.2k' in specs_lower: score += 400.0
+    elif '48k' in specs_lower: score += 100.0
+
+    if '320k' in specs_lower: score += 250.0
+    elif '256k' in specs_lower: score += 150.0
+    elif '128k' in specs_lower: score -= 300.0
+
+    # Kích thước tệp (Bảo vệ tránh tệp bị cắt cụt / tải dở)
+    score += min(size_mb * 2.0, 300.0)
+
+    # 3. Trừ điểm rất nặng bản sao lưu tải trùng lặp
+    if re.search(r'\(\s*\d+\s*\)', fn): score -= 8000.0
+    if re.search(r'\[\s*\d+\s*\](?!\s*[\.\w])', fn): score -= 6000.0
+    if re.search(r'[-_\s]copy\b', fn_lower): score -= 8000.0
+    if re.search(r'_1\.[a-zA-Z0-9]+$', fn_lower): score -= 5000.0
+
+    # 4. Trừ điểm tệp dán nhãn web rip / tag video rác
+    if re.search(r'nhacpro\.net|chiasenhac|nhaccuatui|zingmp3|y2mate|tubidy', fn_lower):
+        score -= 3000.0
+    if re.search(r'\((official\s*(?:mv|music\s*video|audio|video)|lyric\s*video)\)', fn_lower):
+        score -= 1500.0
+    if re.search(r'\((128\s*kbps)\)', fn_lower):
+        score -= 2500.0
+    if re.search(r'\((320\s*kbps)\)', fn_lower):
+        score -= 300.0
+    if fn.startswith('#') or fn.startswith('.'):
+        score -= 500.0
+    if ' - -' in fn or '--' in fn:
+        score -= 300.0
+
+    # 5. Cấu trúc thư mục: Ưu tiên nằm trong album thay vì root
     depth = len(parts) - 1
     if depth >= 2:
-        score += 400.0
+        score += 500.0
+        parent = parts[-2].lower()
+        if re.search(r'\[\d{4}\]|\(\d{4}\)|\b(19\d\d|20\d\d)\b', parent):
+            score += 300.0
+        if any(kw in parent for kw in ('album', 'disc', 'cd', 'vinyl', 'remaster', 'soundtrack', 'ost')):
+            score += 200.0
     elif depth == 1:
         score += 200.0
     else:
-        score -= 300.0  # File vứt mồ côi ở root
-
-    # Folder cha có chứa năm phát hành [1982] hoặc từ khóa album
-    if depth >= 1:
-        parent = parts[-2]
-        if re.search(r'\[\d{4}(?:\.\d{2}\.\d{2})?\]|\(\d{4}\)|\b(19\d\d|20\d\d)\b', parent):
-            score += 200.0
-        if any(kw in parent.lower() for kw in ('lossless', 'flac', 'album', 'disc', 'cd', 'vinyl', 'remaster')):
-            score += 100.0
-
-    # 3. Ưu tiên Metadata đầy đủ hơn
-    if cache_row:
-        # cache_row: [rel, mtime, size, header_hash, full_md5, artist, title, album, duration, ext]
-        art = (cache_row[5] or '').strip() if len(cache_row) > 5 else ''
-        tit = (cache_row[6] or '').strip() if len(cache_row) > 6 else ''
-        alb = (cache_row[7] or '').strip() if len(cache_row) > 7 else ''
-
-        if tit:
-            score += 150.0
-        if art and art.lower() not in ('unknown', 'unknown artist', 'none', 'various', 'various artists'):
-            score += 150.0
-        if alb and alb.lower() not in ('unknown', 'unknown album', 'none', 'untitled', 'no title'):
-            score += 150.0
-
-    # 4. Ký tự tiếng Việt có dấu vs lỗi font / gãy font
-    vn_chars = r'[àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ]'
-    if re.search(vn_chars, fn, flags=re.I):
-        score += 250.0
-    
-    if ' - -' in fn or '--' in fn:
-        score -= 200.0
-    if fn.startswith('#') or fn.startswith('.'):
-        score -= 150.0
-    if '( lm g)' in fn or ' qun - Ngt' in fn or 'KHNG SAO U' in fn:
-        score -= 400.0
+        score -= 400.0  # File vứt mồ côi ở root
 
     # Track number chuẩn ở đầu tên file (ví dụ "08. Your Eyes.flac")
     if re.match(r'^\d{2,3}[\.\s_-]', fn):
-        score += 80.0
+        score += 150.0
 
-    # Phạt nhẹ nếu tên file kèm tag 320 kbps, Official MV rác
-    if re.search(r'\((320\s*kbps|128\s*kbps|Official MV|Official Music Video)\)', fn, flags=re.I):
-        score -= 50.0
+    # 6. Ưu tiên Metadata đầy đủ
+    if cache_row:
+        art = (cache_row[5] or '').strip().lower() if len(cache_row) > 5 else ''
+        tit = (cache_row[6] or '').strip().lower() if len(cache_row) > 6 else ''
+        alb = (cache_row[7] or '').strip().lower() if len(cache_row) > 7 else ''
 
-    # 5. Tie-breaker: mtime cũ hơn (tệp tải về trước là bản gốc)
+        if tit and tit not in ('track', 'untitled', 'no title'): score += 150.0
+        if art and art not in ('unknown', 'unknown artist', 'none'): score += 150.0
+        if alb and alb not in ('unknown', 'unknown album', 'none', 'singles'): score += 150.0
+
+    # Ký tự tiếng Việt có dấu
+    vn_chars = r'[àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ]'
+    if re.search(vn_chars, fn, flags=re.I):
+        score += 200.0
+
+    # Tie-breaker: mtime cũ hơn (tệp tải về trước là bản gốc)
     if cache_row and len(cache_row) > 1 and cache_row[1]:
         score -= (float(cache_row[1]) / 1e11)
 
@@ -270,7 +311,7 @@ def scan_duplicates(root_dir, force_refresh=False):
 
     # Nạp organize_plan.json nếu có để làm giàu thông tin specs (bit-depth/sample-rate/bitrate)
     specs_map = {}
-    plan_file = root_dir / 'organize_plan.json'
+    plan_file = root / 'organize_plan.json'
     if not plan_file.exists():
         plan_file = Path(__file__).resolve().parent.parent / 'organize_plan.json'
     if plan_file.exists():
@@ -364,49 +405,18 @@ def scan_duplicates(root_dir, force_refresh=False):
 
             for cluster in subclusters:
                 if len(cluster) > 1:
-                    # Scoring: Format tier > Metadata Completeness > Folder Depth > File size > Penalize (số)
-                    def score(it):
-                        e = it['ext']
-                        s = 0.0
-                        if e in ('.dsf', '.dff'): s += 500.0
-                        elif e == '.flac': s += 400.0
-                        elif e == '.wav': s += 300.0
-                        elif e == '.m4a': s += 200.0
-                        else: s += 100.0
-
-                        s += min(it.get('size_mb', 0), 50.0)
-
-                        # Ưu tiên Metadata đầy đủ
-                        art = (it.get('artist') or '').strip()
-                        tit = (it.get('title') or '').strip()
-                        alb = (it.get('album') or '').strip()
-                        if tit: s += 50.0
-                        if art and art.lower() not in ('unknown', 'unknown artist', 'none'): s += 80.0
-                        if alb and alb.lower() not in ('unknown', 'unknown album', 'none'): s += 80.0
-
-                        p_obj = Path(it.get('path', ''))
-                        fn = p_obj.name
-                        # Mặc định trừ rất nặng bản có (số) trong tên
-                        if re.search(r'\(\s*\d+\s*\)', fn) or re.search(r'[-_\s]copy\b', fn, flags=re.I):
-                            s -= 2000.0
-
-                        # Ưu tiên nằm trong thư mục album
-                        if len(p_obj.parts) >= 3:
-                            s += 60.0
-                        elif len(p_obj.parts) == 2:
-                            s += 30.0
-                        else:
-                            s -= 40.0
-
-                        return s
-
-                    cluster_sorted = sorted(cluster, key=score, reverse=True)
+                    cluster_sorted = sorted(
+                        cluster,
+                        key=lambda it: score_file_for_keeping(it['path'], active_cache.get(it['path']), specs_map.get(it['path'], '')),
+                        reverse=True
+                    )
                     cluster_id = f"meta_{hashlib.md5((cluster_sorted[0]['artist'] + '_' + cluster_sorted[0]['title'] + '_' + str(len(cluster_sorted))).encode('utf-8')).hexdigest()[:12]}"
                     
                     enriched_files = []
                     has_lossless = False
                     has_lossy = False
-                    for f_item in cluster_sorted:
+                    ref_p = str(root / cluster_sorted[0]['path'])
+                    for f_idx, f_item in enumerate(cluster_sorted):
                         ext_lower = f_item.get('ext', '').lower()
                         is_lossless = ext_lower in ('.flac', '.wav', '.dsf', '.dff', '.ape')
                         if is_lossless:
@@ -415,12 +425,23 @@ def scan_duplicates(root_dir, force_refresh=False):
                             has_lossy = True
                         fn_name = Path(f_item['path']).name
                         has_num = bool(re.search(r'\(\s*\d+\s*\)', fn_name) or re.search(r'[-_\s]copy\b', fn_name, flags=re.I))
+
+                        # So sánh âm học Chromaprint với bản đề xuất giữ
+                        acoustic_pct = 100.0
+                        if f_idx > 0:
+                            try:
+                                cand_p = str(root / f_item['path'])
+                                acoustic_pct = compare_audio_files(ref_p, cand_p)
+                            except Exception:
+                                acoustic_pct = None
+
                         enriched_files.append({
                             **f_item,
                             'filename': fn_name,
                             'specs': specs_map.get(f_item['path'], ''),
                             'is_lossless': is_lossless,
-                            'has_number_suffix': has_num
+                            'has_number_suffix': has_num,
+                            'acoustic_match_pct': acoustic_pct
                         })
 
                     distinct_exts = set(f['ext'].lower() for f in enriched_files)
