@@ -4053,5 +4053,24 @@
     "drop_at_22k": 0.0,
     "verdict": "STUDIO_MASTER_24BIT",
     "explanation": "Studio Master 24-bit chuẩn (24bit / 48.0kHz): Dynamic range cao hơn CD 16-bit, tần số tối đa 24.0kHz"
+  },
+  {
+    "filepath": "/mnt/vault/GleVault/Hires/ULTIMATE BEEGEES CD2 [2009 - FLAC]/ULTIMATE BEEGEES CD2 [2009 - FLAC]/01. Bee Gees - How Deep Is Your Love.flac",
+    "filename": "01. Bee Gees - How Deep Is Your Love.flac",
+    "codec": "FLAC",
+    "sample_rate": 96000,
+    "bit_depth": 16,
+    "has_24bit_bits": false,
+    "cutoff_hz": 48000,
+    "cutoff_drop_db": 0.0,
+    "db_18_20k": -38.8,
+    "db_20_22k": -44.1,
+    "db_22_24k": -74.2,
+    "ultrasonic_db": -81.4,
+    "drop_at_22k": 30.1,
+    "verdict": "FAKE_HIRES_UPSAMPLED",
+    "badge": "🔴 Fake Hi-Res (Upsize từ CD)",
+    "badge_color": "#f43f5e",
+    "explanation": "File gán mác 96.0kHz nhưng dải tần bị chặn đứng ở 22.05kHz (sụt 0.0dB), dải siêu âm rỗng (-81.4dB)."
   }
 ]

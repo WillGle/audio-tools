@@ -1707,6 +1707,7 @@ async function loadDuplicates(refresh = false) {
 
     try {
         const res = await fetch(`/api/duplicates?refresh=${refresh}`);
+        if (!res.ok) throw new Error('Không tải được kết quả quét trùng lặp');
         duplicatesData = await res.json();
 
         const byteCount = (duplicatesData.byte_duplicates || []).length;
@@ -1730,7 +1731,11 @@ async function loadDuplicates(refresh = false) {
         // Top navigation tab badge: show total count of actionable duplicates
         const badgeCount = byteCount || metaCount || nameCount;
         const navBadge = document.getElementById('dupe-badge-count');
-        if (navBadge) navBadge.textContent = badgeCount;
+        if (navBadge) {
+            navBadge.textContent = badgeCount;
+            const groupType = byteCount ? 'trùng byte' : metaCount ? 'trùng metadata' : 'trùng tên file';
+            navBadge.title = badgeCount ? `${badgeCount} nhóm ${groupType}; không phải số file` : 'Không tìm thấy nhóm trùng lặp';
+        }
 
         // Update Subfilter Pill counts
         const metaList = duplicatesData.meta_duplicates || [];
