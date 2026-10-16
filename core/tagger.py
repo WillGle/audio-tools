@@ -126,7 +126,7 @@ def get_audiophile_comment(audit_data: Dict[str, Any]) -> str:
     if rg_gain:
         parts.append(f"RG {rg_gain}")
         
-    return f"[{' | '.join(parts)}]" if parts else "[Audiophile Verified]"
+    return f"[{' | '.join(parts)}]" if parts else "[Audio diagnostics]"
 
 def apply_audiophile_tags(filepath: str, audit_data: Dict[str, Any]) -> Tuple[bool, str]:
     """
@@ -147,17 +147,18 @@ def apply_audiophile_tags(filepath: str, audit_data: Dict[str, Any]) -> Tuple[bo
     loudness = audit_data.get('loudness', {})
     rg_gain = loudness.get('replaygain_track_gain', '')
     tag_comment = get_audiophile_comment(audit_data)
-    is_hires = audit_data.get('vault_tier', {}).get('tier_id') == '01_hires_dsd'
+    if loudness.get('error'):
+        return False, loudness['error']
 
     try:
         audio = MediaFile(p)
         # Nếu sao lưu thất bại, không ghi đè metadata gốc.
         backup_original_tags(p)
         audio.comments = tag_comment
-        audio.hires_verified = 'TRUE' if is_hires else 'FALSE'
+        audio.hires_verified = 'UNVERIFIED'  # Format grouping cannot verify source provenance.
         if p.suffix.lower() in ('.mp3', '.dsf'):
             audio.hires_status = tag_comment
-        if dr_score > 0:
+        if dr_score > 0 and not audit_data.get('dynamic_range', {}).get('is_estimate'):
             audio.dynamic_range = f"DR{dr_score}"
             audio.dr = str(dr_score)
         if rg_gain:

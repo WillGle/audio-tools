@@ -134,6 +134,9 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
         album = ''
 
     verdict_info = hires_verdicts.get(p_str, {})
+    from core.audio_scoring.legacy import cached_record_current
+    if not cached_record_current(verdict_info, p):
+        verdict_info = {}
     v = verdict_info.get('verdict', '')
     
     if v == 'FAKE_HIRES_UPSAMPLED':

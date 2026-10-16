@@ -40,7 +40,9 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
             with open(verdicts_file, encoding='utf-8') as f:
                 raw = json.load(f)
                 for item in raw:
-                    hires_verdicts[item.get('filepath', '')] = item
+                    from core.audio_scoring.legacy import cached_record_current
+                    if cached_record_current(item, Path(item.get('filepath', ''))):
+                        hires_verdicts[item.get('filepath', '')] = item
         except Exception:
             pass
 
@@ -99,10 +101,6 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
         elif verdict in ('FAKE_HIRES_UPSAMPLED', 'FAKE_LOSSLESS', 'FAKE_24BIT', 'DSD_CONVERTED_FROM_PCM'):
             target_tier = 'tier_3'
             reason = f'Phát hiện chất lượng giả mạo ({verdict})'
-            sub_folder = 'Fake_Or_Upsampled'
-        elif 'Upsampled' in meta.get('tier', ''):
-            target_tier = 'tier_3'
-            reason = 'Upsampled Fake Hi-Res từ bản 44.1kHz'
             sub_folder = 'Fake_Or_Upsampled'
 
         # 2. Tiêu chí vào Tier 1: DSD & Hi-Res (>24/96k)

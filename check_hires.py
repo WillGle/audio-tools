@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Công cụ CLI kiểm tra chất lượng nhạc Hi-Res / Lossless.
-Sử dụng bộ phân tích chuẩn công nghiệp từ core.analyzer (fakeflac reverse spectral sweeping & multi-window FFT).
+Sử dụng engine bằng chứng từ core.audio_scoring; phổ không xác lập nguồn master.
 
 Cách dùng:
     python3 check_hires.py "tên_bài_hát.flac"
@@ -23,7 +23,7 @@ AUDIO_EXTENSIONS = {'.flac', '.wav', '.dsf', '.dff', '.m4a', '.mp3', '.ape', '.o
 def print_help():
     print("""
 ========================================================================
-     CÔNG CỤ KIỂM TRA CHUẨN HI-RES vs NHẠC UPSIZE (fakeflac)
+     KIỂM TRA TÍNH NHẤT QUÁN KỸ THUẬT ÂM THANH
 ========================================================================
 Cách sử dụng:
   uv run python3 check_hires.py <file_hoặc_thư_mục>
@@ -51,8 +51,11 @@ def check_single_file(filepath: Path):
 
         print(f"   Thông số: {codec} | {bits}-bit / {sr/1000:.1f} kHz")
         if cutoff and cutoff < (sr // 2):
-            print(f"   Điểm cắt tần (fakeflac): {cutoff:,} Hz (Sụt {drop} dB)")
-        print(f"   Kết luận: {res.get('badge', res.get('verdict'))}")
+            print(f"   Biên phổ (sàng lọc): {cutoff:,} Hz (Sụt {drop} dB)")
+        authenticity = res['authenticity']
+        score = f"{authenticity['score']}/100" if authenticity['score'] is not None else 'N/A'
+        print(f"   Authenticity & Integrity: {score} | Coverage: {authenticity['coverage']:.1%}")
+        print(f"   Kết quả: {res.get('badge', res.get('verdict'))}")
         print(f"   Chi tiết: {res.get('explanation')}")
     except Exception as e:
         print(f"   ❌ Lỗi phân tích: {e}")

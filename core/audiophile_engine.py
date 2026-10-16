@@ -1,297 +1,15 @@
 import csv
 from io import StringIO
 import math
-import re
-import json
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import numpy as np
 
 # ==============================================================================
-# 1. DYNAMIC RANGE METER (TT Dynamic Range / Pleasurize Music Foundation standard)
-# ==============================================================================
-def measure_dynamic_range(filepath: str, duration_limit: float = 1800.0) -> Dict[str, Any]:
-    """
-    Đo Dynamic Range theo chuẩn TT Dynamic Range Meter (DR1 đến DR20).
-    Tính Crest Factor từ Peak dBFS và RMS trung bình của top 20% block 3 giây to nhất.
-    """
-    p = Path(filepath)
-    if not p.is_file():
-        raise FileNotFoundError(f"Không tìm thấy file: {filepath}")
-
-    # Lấy thời lượng
-    cmd_dur = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', str(p)]
-    res_dur = subprocess.run(cmd_dur, capture_output=True, text=True)
-    try:
-        dur = float(res_dur.stdout.strip())
-    except Exception:
-        dur = 180.0
-
-    read_dur = min(dur, duration_limit)
-    
-    # Giải mã 2 kênh Stereo ở 44.1kHz float32
-    cmd = [
-        'ffmpeg', '-v', 'error',
-        '-t', str(read_dur),
-        '-i', str(p),
-        '-af', 'aresample=dither_method=none',
-        '-f', 'f32le',
-        '-ac', '2',
-        '-ar', '44100',
-        '-'
-    ]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    raw, _ = proc.communicate()
-    if not raw or len(raw) < 44100 * 2 * 4:
-        return {
-            'dr_score': 0,
-            'dr_badge': 'DR? (Không đủ mẫu)',
-            'dr_float': 0.0,
-            'peak_db': -100.0,
-            'rms_db': -100.0,
-            'badge_color': '#94a3b8',
-            'verdict_text': 'File quá ngắn hoặc không thể giải mã'
-        }
-
-    samples = np.frombuffer(raw, dtype=np.float32).reshape(-1, 2)
-    sr = 44100
-    
-    # Chuẩn chính thức từ thư viện dr14meter (Pleasurize Music Foundation)
-    try:
-        import dr14meter.compute_dr14 as cd
-        dr_calc, peak_calc, rms_calc = cd.compute_dr14(samples, sr)
-        dr_score = max(1, min(20, int(round(float(dr_calc)))))
-        dr_float = float(dr_score)
-        peak_db = round(float(peak_calc), 2)
-        rms_db = round(float(rms_calc), 2)
-        channel_drs = [dr_score, dr_score]
-    except Exception as e:
-        return {
-            'dr_score': 0, 'dr_float': 0.0, 'dr_badge': 'DR? (Không đo được)',
-            'badge_color': '#94a3b8', 'verdict_text': f'dr14meter: {e}'
-        }
-
-    if dr_score >= 12:
-        badge = f"DR{dr_score} (Wide Dynamic Range)"
-        badge_color = "#10b981" # Green
-        verdict_text = "Âm thanh nguyên bản độ động cực cao, chi tiết sân khấu sống động chuẩn Audiophile."
-    elif dr_score >= 8:
-        badge = f"DR{dr_score} (Moderate DR)"
-        badge_color = "#f59e0b" # Amber
-        verdict_text = "Độ động tiêu chuẩn, âm thanh cân bằng không bị nén quá mức."
-    else:
-        badge = f"DR{dr_score} (Heavily Compressed)"
-        badge_color = "#f43f5e" # Rose/Red
-        verdict_text = "Bị ép âm lượng nặng (Loudness War / Brickwall Limiting), mất độ chi tiết và tương phản âm thanh."
-
-    return {
-        'dr_score': dr_score,
-        'dr_float': round(dr_float, 2),
-        'dr_left': round(float(channel_drs[0]), 2),
-        'dr_right': round(float(channel_drs[1]), 2),
-        'peak_db': round(peak_db, 2),
-        'rms_db': round(rms_db, 2),
-        'dr_badge': badge,
-        'badge_color': badge_color,
-        'verdict_text': verdict_text
-    }
-
-
-# ==============================================================================
-# 2. FLAC AUDIO MD5 & BIT-ROT CHECK
-# ==============================================================================
-def check_flac_integrity(filepath: str) -> Dict[str, Any]:
-    """
-    Kiểm tra tính toàn vẹn Bit-Perfect & phát hiện Bit-Rot cho file FLAC.
-    Đối chiếu Audio MD5 trong STREAMINFO và kiểm tra lỗi frame CRC qua 'flac -t'.
-    """
-    p = Path(filepath)
-    ext = p.suffix.lower()
-
-    if ext != '.flac':
-        # Dành cho định dạng khác: kiểm tra decode qua ffmpeg
-        cmd = ['ffmpeg', '-v', 'error', '-i', str(p), '-f', 'null', '-']
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        is_ok = (res.returncode == 0 and not res.stderr.strip())
-        return {
-            'format': ext[1:].upper(),
-            'status': 'BIT_PERFECT_PASS' if is_ok else 'CORRUPTED',
-            'is_valid': is_ok,
-            'badge': '🟢 Stream OK' if is_ok else '🔴 Stream Corrupted',
-            'badge_color': '#10b981' if is_ok else '#f43f5e',
-            'header_md5': 'N/A (Non-FLAC)',
-            'message': 'Luồng dữ liệu âm thanh giải mã hoàn hảo, không có frame lỗi.' if is_ok else f'Lỗi giải mã luồng: {res.stderr.strip()}'
-        }
-
-    # Đọc MD5 trong STREAMINFO qua Mutagen
-    header_md5_hex = None
-    try:
-        from mutagen.flac import FLAC
-        audio = FLAC(p)
-        md5_sig = audio.info.md5_signature
-        if md5_sig:
-            header_md5_hex = f"{md5_sig:032x}"
-        else:
-            header_md5_hex = "00000000000000000000000000000000"
-    except Exception:
-        header_md5_hex = None
-
-    # Chạy flac -t
-    cmd = ['flac', '-t', str(p)]
-    res = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
-    combined_out = (res.stdout + "\n" + res.stderr).lower()
-
-    if res.returncode == 0:
-        if "warning, cannot check md5" in combined_out or (header_md5_hex and header_md5_hex == "00000000000000000000000000000000"):
-            status = 'FRAMES_OK_MD5_UNSET'
-            badge = '🟡 Frame CRC OK (MD5 Unset)'
-            badge_color = '#eab308'
-            message = 'Toàn bộ frame âm thanh và CRC-16 hợp lệ 100%. (Header MD5 chưa được ghi lúc tạo file FLAC).'
-        else:
-            status = 'BIT_PERFECT_PASS'
-            badge = '🟢 Bit-Perfect Pass (MD5 Valid)'
-            badge_color = '#10b981'
-            message = f'Audio MD5 khớp tuyệt đối ({header_md5_hex[:8]}...). Bit-Perfect 100%, không bị Bit-Rot hay hỏng frame.'
-        is_valid = True
-    else:
-        status = 'BIT_ROT_CORRUPTED'
-        badge = '🔴 Bit-Rot Corrupted'
-        badge_color = '#f43f5e'
-        is_valid = False
-        message = 'Phát hiện lỗi sai lệch bit âm thanh (Bit-Rot) hoặc hỏng frame CRC trong tệp FLAC!'
-
-    return {
-        'format': 'FLAC',
-        'status': status,
-        'is_valid': is_valid,
-        'header_md5': header_md5_hex,
-        'badge': badge,
-        'badge_color': badge_color,
-        'message': message,
-        'raw_output': res.stderr.strip() or res.stdout.strip()
-    }
-
-
-# ==============================================================================
-# 3. FAKE 24-BIT DETECTION (Bit Padding / Zero-Padded 24-bit)
-# ==============================================================================
-def check_bit_depth_purity(filepath: str, sample_seconds: float = 12.0) -> Dict[str, Any]:
-    """
-    Kiểm tra xem file 24-bit có phải là "24-bit Giả" (16-bit độn thêm 8 bit 0 vào LSB) hay không.
-    Phân tích histogram entropy của 8 bit thấp nhất (Least Significant Byte) và đo Noise Floor.
-    """
-    p = Path(filepath)
-    ext = p.suffix.lower()
-
-    # Lấy thông số bit depth qua ffprobe JSON
-    cmd_probe = [
-        'ffprobe', '-v', 'error', '-select_streams', 'a:0',
-        '-show_entries', 'stream=bits_per_raw_sample,bits_per_sample,sample_rate,duration',
-        '-of', 'json', str(p)
-    ]
-    res_probe = subprocess.run(cmd_probe, capture_output=True, text=True)
-    bits = 16
-    dur = 180.0
-    sr = 44100
-    try:
-        j_data = json.loads(res_probe.stdout)
-        st = j_data['streams'][0]
-        if st.get('bits_per_raw_sample') and int(st['bits_per_raw_sample']) > 0:
-            bits = int(st['bits_per_raw_sample'])
-        elif st.get('bits_per_sample') and int(st['bits_per_sample']) > 0:
-            bits = int(st['bits_per_sample'])
-        if st.get('duration'):
-            dur = float(st['duration'])
-        if st.get('sample_rate'):
-            sr = int(st['sample_rate'])
-    except Exception:
-        pass
-
-    if bits <= 16:
-        return {
-            'nominal_bits': bits,
-            'real_bits': bits,
-            'is_fake_24bit': False,
-            'badge': f'16-bit Standard',
-            'badge_color': '#6366f1',
-            'lsb_nonzero_pct': 100.0,
-            'noise_floor_db': -96.0,
-            'explanation': 'File chuẩn 16-bit nguyên gốc.'
-        }
-
-    start_sec = max(2.0, dur * 0.2)
-    read_len = min(sample_seconds, max(4.0, dur - start_sec))
-
-    cmd = [
-        'ffmpeg', '-v', 'error',
-        '-ss', str(start_sec), '-t', str(read_len),
-        '-i', str(p),
-        '-af', 'aresample=dither_method=none',
-        '-f', 's24le',
-        '-ac', '1',
-        '-'
-    ]
-    res = subprocess.run(cmd, capture_output=True)
-    raw = res.stdout
-
-    if len(raw) < 3000:
-        return {
-            'nominal_bits': bits,
-            'real_bits': bits,
-            'is_fake_24bit': False,
-            'badge': f'{bits}-bit Unverified',
-            'badge_color': '#94a3b8',
-            'lsb_nonzero_pct': 0.0,
-            'noise_floor_db': -120.0,
-            'explanation': 'Dữ liệu âm thanh không đủ để phân tích bit depth.'
-        }
-
-    # Mỗi sample 24-bit gồm 3 byte: [LSB (bit 0-7), Mid (bit 8-15), MSB (bit 16-23)]
-    lsb_bytes = raw[0::3]
-    total_samples = len(lsb_bytes)
-    nonzero_lsb = sum(1 for b in lsb_bytes if b != 0)
-    lsb_nonzero_pct = round((nonzero_lsb / total_samples) * 100.0, 2)
-
-    # Kiểm tra thêm 4 bit thấp nhất (nếu là 20-bit master padded to 24-bit)
-    nonzero_lower4 = sum(1 for b in lsb_bytes if (b & 0x0F) != 0)
-    lower4_pct = round((nonzero_lower4 / total_samples) * 100.0, 2)
-
-    if lsb_nonzero_pct < 0.1:
-        # 8 bit cuối hoàn toàn bằng 0 -> Fake 24-bit (16-bit Padded)
-        real_bits = 16
-        is_fake = True
-        badge = '🔴 Fake 24-bit (16-bit Padded)'
-        badge_color = '#f43f5e'
-        explanation = f'File khai báo {bits}-bit nhưng 8 bit thấp nhất (LSB) là 0.0% (Zero-Padded). Thực chất chỉ là bản thu 16-bit bị độn thêm số 0 để tăng dung lượng!'
-    elif lower4_pct < 0.1:
-        real_bits = 20
-        is_fake = False
-        badge = '🟡 20-bit Studio Padded'
-        badge_color = '#f59e0b'
-        explanation = f'Bản thu chuẩn phòng thu 20-bit (độn 4 bit 0 trong container 24-bit).'
-    else:
-        real_bits = 24
-        is_fake = False
-        badge = '🟢 True 24-bit Hi-Res'
-        badge_color = '#10b981'
-        explanation = f'Chuẩn 24-bit thực thụ: 8 bit LSB chứa đầy đủ entropy ({lsb_nonzero_pct}% non-zero) với dải động vật lý ~144 dB.'
-
-    return {
-        'nominal_bits': bits,
-        'real_bits': real_bits,
-        'is_fake_24bit': is_fake,
-        'lsb_nonzero_pct': lsb_nonzero_pct,
-        'badge': badge,
-        'badge_color': badge_color,
-        'explanation': explanation
-    }
-
-
-# ==============================================================================
 # 4. DSD / SACD PURITY DETERMINATION
 # ==============================================================================
-def check_dsd_purity(filepath: str) -> Dict[str, Any]:
+def check_dsd_purity(filepath: str, specs: Optional[Dict] = None) -> Dict[str, Any]:
     """
     Phân định DSD / SACD Purity:
     - Nhận diện kênh: Stereo 2.0 vs Multi-channel 5.1 Surround
@@ -302,21 +20,15 @@ def check_dsd_purity(filepath: str) -> Dict[str, Any]:
     ext = p.suffix.lower()
 
     # Kiểm tra channel layout và codec
-    cmd_info = [
-        'ffprobe', '-v', 'error', '-select_streams', 'a:0',
-        '-show_entries', 'stream=codec_name,sample_rate,channels,channel_layout,duration',
-        '-of', 'json', str(p)
-    ]
-    res_info = subprocess.run(cmd_info, capture_output=True, text=True)
+    from core.audio_scoring.tools import probe
+    from core.audio_scoring.process import ToolError
     try:
-        data = json.loads(res_info.stdout)
-        stream = data['streams'][0]
-        codec = stream.get('codec_name', ext[1:])
-        sr = int(stream.get('sample_rate', 2822400))
-        channels = int(stream.get('channels', 2))
-        layout = stream.get('channel_layout', 'stereo')
-        dur = float(stream.get('duration', 180.0))
-    except Exception:
+        specs = specs or probe(p)
+        codec = specs['codec']
+        sr = specs['sample_rate']
+        channels = specs['channels']
+        dur = specs.get('duration') or 180.0
+    except ToolError:
         return {
             'is_dsd': False, 'purity': 'UNKNOWN', 'codec': ext[1:].upper(),
             'channels': 0, 'channel_type': 'Unknown', 'channel_badge': '',
@@ -381,37 +93,19 @@ def check_dsd_purity(filepath: str) -> Dict[str, Any]:
         if not np.any(m): return -120.0
         return float(10 * np.log10(np.mean(avg_power[m]) + 1e-15))
 
-    db_audible = band_db(1000, 10000)
     db_20k = band_db(18000, 22000)
     db_30k = band_db(28000, 35000)
-    db_45k = band_db(42000, 47000)
     db_50k = band_db(49000, 65000)
 
     # Độ dốc tiếng ồn lượng tử Sigma-Delta: DSD thật noise tăng mạnh từ 30k đến 50k+
     noise_shape_rise = round(db_50k - db_30k, 1)
     drop_at_22k = round(db_20k - db_30k, 1)
-    drop_at_48k = round(db_45k - db_50k, 1)
 
-    if drop_at_22k > 30.0 and noise_shape_rise < 10.0:
-        purity = 'DSD_CONVERTED_FROM_PCM'
-        badge = f'🔴 DSD Giả (Convert từ PCM 44.1k)'
-        badge_color = '#f43f5e'
-        explanation = f'File DSF giả: Bị cắt cụt ở 22.05kHz (sụt {drop_at_22k}dB), không có đường cong Sigma-Delta Noise Shaping đặc trưng.'
-    elif drop_at_48k > 25.0 and noise_shape_rise < 8.0:
-        purity = 'DSD_CONVERTED_FROM_PCM'
-        badge = f'🔴 DSD Giả (Convert từ PCM 96k)'
-        badge_color = '#f43f5e'
-        explanation = f'File DSF giả: Bị cắt cụt ở 48kHz (sụt {drop_at_48k}dB), không có tiếng ồn lượng tử siêu âm nguyên bản.'
-    elif noise_shape_rise >= 15.0:
-        purity = 'NATIVE_DSD_SACD'
-        badge = f'🟢 Native DSD / SACD Master ({channel_type})'
-        badge_color = '#06b6d4'
-        explanation = f'DSD nguyên bản chuẩn SACD: Xuất hiện tiếng ồn lượng tử Sigma-Delta Noise Shaping mở rộng vượt 50kHz (+{noise_shape_rise}dB).'
-    else:
-        purity = 'TRUE_DSD'
-        badge = f'🟢 True DSD ({channel_type})'
-        badge_color = '#06b6d4'
-        explanation = f'DSD 1-bit High-Resolution ({codec.upper()}, {channel_type}).'
+    purity = 'DSD_SOURCE_UNVERIFIED'
+    badge = f'DSD ({channel_type}) — nguồn chưa xác thực'
+    badge_color = '#06b6d4'
+    explanation = (f'Đo độ tăng nhiễu siêu âm {noise_shape_rise}dB. '
+                   'Noise shaping hoặc giới hạn phổ không xác lập DSD native, SACD hay lịch sử chuyển đổi PCM.')
 
     return {
         'is_dsd': True,
@@ -432,32 +126,21 @@ def check_dsd_purity(filepath: str) -> Dict[str, Any]:
 # ==============================================================================
 # 5. REPLAYGAIN 2.0 & EBU R128 LOUDNESS
 # ==============================================================================
-def measure_replaygain_ebu_r128(filepath: str) -> Dict[str, Any]:
+def measure_replaygain_ebu_r128(filepath: str, measurement: Optional[Dict] = None) -> Dict[str, Any]:
     """
     Đo đạc ReplayGain 2.0 và EBU R128 (Integrated LUFS, True Peak, LRA).
     Tính toán thông số bù trừ âm lượng không làm giảm chất lượng bit-perfect.
     """
     p = Path(filepath)
-    cmd = [
-        'ffmpeg', '-nostats',
-        '-i', str(p),
-        '-af', 'ebur128=peak=true',
-        '-f', 'null',
-        '-'
-    ]
-    res = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=True)
-    out = res.stderr
-
-    # FFmpeg tiếp tục cung cấp LRA và các chỉ số EBU R128 cho báo cáo.
-    summary = out.split('Summary:')[-1]
-    i_match = re.search(r'I:\s+([-\d.]+)\s+LUFS', summary)
-    lra_match = re.search(r'LRA:\s+([-\d.]+)\s+LU', summary)
-    peak_match = re.search(r'Peak:\s+([-\d.]+)\s+dBFS', summary)
-    if not all((i_match, lra_match, peak_match)):
-        raise ValueError('FFmpeg không trả đủ dữ liệu loudness; không tạo ReplayGain giả định')
-    integrated_lufs = float(i_match.group(1))
-    lra = float(lra_match.group(1))
-    true_peak_db = float(peak_match.group(1))
+    if measurement is None:
+        from core.audio_scoring import load_config
+        from core.audio_scoring.tools import loudness
+        measurement = loudness(p, load_config())
+    integrated_lufs = measurement.get('integrated_lufs')
+    lra = measurement.get('lra_lu')
+    true_peak_db = measurement.get('true_peak_dbtp')
+    if any(value is None for value in (integrated_lufs, lra, true_peak_db)):
+        raise ValueError('Chưa có đủ phép đo loudness để tạo ReplayGain')
 
     # Chuẩn ReplayGain 2.0: Target -18.0 LUFS
     track_gain_rg2 = round(-18.00 - integrated_lufs, 2)
@@ -499,7 +182,7 @@ def measure_replaygain_ebu_r128(filepath: str) -> Dict[str, Any]:
 # ==============================================================================
 # 6. GAPLESS PLAYBACK & SEAMLESS TRANSITIONS CHECKER
 # ==============================================================================
-def check_gapless_attributes(filepath: str) -> Dict[str, Any]:
+def check_gapless_attributes(filepath: str, duration: Optional[float] = None) -> Dict[str, Any]:
     """
     Kiểm tra thuộc tính Gapless Playback:
     - Đo độ dài khoảng lặng mở đầu (lead-in silence) và kết thúc (lead-out silence).
@@ -518,12 +201,14 @@ def check_gapless_attributes(filepath: str) -> Dict[str, Any]:
     res_start = subprocess.run(cmd_start, capture_output=True)
     raw_start = np.frombuffer(res_start.stdout, dtype=np.float32)
 
-    cmd_dur = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', str(p)]
-    res_dur = subprocess.run(cmd_dur, capture_output=True, text=True)
-    try:
-        dur = float(res_dur.stdout.strip())
-    except Exception:
-        dur = 180.0
+    if duration is None:
+        from core.audio_scoring.tools import probe
+        from core.audio_scoring.process import ToolError
+        try:
+            duration = probe(p)['duration']
+        except ToolError:
+            duration = None
+    dur = duration or 180.0
 
     tail_start = max(0.0, dur - 2.0)
     cmd_end = [
@@ -590,36 +275,47 @@ def check_gapless_attributes(filepath: str) -> Dict[str, Any]:
 # ==============================================================================
 # UNIFIED AUDIOPHILE AUDIT
 # ==============================================================================
-def run_full_audiophile_audit(filepath: str) -> Dict[str, Any]:
+def run_full_audiophile_audit(filepath: str, scoring: Optional[Dict] = None) -> Dict[str, Any]:
     """
     Thực hiện kiểm định toàn diện 7 tiêu chuẩn Audiophile cho một tệp âm thanh.
-    Tích hợp FFT spectrum analyzer để phát hiện Fake Hi-Res và đưa vào Quarantine.
+    Tích hợp bằng chứng kỹ thuật; nguồn master không xác thực từ phổ.
     """
     p = Path(filepath)
     if not p.is_file():
         raise FileNotFoundError(f"Tệp không tồn tại: {filepath}")
 
-    # 1. Đo Dynamic Range
-    dr_data = measure_dynamic_range(filepath)
-
-    # 2. FLAC Integrity & Bit-Rot
-    integrity_data = check_flac_integrity(filepath)
-
-    # 3. Bit Depth & Fake 24-bit
-    bit_data = check_bit_depth_purity(filepath)
+    from core.audio_scoring import analyze
+    from core.audio_scoring.legacy import dashboard_fields
+    from core.audio_scoring.process import ToolError
+    scoring = scoring or analyze(filepath)
+    fields = dashboard_fields(scoring)
+    specs = scoring['claims']['container_assertions']
+    dr_data = fields['dynamic_range']
+    integrity_data = fields['integrity']
+    bit_data = fields['bit_depth']
 
     # 4. DSD Purity
-    dsd_data = check_dsd_purity(filepath)
+    dsd_data = check_dsd_purity(filepath, specs=specs)
 
     # 5. ReplayGain & EBU R128
-    lufs_data = measure_replaygain_ebu_r128(filepath)
+    try:
+        measured = scoring['mastering'] if scoring['mastering'].get('available') else None
+        lufs_data = measure_replaygain_ebu_r128(filepath, measurement=measured)
+        lufs_data['available'] = True
+    except (RuntimeError, ValueError, OSError, subprocess.SubprocessError, ToolError) as exc:
+        # Optional ReplayGain failure must not hide the independent file evidence.
+        lufs_data = {'available': False, 'error': str(exc),
+                     'integrated_lufs': scoring['mastering'].get('integrated_lufs'),
+                     'true_peak_db': scoring['mastering'].get('true_peak_dbtp')}
+
 
     # 6. Gapless Playback
-    gapless_data = check_gapless_attributes(filepath)
+    gapless_data = check_gapless_attributes(filepath, duration=specs.get('duration'))
 
     # 7. Spectrum Analysis (FFT Cutoff & Fake Hi-Res / Fake Lossless)
-    from core.analyzer import analyze_audio_file
-    spectrum_data = analyze_audio_file(filepath)
+    spectrum_data = fields['spectrum']
+    spectrum_data.pop('authenticity', None)  # The full report is already at the audit root.
+    spectrum_data['filepath'] = str(p.resolve())
 
     # 8. Acoustic Fingerprint (Chromaprint / fpcalc)
     from core.fingerprint import get_audio_fingerprint
@@ -651,6 +347,7 @@ def run_full_audiophile_audit(filepath: str) -> Dict[str, Any]:
     return {
         'filepath': str(filepath),
         'filename': p.name,
+        'authenticity': scoring,
         'dynamic_range': dr_data,
         'integrity': integrity_data,
         'bit_depth': bit_data,
@@ -674,7 +371,7 @@ def classify_vault_tier(filepath: str, integrity: Dict, bit_purity: Dict, dsd_pu
     ext = p.suffix.lower()
 
     # 1. Kiểm tra file lỗi hoặc Bit-Rot
-    if not integrity.get('is_valid', True) or integrity.get('status') == 'BIT_ROT_CORRUPTED':
+    if integrity.get('status') in ('FAIL', 'BIT_ROT_CORRUPTED'):
         return {
             'tier_id': '03_quarantine',
             'tier_name': '03_Quarantine (Fake Hi-Res, MP3, File Lỗi)',
@@ -689,35 +386,14 @@ def classify_vault_tier(filepath: str, integrity: Dict, bit_purity: Dict, dsd_pu
             'tier_id': '03_quarantine',
             'tier_name': '03_Quarantine (Fake Hi-Res, MP3, File Lỗi)',
             'sub_category': 'Fake_24bit_Padded',
-            'badge': '🔴 Quarantine (Fake 24-bit)',
+            'badge': 'Padding PCM đã đo; xem xét kỳ vọng nguồn',
             'badge_color': '#f43f5e'
         }
-
-    # 3. Kiểm tra DSD giả (convert từ PCM)
-    if dsd_purity.get('purity') == 'DSD_CONVERTED_FROM_PCM':
-        return {
-            'tier_id': '03_quarantine',
-            'tier_name': '03_Quarantine (Fake Hi-Res, MP3, File Lỗi)',
-            'sub_category': 'Fake_DSD_From_PCM',
-            'badge': '🔴 Quarantine (DSD Giả từ PCM)',
-            'badge_color': '#f43f5e'
-        }
-
-    # 4. Kiểm tra Fake Hi-Res / Fake Lossless qua Spectrum FFT Cutoff
-    if spectrum:
-        spec_verdict = spectrum.get('verdict', '')
-        if spec_verdict in ('FAKE_HIRES_UPSAMPLED', 'FAKE_LOSSLESS', 'FAKE_24BIT', 'DSD_CONVERTED_FROM_PCM'):
-            return {
-                'tier_id': '03_quarantine',
-                'tier_name': '03_Quarantine (Fake Hi-Res, MP3, File Lỗi)',
-                'sub_category': spec_verdict,
-                'badge': f'🔴 Quarantine ({spectrum.get("badge", "Fake Hi-Res")})',
-                'badge_color': '#f43f5e'
-            }
 
     # 5. Kiểm tra file nén Lossy
     from core.analyzer import get_audio_specs
-    codec = get_audio_specs(filepath)['codec'].lower()
+    specs = spectrum if spectrum and spectrum.get('codec') else get_audio_specs(filepath)
+    codec = specs['codec'].lower()
     if codec in ('mp3', 'aac', 'vorbis', 'opus', 'wmav1', 'wmav2', 'wmapro'):
         return {
             'tier_id': '03_quarantine',
@@ -735,26 +411,19 @@ def classify_vault_tier(filepath: str, integrity: Dict, bit_purity: Dict, dsd_pu
         }
 
     # 6. DSD thật
-    if dsd_purity.get('is_dsd', False) and dsd_purity.get('purity') == 'TRUE_DSD':
+    if dsd_purity.get('is_dsd', False):
         return {
             'tier_id': '01_hires_dsd',
             'tier_name': '01_DSD & Hi-Res (>24/96k)',
-            'sub_category': 'Native_DSD',
-            'badge': '🟢 DSD & Hi-Res (Native SACD)',
+            'sub_category': 'DSD_Source_Unverified',
+            'badge': 'DSD — phân nhóm định dạng, nguồn chưa xác thực',
             'badge_color': '#06b6d4'
         }
 
     # 7. PCM Hi-Res (>24/96k hoặc 24-bit)
-    nominal_bits = bit_purity.get('nominal_bits', 16)
     real_bits = bit_purity.get('real_bits', 16)
 
-    # Đọc sample rate qua ffprobe JSON
-    cmd_sr = ['ffprobe', '-v', 'error', '-select_streams', 'a:0', '-show_entries', 'stream=sample_rate', '-of', 'json', str(p)]
-    res_sr = subprocess.run(cmd_sr, capture_output=True, text=True)
-    try:
-        sr = int(json.loads(res_sr.stdout)['streams'][0]['sample_rate'])
-    except Exception:
-        sr = 44100
+    sr = specs['sample_rate']
 
     if sr >= 88200 or (real_bits >= 24 and sr > 48000):
         return {
