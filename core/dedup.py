@@ -1,4 +1,5 @@
 import os
+import json
 import hashlib
 import sqlite3
 import re
@@ -35,6 +36,18 @@ def normalize_text(text):
     if not text:
         return ''
     return re.sub(r'[^\w\s]', '', str(text).lower()).strip()
+
+def clean_title_for_clustering(title, artist, rel_path):
+    t = str(title or '').strip()
+    a = str(artist or '').strip()
+    if not t and rel_path:
+        t = Path(rel_path).stem
+    if a:
+        t = re.sub(r'\s*-\s*' + re.escape(a) + r'\b', '', t, flags=re.I)
+        t = re.sub(r'^' + re.escape(a) + r'\s*-\s*', '', t, flags=re.I)
+    t = re.sub(r'[\(\[]\s*\d+\s*[\)\]]', '', t).strip()
+    t = re.sub(r'[\(\[](?:official\s*(?:mv|music\s*video|audio|video)|320\s*kbps|128\s*kbps)[\)\]]', '', t, flags=re.I).strip()
+    return normalize_text(t)
 
 def score_file_for_keeping(rel_path, cache_row=None):
     """
@@ -250,6 +263,22 @@ def scan_duplicates(root_dir, force_refresh=False):
 
     conn.close()
 
+    # Nạp organize_plan.json nếu có để làm giàu thông tin specs (bit-depth/sample-rate/bitrate)
+    specs_map = {}
+    plan_file = root_dir / 'organize_plan.json'
+    if not plan_file.exists():
+        plan_file = Path(__file__).resolve().parent.parent / 'organize_plan.json'
+    if plan_file.exists():
+        try:
+            with open(plan_file, 'r', encoding='utf-8') as pf:
+                plan_items = json.load(pf)
+                for it in plan_items:
+                    orig_p = it.get('original_path')
+                    if orig_p and 'specs' in it:
+                        specs_map[orig_p] = it['specs']
+        except Exception:
+            pass
+
     # 4. Level 2: Filename Identical in Different Folders
     by_name = defaultdict(list)
     for rel, row in active_cache.items():
@@ -259,51 +288,61 @@ def scan_duplicates(root_dir, force_refresh=False):
     name_duplicates = []
     for fn, flist in by_name.items():
         if len(flist) > 1:
+            flist_sorted = sorted(flist, key=lambda x: score_file_for_keeping(x[0], active_cache.get(x[0])), reverse=True)
+            name_id = f"name_{hashlib.md5(fn.encode('utf-8')).hexdigest()[:12]}"
+            files_items = []
+            for rel, sz in flist_sorted:
+                fn_part = Path(rel).name
+                has_num = bool(re.search(r'\(\s*\d+\s*\)', fn_part) or re.search(r'[-_\s]copy\b', fn_part, flags=re.I))
+                ext_part = Path(rel).suffix.lower()
+                is_lossless = ext_part in ('.flac', '.wav', '.dsf', '.dff', '.ape')
+                files_items.append({
+                    'path': rel,
+                    'filename': fn_part,
+                    'size_mb': round(sz / (1024 * 1024), 2),
+                    'ext': ext_part,
+                    'specs': specs_map.get(rel, ''),
+                    'is_lossless': is_lossless,
+                    'has_number_suffix': has_num
+                })
             name_duplicates.append({
-                'filename': Path(flist[0][0]).name,
-                'files': [
-                    {
-                        'path': rel,
-                        'size_mb': round(sz / (1024 * 1024), 2)
-                    }
-                    for rel, sz in flist
-                ]
+                'id': name_id,
+                'filename': Path(flist_sorted[0][0]).name,
+                'files': files_items,
+                'recommended_keep': files_items[0],
+                'duplicates': files_items[1:]
             })
 
     # 5. Level 3: Metadata Identical (Artist + Title normalized & duration check)
     by_meta = defaultdict(list)
     for rel, row in active_cache.items():
         _, _, sz, _, _, art, tit, alb, dur, ext = row
-        n_tit = normalize_text(tit)
-        n_art = normalize_text(art)
+        c_tit = clean_title_for_clustering(tit, art, rel)
         
-        if n_tit and len(n_tit) >= 3 and dur > 20:
+        if c_tit and len(c_tit) >= 3 and dur > 20:
             item = {
                 'path': rel,
                 'artist': art or 'Unknown Artist',
-                'title': tit,
+                'title': tit or Path(rel).stem,
                 'album': alb,
                 'duration': dur,
                 'ext': ext,
+                'clean_title': c_tit,
                 'size_mb': round(sz / (1024 * 1024), 2)
             }
-            # Cluster by normalized title
-            by_meta[n_tit].append(item)
+            # Cluster by cleaned title
+            by_meta[c_tit].append(item)
 
     meta_duplicates = []
-    for n_tit, flist in by_meta.items():
+    for c_tit, flist in by_meta.items():
         if len(flist) > 1:
-            # Cluster by duration (+/- 3s) and artist similarity
+            # Cluster by duration (+/- 4s)
             subclusters = []
             for item in flist:
                 matched = False
                 for cluster in subclusters:
-                    c_art = normalize_text(cluster[0]['artist'])
-                    i_art = normalize_text(item['artist'])
-                    same_art = (c_art == i_art) and (c_art != '')
-                    dur_match = abs(cluster[0]['duration'] - item['duration']) <= 3.0
-                    
-                    if (same_art and dur_match) or (dur_match and (not c_art or not i_art or same_art)):
+                    dur_match = abs(cluster[0]['duration'] - item['duration']) <= 4.0
+                    if dur_match:
                         cluster.append(item)
                         matched = True
                         break
@@ -349,11 +388,39 @@ def scan_duplicates(root_dir, force_refresh=False):
                         return s
 
                     cluster_sorted = sorted(cluster, key=score, reverse=True)
+                    cluster_id = f"meta_{hashlib.md5((cluster_sorted[0]['artist'] + '_' + cluster_sorted[0]['title'] + '_' + str(len(cluster_sorted))).encode('utf-8')).hexdigest()[:12]}"
+                    
+                    enriched_files = []
+                    has_lossless = False
+                    has_lossy = False
+                    for f_item in cluster_sorted:
+                        ext_lower = f_item.get('ext', '').lower()
+                        is_lossless = ext_lower in ('.flac', '.wav', '.dsf', '.dff', '.ape')
+                        if is_lossless:
+                            has_lossless = True
+                        else:
+                            has_lossy = True
+                        fn_name = Path(f_item['path']).name
+                        has_num = bool(re.search(r'\(\s*\d+\s*\)', fn_name) or re.search(r'[-_\s]copy\b', fn_name, flags=re.I))
+                        enriched_files.append({
+                            **f_item,
+                            'filename': fn_name,
+                            'specs': specs_map.get(f_item['path'], ''),
+                            'is_lossless': is_lossless,
+                            'has_number_suffix': has_num
+                        })
+
+                    distinct_exts = set(f['ext'].lower() for f in enriched_files)
                     meta_duplicates.append({
+                        'id': cluster_id,
                         'artist': cluster_sorted[0]['artist'],
                         'title': cluster_sorted[0]['title'],
-                        'recommended_keep': cluster_sorted[0],
-                        'duplicates': cluster_sorted[1:]
+                        'has_flac_vs_lossy': (has_lossless and has_lossy),
+                        'has_mixed_formats': len(distinct_exts) > 1,
+                        'has_numbered_file': any(f['has_number_suffix'] for f in enriched_files),
+                        'files': enriched_files,
+                        'recommended_keep': enriched_files[0],
+                        'duplicates': enriched_files[1:]
                     })
 
     return {
@@ -365,3 +432,26 @@ def scan_duplicates(root_dir, force_refresh=False):
         'name_duplicates': name_duplicates,
         'meta_duplicates': meta_duplicates
     }
+
+def get_metadata_duplicates_map(root_dir):
+    """
+    Trả về dictionary tra cứu nhanh cho từng bài hát:
+    filepath -> { 'is_duplicate': True, 'dupe_count': int, 'dupe_status': 'keep'|'archive', 'group_id': ..., 'group_title': ... }
+    """
+    res = scan_duplicates(root_dir)
+    meta_dupes = res.get('meta_duplicates', [])
+    dupe_map = {}
+    for g in meta_dupes:
+        rec_keep = g.get('recommended_keep', {}).get('path') if isinstance(g.get('recommended_keep'), dict) else (g['files'][0]['path'] if isinstance(g['files'][0], dict) else g['files'][0])
+        for f in g['files']:
+            fp = f['path'] if isinstance(f, dict) else f
+            dupe_map[fp] = {
+                'is_duplicate': True,
+                'group_id': g['id'],
+                'group_title': f"{g.get('artist', 'Unknown')} - {g.get('title', '')}",
+                'dupe_count': len(g['files']),
+                'dupe_status': 'keep' if fp == rec_keep else 'archive',
+                'recommended_keep': rec_keep,
+                'all_group_files': [x['path'] if isinstance(x, dict) else x for x in g['files']]
+            }
+    return dupe_map, len(meta_dupes)
