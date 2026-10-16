@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hi-Res Vault Companion — Navidrome Audiophile Manager</title>
+    <title>Hi-Res Vault Companion — Audiophile 7-Pillar Studio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=2.2">
     <style>
-        /* Lightweight overrides for clean, fast layout */
         .stat-card.clickable {
             cursor: pointer;
             transition: transform 0.15s ease, border-color 0.15s ease;
@@ -34,6 +33,15 @@
             align-items: center;
             gap: 4px;
         }
+        .audiophile-nav-badge {
+            font-size: 0.7rem;
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 4px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -43,7 +51,7 @@
     <header class="app-header">
         <div class="brand-container">
             <div class="brand-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M2 10v4"></path>
                     <path d="M6 7v10"></path>
                     <path d="M10 4v16"></path>
@@ -56,7 +64,7 @@
                 <h1>Hi-Res Vault <span>Companion</span></h1>
                 <p class="brand-subtitle">
                     Audiophile Audio Engine &bull; 
-                    <span class="cache-badge"><span class="status-dot-emerald"></span> SQLite Index (35ms)</span>
+                    <span class="cache-badge"><span class="status-dot-emerald"></span> 7 Tiêu Chuẩn Audiophile</span>
                 </p>
             </div>
         </div>
@@ -64,6 +72,14 @@
         <nav class="nav-tabs">
             <button class="nav-tab active" data-tab="tab-library" id="btn-tab-library">
                 Kho Nhạc &amp; Phổ Âm
+            </button>
+            <button class="nav-tab" data-tab="tab-audiophile" id="btn-tab-audiophile">
+                Kiểm Định 7 Chuẩn
+                <span class="audiophile-nav-badge">7 Pillars</span>
+            </button>
+            <button class="nav-tab" data-tab="tab-vault" id="btn-tab-vault">
+                Cấu Trúc Kho 3 Cấp
+                <span class="tab-badge" id="vault-badge-tier">3 Tiers</span>
             </button>
             <button class="nav-tab" data-tab="tab-duplicates" id="btn-tab-duplicates">
                 Trùng Lặp
@@ -139,7 +155,7 @@
             </div>
 
             <!-- Toolbar & Filter Pills -->
-            <div class="explorer-toolbar mb-4">
+            <div class="explorer-toolbar mb-3">
                 <div class="search-box">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     <input type="text" id="track-search-input" placeholder="Tìm kiếm bài hát, ca sĩ, album, tên file...">
@@ -152,21 +168,91 @@
                     <button class="filter-pill pill-dot-amber" data-filter="studio_master">Studio Master</button>
                     <button class="filter-pill pill-dot-indigo" data-filter="cd_lossless">CD Lossless</button>
                     <button class="filter-pill pill-dot-slate" data-filter="lossy">Lossy MP3</button>
+                    <button class="filter-pill pill-dot-rose" data-filter="duplicate_meta" id="pill-filter-dupe-meta" title="Lọc các bài hát bị trùng lặp metadata trong kho nhạc">
+                        ⚠️ Trùng Metadata (<span id="stat-dupe-meta-pill">64</span>)
+                    </button>
                 </div>
+
+                <button class="btn btn-secondary btn-sm" id="btn-toggle-col-filters" title="Bật/Tắt thanh tìm kiếm &amp; lọc chi tiết theo cột">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                    <span>Lọc Cột</span>
+                    <span class="badge" id="col-filter-badge" style="display:none; font-size:0.7rem; background: var(--accent-indigo);">0</span>
+                </button>
             </div>
 
-            <!-- Tracks Table -->
+            <!-- Active Column Filters Bar (Shown when column filters are in effect) -->
+            <div class="active-filters-bar mb-3" id="active-col-filters-bar" style="display: none;">
+                <span class="active-filters-label">Đang lọc theo cột:</span>
+                <div class="active-filter-chips" id="active-filter-chips"></div>
+                <button class="btn btn-xs btn-outline-rose" id="btn-clear-all-col-filters">Xóa tất cả lọc</button>
+            </div>
+
+            <!-- Tracks Table with Column Search & Filtering -->
             <div class="table-container">
                 <table class="tracks-table" id="tracks-table">
                     <thead>
-                        <tr>
-                            <th style="width: 44px; text-align: center;">#</th>
-                            <th>Bài Hát &bull; Tên Tệp</th>
-                            <th>Nghệ Sĩ</th>
-                            <th>Album</th>
-                            <th>Định Dạng</th>
-                            <th>Đánh Giá</th>
-                            <th style="width: 140px; text-align: right;">Thao Tác</th>
+                        <tr class="table-header-row">
+                            <th style="width: 48px; text-align: center;" class="sortable-th" data-sort="index" title="Bấm để sắp xếp theo thứ tự số #">
+                                <div class="th-content"><span>#</span> <span class="sort-icon" id="sort-icon-index">↕</span></div>
+                            </th>
+                            <th class="sortable-th" data-sort="title" title="Bấm để sắp xếp theo Tên bài hát">
+                                <div class="th-content"><span>Bài Hát &bull; Tên Tệp</span> <span class="sort-icon" id="sort-icon-title">↕</span></div>
+                            </th>
+                            <th class="sortable-th" data-sort="artist" title="Bấm để sắp xếp theo Nghệ sĩ">
+                                <div class="th-content"><span>Nghệ Sĩ</span> <span class="sort-icon" id="sort-icon-artist">↕</span></div>
+                            </th>
+                            <th class="sortable-th" data-sort="album" title="Bấm để sắp xếp theo Album">
+                                <div class="th-content"><span>Album</span> <span class="sort-icon" id="sort-icon-album">↕</span></div>
+                            </th>
+                            <th class="sortable-th" data-sort="format" style="width: 170px;" title="Bấm để sắp xếp theo Định dạng">
+                                <div class="th-content"><span>Định Dạng</span> <span class="sort-icon" id="sort-icon-format">↕</span></div>
+                            </th>
+                            <th class="sortable-th" data-sort="verdict" style="width: 150px;" title="Bấm để sắp xếp theo Đánh giá chất lượng">
+                                <div class="th-content"><span>Đánh Giá</span> <span class="sort-icon" id="sort-icon-verdict">↕</span></div>
+                            </th>
+                            <th style="width: 250px; text-align: right;">Thao Tác</th>
+                        </tr>
+                        <!-- Interactive Column Filter Row -->
+                        <tr class="col-filter-row" id="col-filter-row">
+                            <th style="text-align: center; padding: 4px;">
+                                <button id="btn-reset-col-filters" class="btn btn-xs btn-outline" title="Đặt lại bộ lọc cột" style="padding: 2px 5px; font-size: 0.72rem;">✕</button>
+                            </th>
+                            <th style="padding: 4px 8px;">
+                                <input type="text" id="col-filter-title" class="col-filter-input" placeholder="🔍 Tìm bài / tệp...">
+                            </th>
+                            <th style="padding: 4px 8px;">
+                                <input type="text" id="col-filter-artist" class="col-filter-input" placeholder="🔍 Tìm ca sĩ...">
+                            </th>
+                            <th style="padding: 4px 8px;">
+                                <input type="text" id="col-filter-album" class="col-filter-input" placeholder="🔍 Tìm album...">
+                            </th>
+                            <th style="padding: 4px 8px;">
+                                <select id="col-filter-format" class="col-filter-select">
+                                    <option value="">Tất cả định dạng</option>
+                                    <option value="flac">FLAC Lossless</option>
+                                    <option value="dsd">DSD / DSF (SACD)</option>
+                                    <option value="24bit">24-bit Hi-Res</option>
+                                    <option value="16bit">16-bit CD</option>
+                                    <option value="mp3">MP3 Lossy</option>
+                                    <option value="m4a">AAC / M4A</option>
+                                    <option value="wav">WAV</option>
+                                </select>
+                            </th>
+                            <th style="padding: 4px 8px;">
+                                <select id="col-filter-verdict" class="col-filter-select">
+                                    <option value="">Tất cả đánh giá</option>
+                                    <option value="duplicate_meta">⚠️ Trùng Metadata (Cùng bài hát)</option>
+                                    <option value="true_hires">🟢 True Hi-Res</option>
+                                    <option value="true_dsd">🔵 True DSD</option>
+                                    <option value="studio_master">🟡 Studio Master</option>
+                                    <option value="cd_lossless">🟣 CD Lossless</option>
+                                    <option value="fake_hires">🔴 Fake Hi-Res</option>
+                                    <option value="lossy">⚪ Lossy MP3</option>
+                                </select>
+                            </th>
+                            <th style="text-align: right; padding: 4px 12px;">
+                                <span class="col-filter-hint text-muted" style="font-size: 0.72rem;">Lọc thời gian thực</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="tracks-tbody">
@@ -187,30 +273,398 @@
             </div>
         </section>
 
-        <!-- Tab 2: Duplicates Tab -->
-        <section class="tab-content" id="tab-duplicates">
-            <div class="explorer-toolbar mb-4">
-                <div class="filter-pills" id="dupe-filter-pills">
-                    <button class="filter-pill active" data-dupetype="byte">Trùng Byte 100% (<span id="dupe-count-byte">70</span>)</button>
-                    <button class="filter-pill" data-dupetype="meta">Trùng Metadata (<span id="dupe-count-meta">109</span>)</button>
-                    <button class="filter-pill" data-dupetype="name">Trùng Tên Tệp (<span id="dupe-count-name">76</span>)</button>
+        <!-- Tab 2: Audiophile 7-Pillar Studio Lab -->
+        <section class="tab-content" id="tab-audiophile">
+            <div class="audiophile-banner">
+                <div class="audiophile-banner-content">
+                    <div>
+                        <h2>Phòng Kiểm Định 7 Chuẩn Audiophile</h2>
+                        <p>Đo lường Dynamic Range (DR Meter), đối chiếu Audio MD5 Streaminfo, bóc trần 24-bit giả, kiểm chứng DSD Noise Shaping, tính ReplayGain 2.0 &amp; EBU R128 và rà soát Gapless Playback.</p>
+                    </div>
+                    <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                        <button class="btn btn-emerald" id="btn-audiophile-tag-now" style="display: none;">
+                            Ghi Toàn Bộ Tag Vào Metadata
+                        </button>
+                        <button class="btn btn-outline-rose" id="btn-audiophile-untag-now" style="display: none;" title="Hoàn tác và gỡ sạch Audiophile Tags khỏi file">
+                            ↩️ Hoàn Tác / Gỡ Tag
+                        </button>
+                    </div>
                 </div>
-                
-                <div class="btn-group" style="margin-left: auto;">
-                    <button class="btn btn-secondary" id="btn-refresh-dupes" title="Quét lại toàn bộ thư mục">
-                        Quét Lại
+            </div>
+
+            <!-- Track Selector for Lab -->
+            <div class="track-picker-card">
+                <span style="font-weight: 600; color: #e2e8f0; white-space: nowrap;">Chọn Bài Hát:</span>
+                <select id="lab-track-select" class="track-picker-select">
+                    <option value="">-- Đang nạp danh sách tệp âm thanh... --</option>
+                </select>
+                <button class="btn btn-primary" id="btn-run-audiophile-audit">
+                    Khởi Chạy Kiểm Định 7 Tiêu Chuẩn
+                </button>
+            </div>
+
+            <div id="audiophile-loading-box" style="display: none;" class="technical-note mb-4 text-center py-6">
+                <span class="text-secondary">Đang tính toán DR Meter, đối chiếu MD5 bit-perfect, phân tích LSB 24-bit và đo EBU R128...</span>
+            </div>
+
+            <!-- 7 Pillars Container -->
+            <div class="audiophile-pillars-grid" id="audiophile-pillars-grid">
+                <!-- Pillar 1: Dynamic Range -->
+                <div class="pillar-card border-amber" id="pillar-dr-card">
+                    <div class="pillar-card-header">
+                        <div class="pillar-title-group">
+                            <div class="pillar-icon-badge">🎚️</div>
+                            <div>
+                                <h3 class="pillar-title">1. Dynamic Range (DR Meter)</h3>
+                                <p class="pillar-subtitle">Thang điểm Loudness War (dr.loudness-war.info)</p>
+                            </div>
+                        </div>
+                        <span class="stat-tag tag-amber" id="pillar-dr-badge">Chưa đo</span>
+                    </div>
+
+                    <div class="dr-meter-box">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Thang Điểm DR1 &rarr; DR20</span>
+                            <span id="dr-score-huge" style="font-size: 1.5rem; font-family: 'Outfit', sans-serif; font-weight: 700; color: #fbbf24;">DR--</span>
+                        </div>
+                        <div class="dr-meter-scale-bar">
+                            <div class="dr-needle-indicator" id="dr-needle" style="left: 50%;"></div>
+                        </div>
+                        <div class="dr-scale-labels">
+                            <span>DR1 (Nén Nặng)</span>
+                            <span>DR8</span>
+                            <span>DR14 (Audiophile)</span>
+                            <span>DR20</span>
+                        </div>
+                    </div>
+
+                    <div class="dr-stats-row">
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Peak dBFS</div>
+                            <div class="dr-stat-val" id="dr-stat-peak">-- dB</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">RMS Top 20%</div>
+                            <div class="dr-stat-val" id="dr-stat-rms">-- dB</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">DR L / R</div>
+                            <div class="dr-stat-val" id="dr-stat-channels">-- / --</div>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-secondary" style="font-size: 0.82rem;" id="dr-verdict-desc">
+                        Chưa chọn bài hát để đo Dynamic Range.
+                    </p>
+                </div>
+
+                <!-- Pillar 2: Bit-Perfect & FLAC MD5 -->
+                <div class="pillar-card border-emerald" id="pillar-integrity-card">
+                    <div class="pillar-card-header">
+                        <div class="pillar-title-group">
+                            <div class="pillar-icon-badge">🛡️</div>
+                            <div>
+                                <h3 class="pillar-title">2. Bit-Perfect &amp; Bit-Rot</h3>
+                                <p class="pillar-subtitle">FLAC Audio MD5 &amp; Frame CRC Integrity</p>
+                            </div>
+                        </div>
+                        <span class="stat-tag tag-emerald" id="pillar-integrity-badge">Chờ quét</span>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.3); padding: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin: 0.5rem 0;">
+                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;">STREAMINFO AUDIO MD5:</div>
+                        <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #34d399;" id="md5-streaminfo-hex">00000000000000000000000000000000</code>
+                    </div>
+
+                    <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="integrity-msg-desc">
+                        Giải mã trực tiếp luồng bit PCM để đối chiếu tính toàn vẹn 100% với header gốc, loại bỏ nguy cơ Bit-Rot ổ cứng.
+                    </p>
+                </div>
+
+                <!-- Pillar 3: Fake 24-bit -->
+                <div class="pillar-card border-rose" id="pillar-bitdepth-card">
+                    <div class="pillar-card-header">
+                        <div class="pillar-title-group">
+                            <div class="pillar-icon-badge">🔬</div>
+                            <div>
+                                <h3 class="pillar-title">3. Phát Hiện "24-bit Giả"</h3>
+                                <p class="pillar-subtitle">Bit Padding / Zero-Padded LSB Histogram</p>
+                            </div>
+                        </div>
+                        <span class="stat-tag tag-rose" id="pillar-bitdepth-badge">Chờ quét</span>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
+                            <span class="text-muted">Mật Độ Entropy 8 Bit Cuối (LSB):</span>
+                            <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600;" id="lsb-entropy-pct">0.0%</span>
+                        </div>
+                        <div class="entropy-bar-container">
+                            <div class="entropy-bar-fill" id="lsb-entropy-fill" style="width: 0%; background: #f43f5e;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
+                            <span>0% (Độn Bit 0 Giả)</span>
+                            <span>&gt;90% (24-bit Thật)</span>
+                        </div>
+                    </div>
+
+                    <p class="mt-3 text-secondary" style="font-size: 0.82rem;" id="bitdepth-msg-desc">
+                        Bóc trần các bản thu 16-bit bị chèn 8 bit 0 ở đuôi để làm phình dung lượng container 24-bit.
+                    </p>
+                </div>
+
+                <!-- Pillar 4: DSD / SACD Purity -->
+                <div class="pillar-card border-cyan" id="pillar-dsd-card">
+                    <div class="pillar-card-header">
+                        <div class="pillar-title-group">
+                            <div class="pillar-icon-badge">💿</div>
+                            <div>
+                                <h3 class="pillar-title">4. DSD / SACD Purity</h3>
+                                <p class="pillar-subtitle">Sigma-Delta Noise Shaping &gt;30kHz &amp; Surround</p>
+                            </div>
+                        </div>
+                        <span class="stat-tag tag-cyan" id="pillar-dsd-badge">Chờ quét</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.5rem 0;">
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Cấu Hình Kênh</div>
+                            <div class="dr-stat-val" id="dsd-channels-val">Stereo 2.0</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Độ Tăng Noise Shaping</div>
+                            <div class="dr-stat-val" id="dsd-noise-rise-val">+0 dB</div>
+                        </div>
+                    </div>
+
+                    <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="dsd-msg-desc">
+                        Phân tích năng lượng lượng tử siêu âm trên 30kHz đặc trưng của chuẩn DSD thật so với DSD giả lập từ file PCM.
+                    </p>
+                </div>
+
+                <!-- Pillar 5: ReplayGain 2.0 & EBU R128 -->
+                <div class="pillar-card border-indigo" id="pillar-loudness-card">
+                    <div class="pillar-card-header">
+                        <div class="pillar-title-group">
+                            <div class="pillar-icon-badge">🔊</div>
+                            <div>
+                                <h3 class="pillar-title">5. ReplayGain 2.0 &amp; EBU R128</h3>
+                                <p class="pillar-subtitle">Cân bằng âm lượng không suy hao bit</p>
+                            </div>
+                        </div>
+                        <span class="stat-tag tag-indigo" id="pillar-loudness-badge">Chờ đo</span>
+                    </div>
+
+                    <div class="dr-stats-row" style="margin: 0.5rem 0;">
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Integrated LUFS</div>
+                            <div class="dr-stat-val" id="loudness-lufs-val">-- LUFS</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">True Peak</div>
+                            <div class="dr-stat-val" id="loudness-peak-val">-- dBTP</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">ReplayGain 2.0</div>
+                            <div class="dr-stat-val" id="loudness-rg-val">-- dB</div>
+                        </div>
+                    </div>
+
+                    <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="loudness-msg-desc">
+                        Ghi tag ReplayGain 2.0 (-18 LUFS) &amp; EBU R128 để Navidrome và DAC cân bằng âm lượng thông minh mà bit gốc nguyên vẹn 100%.
+                    </p>
+                </div>
+
+                <!-- Pillar 6: Gapless Playback -->
+                <div class="pillar-card border-slate" id="pillar-gapless-card">
+                    <div class="pillar-card-header">
+                        <div class="pillar-title-group">
+                            <div class="pillar-icon-badge">🎼</div>
+                            <div>
+                                <h3 class="pillar-title">6. Gapless Playback</h3>
+                                <p class="pillar-subtitle">Seamless Transitions &amp; Boundary Samples</p>
+                            </div>
+                        </div>
+                        <span class="stat-tag tag-slate" id="pillar-gapless-badge">Chờ rà soát</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.5rem 0;">
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Khoảng Lặng Mở Đầu</div>
+                            <div class="dr-stat-val" id="gapless-intro-val">-- ms</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Khoảng Lặng Kết Thúc</div>
+                            <div class="dr-stat-val" id="gapless-outro-val">-- ms</div>
+                        </div>
+                    </div>
+
+                    <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="gapless-msg-desc">
+                        Rà soát mẫu âm thanh biên giới (boundary samples) để đảm bảo không bị chèn khoảng lặng 2 giây vô nghĩa giữa các track hòa nhạc / live album.
+                    </p>
+                </div>
+
+                <!-- Pillar 7: Vault Tiering Proposal -->
+                <div class="pillar-card border-emerald" id="pillar-tier-card" style="grid-column: 1 / -1;">
+                    <div class="pillar-card-header">
+                        <div class="pillar-title-group">
+                            <div class="pillar-icon-badge">🏛️</div>
+                            <div>
+                                <h3 class="pillar-title">7. Đề Xuất Phân Cấp Kho Nhạc (Vault Tiering)</h3>
+                                <p class="pillar-subtitle">Tự động phân nhóm vào 3 phân cấp lưu trữ Audiophile</p>
+                            </div>
+                        </div>
+                        <span class="stat-tag tag-emerald" id="pillar-tier-badge">Chờ phân loại</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: rgba(0,0,0,0.3); padding: 1rem 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Phân Cấp Đích Được Chỉ Định:</div>
+                            <div style="font-size: 1.15rem; font-weight: 700; color: white;" id="pillar-tier-dest">--</div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="switchTab('tab-vault')">
+                            Xem Kế Hoạch Toàn Bộ Kho Nhạc 3 Cấp &rarr;
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 3: 3-Tier Vault Storage Organization -->
+        <section class="tab-content" id="tab-vault">
+            <div class="audiophile-banner">
+                <div class="audiophile-banner-content">
+                    <div>
+                        <h2>Tự Động Xuất Cấu Trúc Kho Nhạc 3 Cấp (Vault Tiering)</h2>
+                        <p>1-Click tổ chức toàn bộ thư viện thành 3 tầng chuẩn Audiophile: DSD &amp; Hi-Res thật, Lossless CD nguyên bản, và Cách ly (Quarantine) các tệp Fake Hi-Res, MP3, Bit-Rot lỗi.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3 Neon Tier Cards -->
+            <div class="vault-tier-cards-grid">
+                <div class="vault-tier-card tier-1">
+                    <span class="tier-header-badge">TẦNG 1 &bull; HI-RES</span>
+                    <h3>01_DSD &amp; Hi-Res</h3>
+                    <p class="text-muted" style="font-size: 0.78rem;">Chuẩn &gt;24-bit / 96kHz &amp; Native DSD</p>
+                    <div class="vault-tier-metric" id="tier1-count">67 bài</div>
+                    <p class="vault-tier-desc">DSD SACD 1-bit nguyên bản và các bản master PCM 24/96k - 24/192k có dải sóng hài siêu âm tự nhiên.</p>
+                    <div class="text-secondary" style="font-size: 0.8rem;" id="tier1-size">Dung lượng: ~11.4 GB</div>
+                </div>
+
+                <div class="vault-tier-card tier-2">
+                    <span class="tier-header-badge">TẦNG 2 &bull; LOSSLESS</span>
+                    <h3>02_Lossless CD</h3>
+                    <p class="text-muted" style="font-size: 0.78rem;">Chuẩn Red Book 16/44.1k &amp; Studio 24/44-48k</p>
+                    <div class="vault-tier-metric" id="tier2-count">649 bài</div>
+                    <p class="vault-tier-desc">Toàn bộ kho nhạc FLAC/WAV chuẩn CD 16-bit bit-perfect và bản master 24-bit/48k nguyên chất.</p>
+                    <div class="text-secondary" style="font-size: 0.8rem;" id="tier2-size">Dung lượng: ~18.9 GB</div>
+                </div>
+
+                <div class="vault-tier-card tier-3">
+                    <span class="tier-header-badge">TẦNG 3 &bull; CÁCH LY</span>
+                    <h3>03_Quarantine</h3>
+                    <p class="text-muted" style="font-size: 0.78rem;">Fake Hi-Res, Fake 24-bit, MP3, File Lỗi</p>
+                    <div class="vault-tier-metric" id="tier3-count">928 bài</div>
+                    <p class="vault-tier-desc">Khu vực cách ly các bản nhạc upsample giả mạo, 24-bit độn số 0, file FLAC bị Bit-Rot và nhạc nén MP3/AAC.</p>
+                    <div class="text-secondary" style="font-size: 0.8rem;" id="tier3-size">Dung lượng: ~7.4 GB</div>
+                </div>
+            </div>
+
+            <!-- Tiering Toolbar & Actions -->
+            <div class="tiering-controls-bar">
+                <div class="tiering-mode-selector">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: #e2e8f0;">Chế Độ Xuất:</span>
+                    <button class="mode-pill active" id="btn-mode-symlink" data-mode="symlink">
+                        🔗 Symlink (An Toàn Tuyệt Đối - Không Di Chuyển File Gốc)
                     </button>
-                    <button class="btn btn-primary" id="btn-archive-byte-dupes">
-                        Di Chuyển Bản Trùng Vào Archive
+                    <button class="mode-pill" id="btn-mode-move" data-mode="move">
+                        📦 Di Chuyển Thật (Có Rollback Khôi Phục)
+                    </button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="btn-rollback-tiering" title="Khôi phục lại vị trí cũ nếu đã chọn Move">
+                        Khôi Phục (Rollback)
+                    </button>
+                    <button class="btn btn-emerald" id="btn-execute-tiering">
+                        1-Click Thực Thi Phân Cấp Kho Nhạc
                     </button>
                 </div>
             </div>
 
-            <div class="technical-note mb-4">
-                <div class="tech-note-header">
-                    <h4 id="dupe-title-text">Trùng 100% Byte (An toàn tuyệt đối)</h4>
+            <div id="tiering-status-box" class="technical-note mb-4" style="display: none;">
+                <h4 id="tiering-status-title">Trạng Thái Thực Thi</h4>
+                <p id="tiering-status-msg" class="text-secondary">Đang tải...</p>
+            </div>
+
+            <!-- Plan Table Preview -->
+            <div class="card glass-card">
+                <div class="card-header">
+                    <h3>Bảng Kế Hoạch Phân Cấp Chi Tiết</h3>
+                    <span class="stat-tag tag-indigo" id="plan-total-badge">1.644 tệp (37.7 GB)</span>
                 </div>
-                <p id="dupe-desc-text">
+                <div class="card-body">
+                    <div class="table-container" style="max-height: 480px; overflow-y: auto;">
+                        <table class="tracks-table">
+                            <thead>
+                                <tr>
+                                    <th>Tên Tệp / Đường Dẫn Gốc</th>
+                                    <th>Cấp Chỉ Định</th>
+                                    <th>Lý Do Phân Loại</th>
+                                    <th>Đường Dẫn Đích</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tiering-preview-tbody">
+                                <tr>
+                                    <td colspan="4" class="text-center py-6 text-muted">Đang tạo kế hoạch phân cấp...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab 4: Duplicates Tab -->
+        <section class="tab-content" id="tab-duplicates">
+            <div class="explorer-toolbar mb-4">
+                <div class="filter-pills" id="dupe-filter-pills" style="gap: 0.85rem;">
+                    <button class="filter-pill active" data-dupetype="byte">Trùng Byte 100% (<span id="dupe-count-byte">0</span>)</button>
+                    <button class="filter-pill" data-dupetype="meta">Trùng Metadata (<span id="dupe-count-meta">37</span>)</button>
+                    <button class="filter-pill" data-dupetype="name">Trùng Tên Tệp (<span id="dupe-count-name">15</span>)</button>
+                </div>
+                
+                <div class="btn-group" style="margin-left: auto; gap: 0.85rem;">
+                    <button class="btn btn-secondary" id="btn-refresh-dupes" title="Quét lại toàn bộ thư mục">
+                        Quét Lại
+                    </button>
+                    <button class="btn btn-primary" id="btn-archive-byte-dupes">
+                        Di Chuyển Bản Phụ Vào Archive
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search & Sub-filter bar for duplicates -->
+            <div class="explorer-toolbar mb-4" id="dupe-subtoolbar" style="background: rgba(15, 23, 42, 0.65); padding: 1.25rem 1.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.25rem;">
+                <div class="search-box" style="flex: 1; min-width: 250px; max-width: 420px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" id="dupe-search-input" placeholder="Lọc theo ca sĩ, bài hát, tên file (vd: LOSER, Orion, Aimer)...">
+                </div>
+
+                <div class="filter-pills" id="dupe-subfilter-pills" style="gap: 0.85rem;">
+                    <button class="filter-pill active" data-subfilter="all">Tất Cả (<span id="dupe-subcount-all">0</span>)</button>
+                    <button class="filter-pill pill-dot-emerald" data-subfilter="flac_vs_lossy">Có FLAC vs MP3 (<span id="dupe-subcount-flac">0</span>)</button>
+                    <button class="filter-pill pill-dot-indigo" data-subfilter="mixed_formats">Khác Định Dạng (<span id="dupe-subcount-mixed">0</span>)</button>
+                    <button class="filter-pill pill-dot-amber" data-subfilter="numbered">Tên Có Đuôi (1) (<span id="dupe-subcount-numbered">0</span>)</button>
+                </div>
+            </div>
+
+            <div class="technical-note mb-4" style="padding: 1.35rem 1.65rem;">
+                <div class="tech-note-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.4rem;">
+                    <h4 id="dupe-title-text" style="font-size: 0.95rem;">Trùng 100% Byte (An toàn tuyệt đối)</h4>
+                    <span id="dupe-selection-summary" class="stat-tag tag-emerald" style="padding: 3px 10px;">Đang giữ 0 bài gốc, chọn 0 bản phụ để lưu trữ</span>
+                </div>
+                <p id="dupe-desc-text" style="line-height: 1.5;">
                     Các file có cùng mã băm MD5 tuyệt đối. Có thể di chuyển các bản thừa vào thư mục <code>_Duplicates_Archive/</code> để giải phóng dung lượng đĩa mà không hề làm mất bài hát gốc.
                 </p>
             </div>
@@ -220,7 +674,7 @@
             </div>
         </section>
 
-        <!-- Tab 3: Navidrome & Organize -->
+        <!-- Tab 5: Navidrome & Organize -->
         <section class="tab-content" id="tab-navidrome">
             <div class="grid-2col">
                 <!-- Navidrome Card -->
@@ -277,6 +731,9 @@
                             <button class="btn btn-emerald w-full" id="btn-tag-navidrome-all">
                                 Ghi Metadata Tag Vào File Âm Thanh
                             </button>
+                            <button class="btn btn-outline-rose w-full" id="btn-rollback-all-tags" title="Hoàn tác toàn bộ các file đã gắn tag về lại metadata gốc">
+                                ↩️ Hoàn Tác Toàn Bộ Tag Đã Ghi (Khôi phục Metadata gốc)
+                            </button>
                             <button class="btn btn-secondary w-full" id="btn-run-dryrun">
                                 Xem Mô Phỏng Phân Loại Thư Mục (Dry-Run)
                             </button>
@@ -288,9 +745,9 @@
         </section>
     </main>
 
-    <!-- Spectrogram & DSP Modal -->
+    <!-- Spectrogram & Full Audiophile Audit Modal -->
     <div class="modal-backdrop" id="spectrogram-modal">
-        <div class="modal-card">
+        <div class="modal-card" style="max-width: 900px;">
             <div class="modal-header">
                 <div class="modal-title-group">
                     <h3 id="modal-track-title">Tên Bài Hát</h3>
@@ -302,17 +759,42 @@
                 <div class="spectrogram-image-container" id="spectrogram-img-container">
                     <img id="spectrogram-img" src="" alt="Spectrogram">
                 </div>
+                
+                <!-- Quick Audiophile Summary in Modal -->
                 <div class="dsp-analysis-card mt-4" id="dsp-analysis-card">
                     <div class="dsp-grid" id="dsp-metrics-grid"></div>
                 </div>
+
+                <div id="modal-audiophile-details" class="mt-4" style="background: rgba(0,0,0,0.3); border-radius: var(--radius-md); padding: 1rem; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="font-weight: 600; color: #e2e8f0; font-size: 0.9rem;">Thông Số Audiophile Chi Tiết:</span>
+                        <span id="modal-dr-badge-header" class="dr-score-pill dr-score-mid">DR--</span>
+                    </div>
+                    <div id="modal-audiophile-metrics-row" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; font-size: 0.82rem;">
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Audio MD5 Streaminfo</div>
+                            <div class="dr-stat-val" id="modal-audit-md5" style="font-size: 0.75rem;">Đang đọc...</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">ReplayGain 2.0 Gain</div>
+                            <div class="dr-stat-val" id="modal-audit-gain">-- dB</div>
+                        </div>
+                        <div class="dr-stat-mini">
+                            <div class="dr-stat-label">Phân Cấp Vault</div>
+                            <div class="dr-stat-val" id="modal-audit-tier" style="font-size: 0.78rem;">--</div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
+                <button class="btn btn-secondary" id="modal-btn-open-lab">Mở Trong Lab 7 Chuẩn</button>
                 <button class="btn btn-secondary" id="modal-btn-close">Đóng</button>
-                <button class="btn btn-primary" id="modal-btn-apply-tag">Ghi Tag Vào File</button>
+                <button class="btn btn-outline-rose" id="modal-btn-rollback-tag" title="Hoàn tác và khôi phục metadata gốc">↩️ Hoàn Tác Tag</button>
+                <button class="btn btn-primary" id="modal-btn-apply-tag">Ghi Tag Đầy Đủ Vào File</button>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=2.2"></script>
 </body>
 </html>
