@@ -13,6 +13,14 @@ echo "    Thư mục kho nhạc: $HIRES_VAULT_DIR"
 echo "    Địa chỉ Web App:  http://$HOST:$PORT"
 echo "======================================================================"
 
+# Tự động giải phóng nếu tiến trình cũ vẫn đang chiếm dụng
+OLD_PIDS=$(pgrep -f "python3 app.py" || true)
+if [ -n "$OLD_PIDS" ]; then
+    echo "⚠️  Phát hiện phiên bản cũ đang chạy (PID: $OLD_PIDS). Đang dọn dẹp..."
+    pkill -f "python3 app.py" 2>/dev/null || true
+    sleep 1
+fi
+
 if command -v uv >/dev/null 2>&1; then
     echo "⚡ Sử dụng uv run (siêu nhẹ)..."
     exec uv run --with fastapi,uvicorn,mutagen python3 app.py
