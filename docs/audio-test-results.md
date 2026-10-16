@@ -126,6 +126,14 @@ The redesigned preview was additionally exercised with 23 long-tag/path fixtures
 all-pages apply count, and wrapping without horizontal overflow at desktop and
 390px widths. No moves were applied to the long-name fixtures.
 
+Shared layout checks covered all six tabs, the track modal, supplementary
+diagnostics and duplicate-name groups at 1440, 1024, 768 and 390px, plus mobile
+playback/batch actions and a long confirmation message (30 views). With generated
+long metadata and paths, the browser reported no JavaScript errors, document
+overflow or unexpected text overflow in the checked views. Wide tables and the
+navigation have intentional scroll regions. This is a Chromium layout smoke
+check, not an accessibility or cross-browser certification.
+
 ## Re-run
 
 From the repository root, with development dependencies and system tools:

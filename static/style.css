@@ -463,6 +463,8 @@ body {
 .text-rose { color: var(--accent-rose); }
 .text-indigo { color: var(--accent-indigo); }
 .text-slate { color: var(--text-muted); }
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
 
 /* Tags & Badges */
 /* Tags & Badges */
@@ -628,13 +630,12 @@ body {
 
 .filter-pills {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     overflow-x: auto;
     align-items: center;
     padding: 2px 0;
     flex-wrap: wrap;
     max-width: 100%;
-    gap: .5rem;
 }
 
 .filter-pill {
@@ -880,6 +881,7 @@ body {
 .tracks-table tr:hover td {
     background: rgba(255, 255, 255, 0.02);
 }
+
 
 .track-main-info {
     display: flex;
@@ -2390,4 +2392,57 @@ body {
     .brand-icon { flex-shrink: 0; }
     .floating-batch-bar { max-width: calc(100% - 2rem); flex-wrap: wrap; padding: .75rem; }
     .batch-actions-group { flex-wrap: wrap; }
+}
+
+/* Readable content and responsive controls shared by all tabs. */
+#tracks-table { min-width: 1240px; }
+#tracks-table col:nth-child(1) { width: 40px; }
+#tracks-table col:nth-child(2) { width: 48px; }
+#tracks-table col:nth-child(3) { width: 340px; }
+#tracks-table col:nth-child(4), #tracks-table col:nth-child(5) { width: 160px; }
+#tracks-table col:nth-child(6), #tracks-table col:nth-child(7) { width: 140px; }
+#tracks-table col:nth-child(8) { width: 200px; }
+.table-hint { color: var(--text-secondary); font-size: .85rem; margin-bottom: .65rem; }
+.tab-content, .card, .card-body, .pillar-card, .stat-card, .vault-tier-card { min-width: 0; overflow-wrap: anywhere; }
+.search-box { min-width: min(100%, 300px); }
+.stat-tag, .track-specs-badge, .tier-header-badge { vertical-align: middle; }
+.modal-title-group { flex: 1 1 18rem; min-width: 0; overflow-wrap: anywhere; }
+.modal-track-path { margin-top: .5rem; font-size: .85rem; color: var(--text-secondary); overflow-wrap: anywhere; }
+.modal-header-actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.btn-close { width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-primary); font-size: 1.5rem; cursor: pointer; flex-shrink: 0; }
+.btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-primary); cursor: pointer; flex-shrink: 0; }
+.floating-batch-bar { width: max-content; max-width: calc(100% - 2rem); flex-wrap: wrap; }
+button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+input, select, textarea { font-family: inherit; min-width: 0; }
+input::placeholder { color: var(--text-muted); opacity: 1; }
+.form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.technical-note, .alert-content, .dsp-box, .dsp-metric, .dr-stat-mini { min-width: 0; overflow-wrap: anywhere; }
+.technical-note code, .alert-content code { overflow-wrap: anywhere; }
+.scoring-controls label { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.scoring-controls input:not([type=number]), .scoring-controls select { width: 100%; min-height: 42px; font-size: .9rem; }
+.scoring-controls label:has(#scoring-history) { flex: 1 1 260px; }
+.scoring-detail summary { padding: .35rem 0; }
+.scoring-detail[open] > summary { margin-bottom: .6rem; }
+body:has(#audio-player-bar[style*="flex"]) .app-main { padding-bottom: 12rem; }
+@media (max-width: 768px) {
+    .app-header { position: static; }
+    .app-main { padding: 1rem; }
+    .card-header, .card-body, .dupe-card, .technical-note, .alert-box { padding: 1.1rem; }
+    .form-row { grid-template-columns: minmax(0, 1fr); }
+    .modal-backdrop { padding: .5rem; }
+    .modal-card { width: 100%; max-height: calc(100dvh - 1rem); }
+    .modal-header, .modal-body, .modal-footer { padding: 1rem; }
+    .modal-footer .btn { flex: 1 1 130px; }
+    .modal-header .modal-title-group { flex-basis: 100%; }
+    .modal-header .btn-close { margin-left: auto; }
+    .tiering-controls-bar .btn-group, .tiering-mode-selector { width: 100%; }
+    .mode-pill { line-height: 1.6; padding: .65rem .85rem; }
+    .dsp-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .audio-player-bar { height: auto; min-height: 72px; padding: .75rem 1rem; flex-wrap: wrap; gap: .75rem; }
+    .player-track-info { flex: 1 1 100%; max-width: none; }
+    .player-controls { order: 3; flex: 1 1 100%; max-width: none; padding: 0; }
+    .player-extra-actions { justify-content: flex-start; flex-wrap: wrap; }
+    .floating-batch-bar { width: calc(100% - 2rem); bottom: 1rem; max-height: 40vh; overflow-y: auto; }
+    .batch-actions-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+    body:has(#audio-player-bar[style*="flex"]) .floating-batch-bar { bottom: 180px; }
 }

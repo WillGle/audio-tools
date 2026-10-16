@@ -235,6 +235,7 @@ function initAudioPlayer() {
         if (btnAbB) btnAbB.classList.toggle('active', targetChannel === 'B');
 
         document.getElementById('player-track-title').textContent = targetData.title || targetData.path.split('/').pop();
+        document.getElementById('player-track-title').title = document.getElementById('player-track-title').textContent;
         document.getElementById('player-track-spec').textContent = targetData.specs || targetChannel;
 
         audio.src = `/api/stream?filepath=${encodeURIComponent(targetData.path)}`;
@@ -266,6 +267,7 @@ function playTrack(path, title, artist, specs, abData = null) {
 
     bar.style.display = 'flex';
     document.getElementById('player-track-title').textContent = audioPlayer.currentTitle;
+    document.getElementById('player-track-title').title = audioPlayer.currentTitle;
     document.getElementById('player-track-subtitle').textContent = audioPlayer.currentArtist || path;
     document.getElementById('player-track-spec').textContent = audioPlayer.currentSpecs || 'AUDIO';
 

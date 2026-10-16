@@ -222,8 +222,10 @@
             </div>
 
             <!-- Tracks Table with Column Search & Filtering -->
-            <div class="table-container">
+            <p class="table-hint" id="library-table-hint">Mỗi hàng là một bài hát; đường dẫn gốc nằm dưới tên bài. Cuộn ngang bảng nếu chưa thấy đủ cột và nút thao tác.</p>
+            <div class="table-container" tabindex="0" role="region" aria-label="Danh sách nhạc" aria-describedby="library-table-hint">
                 <table class="tracks-table" id="tracks-table">
+                    <colgroup><col><col><col><col><col><col><col><col></colgroup>
                     <thead>
                         <tr class="table-header-row">
                             <th class="th-checkbox">
@@ -919,12 +921,12 @@
                     <h3 id="modal-track-title">Tên Bài Hát</h3>
                     <p class="modal-track-path" id="modal-track-path">đường_dẫn_tệp.flac</p>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.75rem; margin-left: auto; margin-right: 1rem;">
+                <div class="modal-header-actions">
                     <button class="btn btn-emerald btn-sm" id="modal-btn-play-preview" title="Phát nghe thử file âm thanh này">
                         ▶ Nghe Thử
                     </button>
                 </div>
-                <button class="btn-close" id="modal-close-btn">&times;</button>
+                <button class="btn-close" id="modal-close-btn" aria-label="Đóng chi tiết bài hát">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="spectrogram-image-container" id="spectrogram-img-container">
@@ -966,7 +968,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" id="modal-btn-open-lab">Mở Trong Lab 7 Chuẩn</button>
+                <button class="btn btn-secondary" id="modal-btn-open-lab">Kiểm tra âm thanh</button>
                 <button class="btn btn-secondary" id="modal-btn-close">Đóng</button>
                 <button class="btn btn-outline-rose" id="modal-btn-rollback-tag" title="Hoàn tác và khôi phục metadata gốc">↩️ Hoàn Tác Tag</button>
                 <button class="btn btn-primary" id="modal-btn-apply-tag">Ghi Tag Đầy Đủ Vào File</button>
@@ -1025,7 +1027,7 @@
         <div class="modal-card modal-confirm-card">
             <div class="modal-header">
                 <h3 id="confirm-modal-title">Xác Nhận Thao Tác</h3>
-                <button class="btn-close" id="confirm-modal-close">&times;</button>
+                <button class="btn-close" id="confirm-modal-close" aria-label="Đóng xác nhận">&times;</button>
             </div>
             <div class="modal-body">
                 <p id="confirm-modal-message" style="line-height: 1.6; color: var(--text-secondary);"></p>
