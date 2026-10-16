@@ -125,12 +125,30 @@
         const parent = el('auth-details'); parent.replaceChildren();
         const priority = {FAIL: 0, SUSPECT: 1, REVIEW: 2, INCONCLUSIVE: 3, PASS: 4, NOT_APPLICABLE: 5};
         Object.entries(r.rules).sort((a, b) => priority[a[1].status] - priority[b[1].status]).forEach(([key, rule]) => {
-            const penalty = rule.penalty_applied ? ` · trừ ${rule.penalty_applied} điểm trọng số` : '';
-            const box = detail(parent, `${names[key]} · ${statuses[rule.status]}${penalty}`, rule.explanation, rule.measurements);
+            const box = detail(parent, names[key], rule.explanation, rule.measurements);
             box.dataset.status = rule.status;
-            text('p', `Tin cậy: ${confidence[rule.confidence]}. Công cụ: ${rule.detector} (${rule.detector_version}).`, box);
-            rule.evidence.forEach(e => text('p', `${e.code}: ${e.detail}`, box));
-            rule.limitations.forEach(l => text('p', l, box));
+            box.classList.add('scoring-rule');
+            const heading = box.querySelector('summary'); heading.replaceChildren();
+            text('span', names[key], heading).className = 'scoring-rule-title';
+            const labels = {PASS: 'Đạt', REVIEW: 'Cần xem xét', SUSPECT: 'Có dấu hiệu', FAIL: 'Lỗi',
+                INCONCLUSIVE: 'Chưa kết luận', NOT_APPLICABLE: 'Không áp dụng'};
+            text('span', labels[rule.status], heading).className = 'scoring-rule-status';
+            box.querySelector('p').className = 'scoring-rule-conclusion';
+            const raw = box.querySelector('.scoring-raw');
+            raw.querySelector('summary').textContent = 'Bằng chứng & số liệu';
+            const meta = text('p', `Tin cậy: ${confidence[rule.confidence]} · ${rule.penalty_applied ? `Trừ ${rule.penalty_applied} điểm trọng số` : 'Không trừ điểm'}`);
+            meta.className = 'scoring-rule-meta'; box.insertBefore(meta, raw);
+            text('p', `Công cụ: ${rule.detector} (${rule.detector_version})`, raw);
+            if (rule.evidence.length) {
+                text('h4', 'Bằng chứng ghi nhận', raw);
+                const list = document.createElement('ul'); raw.append(list);
+                rule.evidence.forEach(e => text('li', `${e.detail} (${e.code})`, list));
+            }
+            if (rule.limitations.length) {
+                text('h4', 'Giới hạn của phép kiểm tra', raw);
+                const list = document.createElement('ul'); raw.append(list);
+                rule.limitations.forEach(l => text('li', l, list));
+            }
         });
         const mastering = detail(parent, 'Chẩn đoán mastering và tín hiệu', 'Các phép đo dưới đây không đánh giá chất lượng nghe. Loudness hoặc DR thấp không bị trừ điểm.', r.mastering);
         const metrics = document.createElement('dl'); metrics.className = 'scoring-metrics';

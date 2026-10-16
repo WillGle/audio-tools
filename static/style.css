@@ -2423,6 +2423,28 @@ input::placeholder { color: var(--text-muted); opacity: 1; }
 .scoring-controls label:has(#scoring-history) { flex: 1 1 260px; }
 .scoring-detail summary { padding: .35rem 0; }
 .scoring-detail[open] > summary { margin-bottom: .6rem; }
+#auth-details { display: grid; gap: .65rem; margin-top: 1rem; }
+#auth-details > .scoring-detail { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0; background: rgba(255,255,255,.015); }
+#auth-details > .scoring-detail > summary { padding: 1rem; font-size: 1rem; color: var(--text-primary); }
+#auth-details > .scoring-detail[open] { background: rgba(255,255,255,.035); }
+#auth-details > .scoring-detail[open] > summary { margin: 0; border-bottom: 1px solid var(--border-color); }
+#auth-details > .scoring-detail > :not(summary) { margin: .85rem 1rem; }
+#auth-details .scoring-rule > summary { display: flex; align-items: center; gap: .75rem; list-style: none; }
+#auth-details .scoring-rule > summary::-webkit-details-marker { display: none; }
+#auth-details .scoring-rule > summary::before { content: '▸'; color: var(--text-secondary); flex-shrink: 0; }
+#auth-details .scoring-rule[open] > summary::before { content: '▾'; }
+.scoring-rule-title { flex: 1; min-width: 0; font-weight: 600; }
+.scoring-rule-status { font-size: .75rem; font-weight: 500; padding: .25rem .6rem; border-radius: 6px; color: #cbd5e1; background: rgba(148,163,184,.12); text-align: center; }
+[data-status="PASS"] .scoring-rule-status { color: #6ee7b7; background: rgba(16,185,129,.12); }
+[data-status="REVIEW"] .scoring-rule-status { color: #fcd34d; background: rgba(245,158,11,.12); }
+[data-status="FAIL"] .scoring-rule-status, [data-status="SUSPECT"] .scoring-rule-status { color: #fda4af; background: rgba(244,63,94,.12); }
+#auth-details .scoring-rule-conclusion { font-size: .9rem; color: var(--text-primary); line-height: 1.7; }
+#auth-details .scoring-rule-meta { font-size: .8rem; color: var(--text-secondary); }
+#auth-details .scoring-raw { border-top: 1px solid var(--border-color); padding-top: .6rem; font-size: .85rem; }
+#auth-details .scoring-raw h4 { margin: 1rem 0 .5rem; font-size: .85rem; }
+#auth-details .scoring-raw ul { padding-left: 1.2rem; }
+#auth-details .scoring-raw li { margin-bottom: .5rem; line-height: 1.7; }
+.scoring-note { font-size: .85rem; }
 body:has(#audio-player-bar[style*="flex"]) .app-main { padding-bottom: 12rem; }
 @media (max-width: 768px) {
     .app-header { position: static; }
