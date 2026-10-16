@@ -63,9 +63,16 @@ Truy cập giao diện Web tại: **`http://localhost:5050`**. Mặc định ch�
 ví dụ `Downloads`), hoặc để trống để quét toàn bộ. Bấm **Đọc metadata & xem trước**.
 Ứng dụng đọc tag trong cả thư mục con và đề xuất
 `Nghệ sĩ / Album / Số bài - Tên bài.ext`, ưu tiên album artist để gom album.
+Ô **Mẫu tên file** cho phép sửa công thức, mặc định `{track} - {title}`; ví dụ
+`{artist} - {title}` hoặc `{title}`. Hỗ trợ thêm `{album}`, `{disc}`; không thêm
+đuôi file hoặc dấu phân cách thư mục. `{title}` là bắt buộc. Số bài/đĩa có hai
+chữ số; tag thiếu để trống. Đĩa từ 2 trở lên tự thêm `D02 - ` nếu mẫu chưa có `{disc}`.
+Đổi mẫu cần xem trước lại. Tên cũ/mới được tách khỏi thư mục và tô phần khác biệt;
+nhãn riêng cho biết chỉ đổi tên, chuyển thư mục hay giữ nguyên.
 Lọc nhóm sẵn sàng, thiếu metadata, trùng đích hoặc đã đúng vị trí để kiểm tra.
-Mỗi bài có thẻ riêng, hiển thị metadata và đường dẫn cũ/mới xuống dòng đầy đủ;
-danh sách chia 20 bài/trang. Nút áp dụng xử lý mọi bài sẵn sàng trong bản xem trước,
+Danh sách dạng bảng so sánh tên cũ/mới, 50 bài/trang với tiêu đề cột cố định khi cuộn.
+Tìm theo tên cũ/mới, nghệ sĩ, album hoặc thư mục; lọc bài có đổi tên hoặc chỉ
+chuyển thư mục. Mở **Chi tiết** để xem metadata và đường dẫn đầy đủ. Nút áp dụng xử lý mọi bài sẵn sàng trong bản xem trước,
 kể cả các trang khác và các bài ngoài nhóm đang lọc.
 
 **Áp dụng đổi tên & di chuyển** yêu cầu xác nhận bản xem trước. Chỉ các bài sẵn

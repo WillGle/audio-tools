@@ -126,6 +126,27 @@ The redesigned preview was additionally exercised with 23 long-tag/path fixtures
 all-pages apply count, and wrapping without horizontal overflow at desktop and
 390px widths. No moves were applied to the long-name fixtures.
 
+Editable filename formats were checked in Chromium with disposable FLACs:
+changing the format invalidates the previous preview; `{artist} - {title}` is
+used for the actual move and rollback preserves the original bytes. Invalid
+tokens, attribute access, format modifiers, missing `{title}` and path separators
+return HTTP 400. The preview highlights changed filename text, separates folders
+from filenames and distinguishes rename from folder-only moves. Unicode and
+underscores are preserved; the 390px check found no horizontal overflow or
+JavaScript errors. Direct fixture checks also covered missing track numbers and
+automatic versus explicit disc prefixes. The existing Python suite passed
+31 tests in 64.80 seconds after these changes.
+
+The compact comparison table was subsequently checked in Chromium with 1,006
+disposable FLACs (1,000 short generated files plus six workflow fixtures).
+Checks covered 50-row pagination, page reset on search, old/new-name and metadata
+search, rename/folder-only filters, combined status filters, empty results,
+expandable details, a scrolling table with sticky headers, and the unchanged
+all-READY apply count while filtering. Rename/rollback and the existing stale-plan
+and path checks also passed. At 1440, 1024, 768 and 390px there was no document or
+table horizontal overflow; no JavaScript errors occurred. This validates preview
+interaction at that size, not batch-move throughput or a full-library soak test.
+
 Shared layout checks covered all six tabs, the track modal, supplementary
 diagnostics and duplicate-name groups at 1440, 1024, 768 and 390px, plus mobile
 playback/batch actions and a long confirmation message (30 views). With generated
