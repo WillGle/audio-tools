@@ -482,6 +482,33 @@ def preview_metadata_organization(req: OrganizeRequest):
         return plan
 
 
+class OrganizeEditRequest(BaseModel):
+    plan_id: str
+    original_path: str
+    filename: str
+
+
+@app.post('/api/organize/edit')
+def edit_metadata_organization(req: OrganizeEditRequest):
+    from core.organizer import edit_proposed_filename
+    from uuid import uuid4
+    with _organize_lock:
+        if not _organize_plan_file.exists():
+            raise HTTPException(status_code=409, detail='Hãy tạo bản xem trước mới.')
+        plan = json.loads(_organize_plan_file.read_text(encoding='utf-8'))
+        if not req.plan_id or plan['plan_id'] != req.plan_id:
+            raise HTTPException(status_code=409, detail='Bản xem trước đã thay đổi. Hãy xem lại trước khi áp dụng.')
+        try:
+            edit_proposed_filename(ROOT_DIR, plan, req.original_path, req.filename)
+        except (ValueError, OSError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        plan['plan_id'] = uuid4().hex
+        temp = _organize_plan_file.with_suffix('.tmp')
+        temp.write_text(json.dumps(plan, ensure_ascii=False), encoding='utf-8')
+        temp.replace(_organize_plan_file)
+        return plan
+
+
 @app.post('/api/organize/apply')
 def apply_metadata_organization(req: OrganizeRequest):
     from core.organizer import file_stamp, ROLLBACK_NAME

@@ -87,15 +87,50 @@ def metadata_plan(root, folder='', filename_format=DEFAULT_FILENAME_FORMAT):
                     item['reason'] = 'Đã đúng vị trí.' if destination == path else 'Đổi tên và sắp xếp từ tag.'
                     if not album:
                         item['reason'] += ' Thiếu album: dùng nhóm Chưa rõ album.'
-                    if destination != path and (destination.exists() or destination.is_symlink()):
-                        item.update(status='CONFLICT', reason='Đích đã tồn tại; bỏ qua, không ghi đè.')
             except Exception as exc:
                 item.update(status='REVIEW', reason=f'Không lập được đường dẫn: {exc}')
             items.append(item)
-    destinations = Counter(item['dest_path'].casefold() for item in items if item['dest_path'])
-    for item in items:
-        if item['status'] == 'READY' and destinations[item['dest_path'].casefold()] > 1:
+    plan = {'folder': str(source.relative_to(root)), 'filename_format': filename_format,
+            'items': items, 'total': len(items)}
+    refresh_plan(root, plan)
+    return plan
+
+
+def refresh_plan(root, plan):
+    """Recheck both sides of a conflict after a proposed filename is edited."""
+    destinations = Counter(item['dest_path'].casefold() for item in plan['items'] if item['dest_path'])
+    for item in plan['items']:
+        if not item['dest_path'] or item['status'] == 'REVIEW':
+            continue
+        destination = vault_path(root, item['dest_path'])
+        unchanged = item['dest_path'] == item['original_path']
+        item.update(status='UNCHANGED' if unchanged else 'READY', reason='Đã đúng vị trí.' if unchanged
+                    else 'Tên đề xuất đã sửa thủ công.' if item.get('filename_edited') else 'Đổi tên và sắp xếp từ tag.')
+        if not item['album']:
+            item['reason'] += ' Thiếu album: dùng nhóm Chưa rõ album.'
+        if not unchanged and (destination.exists() or destination.is_symlink()):
+            item.update(status='CONFLICT', reason='Đích đã tồn tại; bỏ qua, không ghi đè.')
+        elif not unchanged and destinations[item['dest_path'].casefold()] > 1:
             item.update(status='CONFLICT', reason='Nhiều tệp cùng đường dẫn đích; cần chọn bản giữ lại.')
-    counts = Counter(item['status'] for item in items)
-    return {'folder': str(source.relative_to(root)), 'filename_format': filename_format, 'items': items, 'total': len(items),
-            'counts': {key: counts[key] for key in ('READY', 'REVIEW', 'CONFLICT', 'UNCHANGED')}}
+    counts = Counter(item['status'] for item in plan['items'])
+    plan['counts'] = {key: counts[key] for key in ('READY', 'REVIEW', 'CONFLICT', 'UNCHANGED')}
+
+
+def edit_proposed_filename(root, plan, original_path, filename):
+    item = next((item for item in plan['items'] if item['original_path'] == original_path), None)
+    if not item or not item['dest_path'] or item['status'] == 'REVIEW':
+        raise ValueError('Bài này chưa có đường dẫn đề xuất hợp lệ; cần kiểm tra metadata.')
+    filename = filename.strip()
+    if not filename or filename in {'.', '..'} or filename.endswith('.') or any(
+            ord(c) < 32 or c in '/\\:*?"<>|' for c in filename):
+        raise ValueError('Tên file không được rỗng hoặc chứa ký tự đường dẫn / \\ : * ? " < > | hay ký tự điều khiển.')
+    if len(filename.encode('utf-8')) > 255:
+        raise ValueError('Tên file dài quá 255 byte; hãy rút gọn.')
+    suffix = Path(original_path).suffix
+    if Path(filename).suffix != suffix or not filename[:-len(suffix)].strip(' .'):
+        raise ValueError(f'Giữ nguyên đuôi file {suffix} và nhập tên bài phía trước.')
+    if file_stamp(vault_path(root, original_path)) != item['stamp']:
+        raise ValueError('Tệp nguồn đã thay đổi; hãy tạo bản xem trước mới.')
+    destination = vault_path(root, Path(item['dest_path']).parent / filename)
+    item.update(dest_path=str(destination.relative_to(Path(root).resolve())), filename_edited=True)
+    refresh_plan(root, plan)

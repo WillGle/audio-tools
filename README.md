@@ -73,7 +73,10 @@ Lọc nhóm sẵn sàng, thiếu metadata, trùng đích hoặc đã đúng vị
 Danh sách dạng bảng so sánh tên cũ/mới và thư mục tương ứng ngay bên dưới,
 cuộn đến hết kết quả trong khung với tiêu đề cột cố định, không phân trang.
 Tìm theo tên cũ/mới, nghệ sĩ, album hoặc thư mục; lọc bài có đổi tên hoặc chỉ
-chuyển thư mục. Mở **Chi tiết** để xem metadata. Nút áp dụng xử lý mọi bài sẵn sàng trong bản xem trước,
+chuyển thư mục. Mở **Chi tiết** để xem metadata. Bấm **Sửa tên** ngay cạnh tên đề xuất để chỉnh
+riêng từng bài, rồi **Lưu tên** hoặc **Hủy**. Giữ nguyên đuôi file; hệ thống kiểm
+tra lại trùng tên sau khi lưu. Chỉ bản xem trước thay đổi, chưa đổi tên file thật.
+Đọc metadata lại sẽ tạo đề xuất mới và bỏ các chỉnh sửa thủ công. Nút áp dụng xử lý mọi bài sẵn sàng trong bản xem trước,
 kể cả các bài ngoài nhóm đang lọc.
 
 **Áp dụng đổi tên & di chuyển** yêu cầu xác nhận bản xem trước. Chỉ các bài sẵn

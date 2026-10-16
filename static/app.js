@@ -2321,6 +2321,7 @@ function initOrganize() {
     const setBusy = busy => {
         document.getElementById('metadata-organize-folder').disabled = busy;
         filenameFormat.disabled = busy;
+        [search, filter, changeFilter, ...document.querySelectorAll('.organize-edit')].forEach(node => { node.disabled = busy; });
         buttons.forEach(id => {
             document.getElementById(id).disabled = busy || (id === 'metadata-organize-apply' && !plan?.counts.READY);
         });
@@ -2364,7 +2365,8 @@ function initOrganize() {
                 const group = add('td', 'organize-path', '', row);
                 group.dataset.label = label;
                 group.dataset.side = side;
-                const name = add('p', 'organize-filename', '', group);
+                const nameLine = side === 'new' ? add('div', 'organize-name-line', '', group) : group;
+                const name = add('p', 'organize-filename', '', nameLine);
                 if (side === 'new' && !item.dest_path) name.textContent = 'Chưa có đề xuất';
                 else if (renamed) {
                     name.append(document.createTextNode(chars.slice(0, prefix).join('')));
@@ -2373,6 +2375,48 @@ function initOrganize() {
                 } else name.textContent = chars.join('');
                 const directory = side === 'new' && !item.dest_path ? 'Chưa có đề xuất' : folder === '.' ? 'Gốc kho nhạc' : folder;
                 add('p', 'organize-directory', `Thư mục${side === 'new' && moved ? ' mới' : ''}: ${directory}`, group);
+                if (side === 'new' && item.dest_path && item.status !== 'REVIEW') {
+                    const edit = add('button', 'btn btn-secondary btn-sm organize-edit', item.filename_edited ? 'Sửa tên · đã chỉnh' : 'Sửa tên', nameLine);
+                    edit.type = 'button';
+                    edit.setAttribute('aria-label', `Sửa tên đề xuất: ${newName}`);
+                    edit.addEventListener('click', () => {
+                        setBusy(true);
+                        name.hidden = true; edit.hidden = true;
+                        const editor = add('form', 'organize-editor', '', group);
+                        group.insertBefore(editor, nameLine);
+                        const input = add('input', '', '', editor);
+                        input.value = newName;
+                        input.setAttribute('aria-label', 'Tên file đề xuất');
+                        add('p', 'organize-directory', `Giữ đuôi ${newName.slice(newName.lastIndexOf('.'))}. Chỉ đổi tên file, không sửa tag.`, editor);
+                        const actions = add('div', 'btn-group', '', editor);
+                        const save = add('button', 'btn btn-primary btn-sm', 'Lưu tên', actions); save.type = 'submit';
+                        const cancel = add('button', 'btn btn-secondary btn-sm', 'Hủy', actions); cancel.type = 'button';
+                        const error = add('p', 'organize-edit-error', '', editor); error.setAttribute('role', 'alert');
+                        const close = () => { editor.remove(); name.hidden = false; edit.hidden = false; setBusy(false); edit.focus(); };
+                        cancel.addEventListener('click', close);
+                        input.addEventListener('keydown', event => {
+                            if (event.key === 'Escape' && !cancel.disabled) { event.preventDefault(); close(); }
+                        });
+                        editor.addEventListener('submit', async event => {
+                            event.preventDefault(); error.textContent = '';
+                            input.disabled = save.disabled = cancel.disabled = true;
+                            const scroll = rows.closest('.organize-table-scroll');
+                            const position = scroll.scrollTop;
+                            try {
+                                plan = await request('edit', {plan_id: plan.plan_id, original_path: item.original_path, filename: input.value});
+                                render(); scroll.scrollTop = position;
+                                status.textContent = `Đã lưu tên đề xuất. ${plan.counts.READY} bài sẵn sàng · ${plan.counts.CONFLICT} trùng đích. Chưa thay đổi tệp.`;
+                                setBusy(false);
+                            } catch (err) {
+                                error.textContent = err.message;
+                                input.disabled = save.disabled = cancel.disabled = false;
+                                input.focus();
+                            }
+                        });
+                        input.focus(); input.setSelectionRange(0, newName.lastIndexOf('.'));
+                    });
+                }
+
             });
             const info = add('td', 'organize-info', '', row);
             info.dataset.label = 'Trạng thái / Chi tiết';

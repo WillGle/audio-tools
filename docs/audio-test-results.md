@@ -155,6 +155,17 @@ filtering, apply/rollback and path protections passed again, with no JavaScript
 errors or horizontal overflow at the checked desktop/mobile widths. Metadata
 details remain expandable; the all-READY apply count remains independent of filters.
 
+Inline filename editing was checked in Chromium on disposable FLACs. Save/cancel,
+Unicode edits, persisted preview revision, stale-plan rejection, invalid filenames,
+path separators, changed extensions and overlong UTF-8 names were exercised.
+Editing one duplicate recalculated both conflicting rows; editing back into a
+collision and targeting an existing file were blocked from application. Applying
+three edited proposals and rolling back preserved their complete bytes/tags.
+The editor fit the 390px viewport. The 1,006-file continuous-list check was also
+repeated successfully; both browser runs reported no JavaScript errors. These
+edits affect proposed filenames only, not the metadata that generated them.
+The existing Python suite passed 31 tests in 61.43 seconds after this backend change.
+
 Shared layout checks covered all six tabs, the track modal, supplementary
 diagnostics and duplicate-name groups at 1440, 1024, 768 and 390px, plus mobile
 playback/batch actions and a long confirmation message (30 views). With generated
