@@ -43,34 +43,34 @@
     <header class="app-header">
         <div class="brand-container">
             <div class="brand-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 18V5l12-2v13"></path>
-                    <circle cx="6" cy="18" r="3"></circle>
-                    <circle cx="18" cy="16" r="3"></circle>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 10v4"></path>
+                    <path d="M6 7v10"></path>
+                    <path d="M10 4v16"></path>
+                    <path d="M14 8v8"></path>
+                    <path d="M18 6v12"></path>
+                    <path d="M22 10v4"></path>
                 </svg>
             </div>
             <div class="brand-text">
                 <h1>Hi-Res Vault <span>Companion</span></h1>
                 <p class="brand-subtitle">
-                    Audiophile Scanner &bull; 
-                    <span class="cache-badge">⚡ SQLite Fast Scan (~35ms)</span>
+                    Audiophile Audio Engine &bull; 
+                    <span class="cache-badge"><span class="status-dot-emerald"></span> SQLite Index (35ms)</span>
                 </p>
             </div>
         </div>
 
         <nav class="nav-tabs">
             <button class="nav-tab active" data-tab="tab-library" id="btn-tab-library">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-                Kho Nhạc &amp; Chất Lượng
+                Kho Nhạc &amp; Phổ Âm
             </button>
             <button class="nav-tab" data-tab="tab-duplicates" id="btn-tab-duplicates">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                Trùng Lặp (Duplicates)
-                <span id="dupe-badge-count" style="background:var(--accent-rose); color:white; font-size:11px; padding:1px 6px; border-radius:10px; font-weight:700;">70</span>
+                Trùng Lặp
+                <span id="dupe-badge-count" class="tab-badge">70</span>
             </button>
             <button class="nav-tab" data-tab="tab-navidrome" id="btn-tab-navidrome">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg>
-                Navidrome &amp; Phân Loại
+                Navidrome &amp; Thư Viện
                 <span class="nav-badge" id="navidrome-status-dot"></span>
             </button>
         </nav>
@@ -147,11 +147,11 @@
 
                 <div class="filter-pills" id="filter-pills">
                     <button class="filter-pill active" data-filter="all">Tất cả (1.701)</button>
-                    <button class="filter-pill" data-filter="true_hires">🟢 True Hi-Res</button>
-                    <button class="filter-pill pill-rose" data-filter="fake_hires">🔴 Fake Hi-Res</button>
-                    <button class="filter-pill" data-filter="studio_master">🟡 Studio Master</button>
-                    <button class="filter-pill" data-filter="cd_lossless">🔵 CD Lossless</button>
-                    <button class="filter-pill" data-filter="lossy">⚪ Lossy MP3</button>
+                    <button class="filter-pill pill-dot-emerald" data-filter="true_hires">True Hi-Res</button>
+                    <button class="filter-pill pill-dot-rose" data-filter="fake_hires">Fake Hi-Res</button>
+                    <button class="filter-pill pill-dot-amber" data-filter="studio_master">Studio Master</button>
+                    <button class="filter-pill pill-dot-indigo" data-filter="cd_lossless">CD Lossless</button>
+                    <button class="filter-pill pill-dot-slate" data-filter="lossy">Lossy MP3</button>
                 </div>
             </div>
 
@@ -160,13 +160,13 @@
                 <table class="tracks-table" id="tracks-table">
                     <thead>
                         <tr>
-                            <th style="width: 40px;">#</th>
-                            <th>Bài Hát / Tên Tệp</th>
+                            <th style="width: 44px; text-align: center;">#</th>
+                            <th>Bài Hát &bull; Tên Tệp</th>
                             <th>Nghệ Sĩ</th>
                             <th>Album</th>
-                            <th>Thông Số</th>
-                            <th>Đánh Giá Chất Lượng</th>
-                            <th style="width: 130px; text-align: right;">Hành Động</th>
+                            <th>Định Dạng</th>
+                            <th>Đánh Giá</th>
+                            <th style="width: 140px; text-align: right;">Thao Tác</th>
                         </tr>
                     </thead>
                     <tbody id="tracks-tbody">
@@ -191,29 +191,28 @@
         <section class="tab-content" id="tab-duplicates">
             <div class="explorer-toolbar mb-4">
                 <div class="filter-pills" id="dupe-filter-pills">
-                    <button class="filter-pill active" data-dupetype="byte">⚡ Trùng 100% Từng Byte (<span id="dupe-count-byte">70</span>)</button>
-                    <button class="filter-pill" data-dupetype="meta">🎵 Trùng Metadata Ca Sĩ &amp; Tên Bài (<span id="dupe-count-meta">109</span>)</button>
-                    <button class="filter-pill" data-dupetype="name">📁 Trùng Tên Tệp Khác Thư Mục (<span id="dupe-count-name">76</span>)</button>
+                    <button class="filter-pill active" data-dupetype="byte">Trùng Byte 100% (<span id="dupe-count-byte">70</span>)</button>
+                    <button class="filter-pill" data-dupetype="meta">Trùng Metadata (<span id="dupe-count-meta">109</span>)</button>
+                    <button class="filter-pill" data-dupetype="name">Trùng Tên Tệp (<span id="dupe-count-name">76</span>)</button>
                 </div>
                 
                 <div class="btn-group" style="margin-left: auto;">
                     <button class="btn btn-secondary" id="btn-refresh-dupes" title="Quét lại toàn bộ thư mục">
-                        🔄 Quét Lại
+                        Quét Lại
                     </button>
                     <button class="btn btn-primary" id="btn-archive-byte-dupes">
-                        📦 Di Chuyển 70 Bản Trùng Byte Vào Archive
+                        Di Chuyển Bản Trùng Vào Archive
                     </button>
                 </div>
             </div>
 
-            <div class="alert-box alert-indigo mb-4">
-                <div class="alert-icon">💡</div>
-                <div class="alert-content">
+            <div class="technical-note mb-4">
+                <div class="tech-note-header">
                     <h4 id="dupe-title-text">Trùng 100% Byte (An toàn tuyệt đối)</h4>
-                    <p id="dupe-desc-text">
-                        Các file có cùng mã băm MD5 tuyệt đối. Có thể di chuyển các bản thừa vào thư mục <code>_Duplicates_Archive/</code> để giải phóng dung lượng đĩa mà không hề làm mất bài hát gốc.
-                    </p>
                 </div>
+                <p id="dupe-desc-text">
+                    Các file có cùng mã băm MD5 tuyệt đối. Có thể di chuyển các bản thừa vào thư mục <code>_Duplicates_Archive/</code> để giải phóng dung lượng đĩa mà không hề làm mất bài hát gốc.
+                </p>
             </div>
 
             <div id="dupes-container">
@@ -276,10 +275,10 @@
 
                         <div class="btn-group" style="display: flex; flex-direction: column; gap: 0.75rem;">
                             <button class="btn btn-emerald w-full" id="btn-tag-navidrome-all">
-                                🏷️ Gắn Tag Chất Lượng Vào Toàn Bộ File Âm Thanh
+                                Ghi Metadata Tag Vào File Âm Thanh
                             </button>
                             <button class="btn btn-secondary w-full" id="btn-run-dryrun">
-                                🔍 Xem Thử Mô Phỏng Phân Loại Thư Mục (Dry-Run)
+                                Xem Mô Phỏng Phân Loại Thư Mục (Dry-Run)
                             </button>
                         </div>
                         <div id="organize-status-box" class="mt-4"></div>
@@ -309,7 +308,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="modal-btn-close">Đóng</button>
-                <button class="btn btn-primary" id="modal-btn-apply-tag">🏷️ Gắn Tag Chuẩn Này Vào File</button>
+                <button class="btn btn-primary" id="modal-btn-apply-tag">Ghi Tag Vào File</button>
             </div>
         </div>
     </div>

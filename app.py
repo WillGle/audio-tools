@@ -224,31 +224,60 @@ def get_duplicates_report(refresh: bool = False):
     dupes = scan_duplicates(ROOT_DIR, force_refresh=refresh)
     return dupes
 
+class ArchiveDupesRequest(BaseModel):
+    files_to_archive: Optional[List[str]] = None
+
 @app.post("/api/duplicates/archive-byte-dupes")
-def archive_byte_duplicates():
-    dupes = scan_duplicates(ROOT_DIR)
-    byte_dupes = dupes.get('byte_duplicates', [])
+def archive_byte_duplicates(payload: Optional[ArchiveDupesRequest] = None):
     archive_dir = ROOT_DIR / '_Duplicates_Archive'
     archive_dir.mkdir(parents=True, exist_ok=True)
     
+    files_to_move = []
+    if payload and payload.files_to_archive is not None:
+        files_to_move = payload.files_to_archive
+    else:
+        dupes = scan_duplicates(ROOT_DIR)
+        byte_dupes = dupes.get('byte_duplicates', [])
+        for grp in byte_dupes:
+            files = grp.get('files', [])
+            # Giữ lại file đầu tiên (đã được score_file_for_keeping xếp hạng cao nhất), chuyển các bản sau
+            files_to_move.extend(files[1:])
+            
     archived_count = 0
-    for grp in byte_dupes:
-        files = grp.get('files', [])
-        # Giữ lại file đầu tiên (bản gốc), di chuyển các bản copy còn lại vào archive
-        for f_rel in files[1:]:
-            src = ROOT_DIR / f_rel
-            if src.exists():
-                dst = archive_dir / Path(f_rel).name
+    moved_paths = []
+    for f_rel in files_to_move:
+        src = ROOT_DIR / f_rel
+        if src.exists() and src.is_file():
+            # Giữ nguyên cấu trúc thư mục tương đối bên trong _Duplicates_Archive
+            dst = archive_dir / f_rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if dst.exists():
                 counter = 1
                 while dst.exists():
-                    dst = archive_dir / f"{dst.stem}_{counter}{dst.suffix}"
+                    dst = dst.parent / f"{dst.stem}_{counter}{dst.suffix}"
                     counter += 1
+            try:
                 shutil.move(src, dst)
                 archived_count += 1
-                
+                moved_paths.append(f_rel)
+            except Exception as e:
+                print(f"Lỗi di chuyển {src} -> {dst}: {e}")
+
+    # Xóa các file đã chuyển khỏi SQLite cache để lần sau quét cực nhanh
+    if moved_paths:
+        try:
+            from core.dedup import get_cache_db
+            conn = get_cache_db(ROOT_DIR)
+            c = conn.cursor()
+            c.executemany("DELETE FROM file_cache WHERE path = ?", [(p,) for p in moved_paths])
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
     return {
         'success': True,
-        'message': f"Đã di chuyển an toàn {archived_count} tệp trùng lặp 100% byte vào thư mục _Duplicates_Archive/",
+        'message': f"Đã di chuyển an toàn {archived_count} tệp trùng lặp vào thư mục '_Duplicates_Archive/' (bảo toàn cấu trúc thư mục gốc)!",
         'archived_count': archived_count
     }
 

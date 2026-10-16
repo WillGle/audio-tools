@@ -7,6 +7,7 @@ const pageLimit = 50;
 let currentSelectedTrack = null;
 let duplicatesData = null;
 let currentDupeType = 'byte';
+let userSelectedKeep = {}; // hash -> selected relative path to keep
 
 // DOM Initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -170,25 +171,25 @@ async function loadTracks() {
             let verdictBadge = '';
             
             if (tier.includes('Upsampled_Fake_HiRes')) {
-                verdictBadge = `<span class="stat-tag tag-rose">🔴 Fake Hi-Res</span>`;
+                verdictBadge = `<span class="stat-tag tag-rose"><span class="badge-dot-rose"></span>Fake Hi-Res</span>`;
             } else if (tier === '01_Hi-Res & DSD') {
                 if (track.original_path.endsWith('.dsf') || track.specs.includes('DSD')) {
-                    verdictBadge = `<span class="stat-tag tag-cyan">🟢 True DSD</span>`;
+                    verdictBadge = `<span class="stat-tag tag-cyan"><span class="badge-dot-cyan"></span>True DSD</span>`;
                 } else if (track.specs.includes('24bit/96') || track.specs.includes('24bit/176') || track.specs.includes('24bit/192')) {
-                    verdictBadge = `<span class="stat-tag tag-emerald">🟢 True Hi-Res</span>`;
+                    verdictBadge = `<span class="stat-tag tag-emerald"><span class="badge-dot-emerald"></span>True Hi-Res</span>`;
                 } else {
-                    verdictBadge = `<span class="stat-tag tag-amber">🟡 Studio Master</span>`;
+                    verdictBadge = `<span class="stat-tag tag-amber"><span class="badge-dot-amber"></span>Studio Master</span>`;
                 }
             } else if (tier === '02_Lossless_CD') {
-                verdictBadge = `<span class="stat-tag tag-indigo">🔵 CD Lossless</span>`;
+                verdictBadge = `<span class="stat-tag tag-indigo"><span class="badge-dot-indigo"></span>CD Lossless</span>`;
             } else {
-                verdictBadge = `<span class="stat-tag tag-slate">⚪ Lossy MP3</span>`;
+                verdictBadge = `<span class="stat-tag tag-slate"><span class="badge-dot-slate"></span>Lossy MP3</span>`;
             }
 
             const rowNum = currentOffset + idx + 1;
             html += `
                 <tr>
-                    <td class="text-muted" style="font-size: 0.8rem;">${rowNum}</td>
+                    <td class="text-muted text-center" style="font-size: 0.8rem; font-family: 'JetBrains Mono', monospace;">${rowNum}</td>
                     <td>
                         <div class="track-main-info">
                             <span class="track-title">${escapeHtml(track.title || track.original_path)}</span>
@@ -202,10 +203,10 @@ async function loadTracks() {
                     <td class="text-right">
                         <div class="actions-cell">
                             <button class="btn btn-sm btn-secondary btn-inspect" data-path="${escapeHtml(track.original_path)}" data-title="${escapeHtml(track.title || track.original_path)}" data-specs="${escapeHtml(track.specs)}">
-                                🔍 Phổ
+                                Phổ Âm
                             </button>
                             <button class="btn btn-sm btn-secondary btn-tag-file" data-path="${escapeHtml(track.original_path)}">
-                                🏷️ Tag
+                                Tag
                             </button>
                         </div>
                     </td>
@@ -255,14 +256,38 @@ function initDuplicates() {
     });
 
     document.getElementById('btn-archive-byte-dupes')?.addEventListener('click', async () => {
-        if (!confirm("Hệ thống sẽ giữ lại bản đầu tiên và di chuyển các bản trùng lặp 100% byte còn lại vào thư mục '_Duplicates_Archive/'. Bạn có muốn tiếp tục?")) {
+        if (!duplicatesData || !duplicatesData.byte_duplicates) return;
+
+        // Tính toán chính xác các file cần archive dựa trên lựa chọn người dùng
+        const filesToArchive = [];
+        duplicatesData.byte_duplicates.forEach(grp => {
+            const kept = userSelectedKeep[grp.hash] || grp.files[0];
+            grp.files.forEach(f => {
+                if (f !== kept) {
+                    filesToArchive.push(f);
+                }
+            });
+        });
+
+        if (filesToArchive.length === 0) {
+            alert("Không có bản trùng lặp nào để di chuyển!");
             return;
         }
+
+        const confirmMsg = `Hệ thống sẽ giữ lại ${duplicatesData.byte_duplicates.length} bản bạn đã chọn và di chuyển ${filesToArchive.length} bản trùng lặp 100% byte vào thư mục '_Duplicates_Archive/' (bảo toàn cấu trúc thư mục gốc).\n\nBạn có chắc chắn muốn thực hiện?`;
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+
         const btn = document.getElementById('btn-archive-byte-dupes');
         btn.disabled = true;
         btn.textContent = '⏳ Đang di chuyển...';
         try {
-            const res = await fetch('/api/duplicates/archive-byte-dupes', { method: 'POST' });
+            const res = await fetch('/api/duplicates/archive-byte-dupes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files_to_archive: filesToArchive })
+            });
             const data = await res.json();
             if (data.success) {
                 alert(`✅ ${data.message}`);
@@ -274,7 +299,6 @@ function initDuplicates() {
             alert(`❌ Lỗi: ${e.message}`);
         } finally {
             btn.disabled = false;
-            btn.textContent = '📦 Di Chuyển 70 Bản Trùng Byte Vào Archive';
         }
     });
 }
@@ -286,6 +310,14 @@ async function loadDuplicates(forceRefresh = false) {
         try {
             const res = await fetch(`/api/duplicates?refresh=${forceRefresh}`);
             duplicatesData = await res.json();
+            
+            // Khởi tạo lựa chọn mặc định: bản xếp đầu tiên (điểm cao nhất) là bản giữ lại
+            userSelectedKeep = {};
+            (duplicatesData.byte_duplicates || []).forEach(item => {
+                if (item.files && item.files.length > 0) {
+                    userSelectedKeep[item.hash] = item.files[0];
+                }
+            });
         } catch (e) {
             container.innerHTML = `<p class="text-center py-6 text-rose">Lỗi khi quét trùng lặp: ${e.message}</p>`;
             return;
@@ -305,6 +337,17 @@ async function loadDuplicates(forceRefresh = false) {
     renderDuplicates();
 }
 
+function updateArchiveButtonText() {
+    const btn = document.getElementById('btn-archive-byte-dupes');
+    if (!btn || !duplicatesData || !duplicatesData.byte_duplicates) return;
+    
+    let totalToArchive = 0;
+    duplicatesData.byte_duplicates.forEach(grp => {
+        totalToArchive += Math.max(0, grp.files.length - 1);
+    });
+    btn.textContent = `Di Chuyển ${totalToArchive} Bản Trùng Vào Archive`;
+}
+
 function renderDuplicates() {
     const container = document.getElementById('dupes-container');
     const titleText = document.getElementById('dupe-title-text');
@@ -313,42 +356,155 @@ function renderDuplicates() {
 
     if (currentDupeType === 'byte') {
         titleText.textContent = `Trùng 100% Byte (${duplicatesData.byte_duplicates_count} nhóm) — An toàn tuyệt đối`;
-        descText.innerHTML = `Các file có cùng mã băm MD5 tuyệt đối. Có thể chuyển vào thư mục Archive an toàn để giải phóng dung lượng đĩa mà không hề mất bất kỳ bài hát nào.`;
+        descText.innerHTML = `Các file có cùng mã băm MD5 tuyệt đối. Thuật toán tự động ưu tiên giữ bản có <strong>Metadata &amp; Thư mục chuẩn</strong>, tự động đánh dấu xóa bản tải trùng có <code>(1)</code>, <code>(2)</code>. Bạn có thể <strong>click chọn bản muốn giữ</strong> ngay bên dưới.`;
         
+        updateArchiveButtonText();
+
         const list = duplicatesData.byte_duplicates || [];
         if (list.length === 0) {
-            container.innerHTML = `<p class="text-center py-6 text-emerald">🎉 Không có bất kỳ tệp nào bị trùng lặp byte!</p>`;
+            container.innerHTML = `<p class="text-center py-6 text-emerald">Không phát hiện tệp nào bị trùng lặp byte.</p>`;
             return;
         }
-        let html = '<div class="dupe-list" style="display: flex; flex-direction: column; gap: 0.85rem;">';
+
+        let html = `
+            <div class="dupe-guide-bar">
+                <span><strong>Hướng dẫn:</strong> Click trực tiếp vào bất kỳ dòng nào để chọn làm <strong>Bản Giữ Lại</strong>. Bản còn lại sẽ được đưa vào Archive.</span>
+                <span class="guide-legend"><span class="badge-dot-emerald"></span> Bản Giữ Lại &nbsp;&bull;&nbsp; <span class="badge-dot-rose"></span> Bản Archive</span>
+            </div>
+            <div class="dupe-list" style="display: flex; flex-direction: column; gap: 0.85rem;">
+        `;
+
         list.forEach((item, idx) => {
+            const currentKept = userSelectedKeep[item.hash] || item.files[0];
+            
             html += `
-                <div class="card p-4" style="background: rgba(30, 41, 59, 0.4); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                        <span class="stat-tag tag-rose">Nhóm #${idx + 1} &bull; ${item.size_mb} MB/bản</span>
-                        <span class="track-specs-badge" style="font-size: 0.7rem; font-family: monospace;">MD5: ${item.hash}</span>
+                <div class="card dupe-card" data-hash="${item.hash}">
+                    <div class="dupe-card-header">
+                        <div class="dupe-card-title-group">
+                            <span class="stat-tag tag-rose">Nhóm #${idx + 1} &bull; ${item.size_mb} MB/bản</span>
+                            <span class="track-specs-badge" style="color: var(--accent-cyan); font-size: 0.72rem;">${item.files.length} bản trùng MD5</span>
+                        </div>
+                        <div class="dupe-card-meta-group">
+                            <span class="track-specs-badge" style="font-size: 0.7rem; font-family: 'JetBrains Mono', monospace;">MD5: ${item.hash.substring(0, 16)}...</span>
+                            <button class="btn btn-sm btn-secondary btn-archive-single" data-hash="${item.hash}" style="font-size: 0.75rem; padding: 4px 10px;" title="Chuyển riêng các bản trùng của nhóm này vào Archive">
+                                Archive Nhóm Này
+                            </button>
+                        </div>
                     </div>
-                    <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem;">
-                        ${item.files.map((f, fIdx) => `
-                            <li style="display: flex; align-items: center; gap: 0.5rem; color: ${fIdx === 0 ? '#34d399' : '#cbd5e1'};">
-                                <span>${fIdx === 0 ? '🟢 [Bản Giữ Lại]' : '⚪ [Bản Trùng Lặp]'}</span>
-                                <code style="font-family: monospace; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">${escapeHtml(f)}</code>
-                            </li>
-                        `).join('')}
-                    </ul>
+                    <div class="dupe-file-list">
+                        ${item.files.map((f, fIdx) => {
+                            const isKept = (f === currentKept);
+                            const hasNumberSuffix = /\(\s*\d+\s*\)/.test(f);
+                            const isInAlbum = f.includes('/');
+
+                            return `
+                                <div class="dupe-file-row ${isKept ? 'is-kept' : 'is-archive'}" data-hash="${item.hash}" data-file="${escapeHtml(f)}">
+                                    <input type="radio" name="dupe_group_${item.hash}" class="dupe-radio-custom" value="${escapeHtml(f)}" ${isKept ? 'checked' : ''}>
+                                    <span class="${isKept ? 'dupe-badge-keep' : 'dupe-badge-archive'}">
+                                        ${isKept ? 'GIỮ LẠI' : 'ARCHIVE'}
+                                    </span>
+                                    <code class="dupe-path-code">${escapeHtml(f)}</code>
+                                    ${hasNumberSuffix ? `<span class="dupe-tag-pill dupe-tag-number">Đuôi (${f.match(/\((\d+)\)/)?.[1] || 'số'})</span>` : ''}
+                                    ${isInAlbum ? `<span class="dupe-tag-pill dupe-tag-album">Album Folder</span>` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
                 </div>
             `;
         });
         html += '</div>';
         container.innerHTML = html;
 
+        // Bắt sự kiện click chọn bản giữ lại
+        container.querySelectorAll('.dupe-file-row').forEach(row => {
+            row.addEventListener('click', (e) => {
+                const hash = row.dataset.hash;
+                const file = row.dataset.file;
+                if (!hash || !file) return;
+
+                userSelectedKeep[hash] = file;
+
+                const card = row.closest('.dupe-card');
+                if (card) {
+                    card.querySelectorAll('.dupe-file-row').forEach(r => {
+                        const rFile = r.dataset.file;
+                        const radio = r.querySelector('input[type="radio"]');
+                        const badge = r.querySelector('.dupe-badge-keep, .dupe-badge-archive');
+                        
+                        if (rFile === file) {
+                            r.classList.add('is-kept');
+                            r.classList.remove('is-archive');
+                            if (radio) radio.checked = true;
+                            if (badge) {
+                                badge.className = 'dupe-badge-keep';
+                                badge.textContent = '🟢 GIỮ LẠI (Gốc)';
+                            }
+                        } else {
+                            r.classList.remove('is-kept');
+                            r.classList.add('is-archive');
+                            if (radio) radio.checked = false;
+                            if (badge) {
+                                badge.className = 'dupe-badge-archive';
+                                badge.textContent = '🗑️ ARCHIVE (Trùng)';
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        // Bắt sự kiện archive riêng lẻ từng nhóm
+        container.querySelectorAll('.btn-archive-single').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const hash = btn.dataset.hash;
+                const group = list.find(g => g.hash === hash);
+                if (!group) return;
+
+                const kept = userSelectedKeep[hash] || group.files[0];
+                const toArchive = group.files.filter(f => f !== kept);
+
+                if (toArchive.length === 0) {
+                    alert("Không có bản trùng nào trong nhóm này!");
+                    return;
+                }
+
+                if (!confirm(`Chuyển ${toArchive.length} bản trùng lặp của nhóm này vào '_Duplicates_Archive/' và giữ lại:\n👉 ${kept}?`)) {
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.textContent = '⏳ Đang lưu...';
+                try {
+                    const res = await fetch('/api/duplicates/archive-byte-dupes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ files_to_archive: toArchive })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        await loadDuplicates(true);
+                    } else {
+                        alert(`❌ Lỗi: ${data.message}`);
+                        btn.disabled = false;
+                        btn.textContent = '📦 Archive nhóm này';
+                    }
+                } catch (err) {
+                    alert(`❌ Lỗi: ${err.message}`);
+                    btn.disabled = false;
+                    btn.textContent = '📦 Archive nhóm này';
+                }
+            });
+        });
+
     } else if (currentDupeType === 'meta') {
         titleText.textContent = `Trùng Metadata Ca Sĩ & Tên Bài (${duplicatesData.meta_duplicates_count} nhóm)`;
-        descText.innerHTML = `Các bài hát cùng Ca Sĩ & Tên Bài nhưng khác định dạng hoặc dung lượng (ví dụ bạn có cả bản FLAC lossless và MP3 nén). App tự động đề xuất giữ bản chất lượng cao nhất.`;
+        descText.innerHTML = `Các bài hát cùng Ca Sĩ & Tên Bài. Thuật toán đã tự động xếp <strong>bản có Metadata đầy đủ nhất, nằm trong Album chuẩn và chất lượng cao nhất</strong> lên làm bản đề xuất giữ lại. Bản có số <code>(1)</code> trong tên tự động bị xếp làm bản phụ.`;
 
         const list = duplicatesData.meta_duplicates || [];
         if (list.length === 0) {
-            container.innerHTML = `<p class="text-center py-6 text-emerald">🎉 Không có bài hát nào bị trùng metadata!</p>`;
+            container.innerHTML = `<p class="text-center py-6 text-emerald">Không có bài hát nào bị trùng metadata.</p>`;
             return;
         }
         let html = '<div class="dupe-list" style="display: flex; flex-direction: column; gap: 0.85rem;">';
@@ -356,20 +512,28 @@ function renderDuplicates() {
             const keep = item.recommended_keep;
             const dupes = item.duplicates || [];
             html += `
-                <div class="card p-4" style="background: rgba(30, 41, 59, 0.4); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                        <strong style="color: white; font-size: 0.95rem;">🎵 ${escapeHtml(item.artist)} — ${escapeHtml(item.title)}</strong>
+                <div class="card dupe-card">
+                    <div class="dupe-card-header">
+                        <strong style="color: white; font-size: 0.95rem;">${escapeHtml(item.artist)} &bull; ${escapeHtml(item.title)}</strong>
                         <span class="stat-tag tag-emerald">Đề xuất giữ: ${keep.ext.toUpperCase()} (${keep.size_mb} MB)</span>
                     </div>
-                    <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.35rem;">
-                        <div style="color: #34d399;">
-                            🟢 <strong>Giữ lại:</strong> <code>${escapeHtml(keep.path)}</code> (${keep.ext.toUpperCase()} - ${keep.size_mb} MB)
+                    <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                        <div style="display: flex; align-items: center; gap: 0.6rem; color: #34d399; background: rgba(16, 185, 129, 0.08); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid rgba(16, 185, 129, 0.25);">
+                            <span class="dupe-badge-keep">ĐỀ XUẤT GIỮ</span>
+                            <code class="dupe-path-code">${escapeHtml(keep.path)}</code>
+                            <span class="track-specs-badge" style="font-size: 0.72rem;">${keep.ext.toUpperCase()} &bull; ${keep.size_mb} MB</span>
                         </div>
-                        ${dupes.map(d => `
-                            <div style="color: #94a3b8; padding-left: 1.25rem;">
-                                ⚪ <strong>Bản khác:</strong> <code>${escapeHtml(d.path)}</code> (${d.ext.toUpperCase()} - ${d.size_mb} MB)
-                            </div>
-                        `).join('')}
+                        ${dupes.map(d => {
+                            const hasNum = /\(\s*\d+\s*\)/.test(d.path);
+                            return `
+                                <div style="display: flex; align-items: center; gap: 0.6rem; color: #94a3b8; padding: 0.4rem 0.75rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm);">
+                                    <span class="dupe-badge-archive">BẢN PHỤ</span>
+                                    <code class="dupe-path-code">${escapeHtml(d.path)}</code>
+                                    <span class="track-specs-badge" style="font-size: 0.72rem;">${d.ext.toUpperCase()} &bull; ${d.size_mb} MB</span>
+                                    ${hasNum ? `<span class="dupe-tag-pill dupe-tag-number">Đuôi (${d.path.match(/\((\d+)\)/)?.[1] || 'số'})</span>` : ''}
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `;
@@ -383,7 +547,7 @@ function renderDuplicates() {
 
         const list = duplicatesData.name_duplicates || [];
         if (list.length === 0) {
-            container.innerHTML = `<p class="text-center py-6 text-emerald">🎉 Không có tệp nào bị trùng tên!</p>`;
+            container.innerHTML = `<p class="text-center py-6 text-emerald">Không có tệp nào bị trùng tên.</p>`;
             return;
         }
         let html = '<div class="dupe-list" style="display: flex; flex-direction: column; gap: 0.85rem;">';
