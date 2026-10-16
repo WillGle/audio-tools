@@ -27,8 +27,8 @@ fi
 pkill -f "app.py" 2>/dev/null || true
 
 if command -v uv >/dev/null 2>&1; then
-    echo "⚡ Sử dụng uv run (siêu nhẹ)..."
-    exec uv run --with fastapi,uvicorn,mutagen python3 app.py
+    echo "⚡ Sử dụng uv run (tự động nạp requirements / pyproject.toml)..."
+    exec uv run python3 app.py
 else
     echo "🐍 Sử dụng python3..."
     exec python3 app.py
