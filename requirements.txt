@@ -12,4 +12,3 @@ pydantic>=2.6.0
 mutagen>=1.47.0
 mediafile>=0.17.0
 numpy>=1.26.0
-dr14meter>=1.1.5

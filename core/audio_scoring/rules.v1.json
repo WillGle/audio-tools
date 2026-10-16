@@ -1,0 +1,88 @@
+{
+  "version": "1.0.0",
+  "minimum_coverage": 0.6,
+  "weights": {
+    "integrity": 20,
+    "metadata": 10,
+    "lossy_transcode": 25,
+    "bit_depth": 15,
+    "sample_rate": 20,
+    "signal_defects": 10
+  },
+  "penalties": {
+    "integrity_failure": 1.0,
+    "claim_mismatch": 1.0,
+    "header_mismatch": 0.5,
+    "exact_padding": 0.8,
+    "clipping_plateau": 0.5,
+    "invalid_samples": 1.0
+  },
+  "thresholds": {
+    "minimum_active_samples": 4096,
+    "silence_dbfs": -80,
+    "dc_review": 0.01,
+    "clipping_run": 3,
+    "spectral_floor_db": -75,
+    "spectral_transition_hz": 2000,
+    "spectral_drop_db": 25,
+    "bandwidth_margin_hz": 1500,
+    "bit_depth_minimum_rms_dbfs": -70,
+    "silence_review_seconds": 0.5,
+    "discontinuity_step": 1,
+    "spectral_nfft": 4096,
+    "spectral_min_boundary_hz": 14000,
+    "spectral_boundary_step_hz": 250,
+    "spectral_active_floor_db": -60,
+    "spectral_min_power": 1e-12
+  },
+  "limits": {
+    "file_bytes": 53687091200,
+    "duration_seconds": 21600,
+    "sample_rate": 384000,
+    "channels": 8,
+    "timeout_seconds": 1800,
+    "max_workers": 4,
+    "max_files": 100000,
+    "max_jobs": 8,
+    "subprocess_memory_mb": 2048,
+    "optional_pcm_bytes": 268435456
+  },
+  "modes": {
+    "FAST": {
+      "decode_seconds": 20,
+      "spectral_sections": 1
+    },
+    "BALANCED": {
+      "decode_seconds": null,
+      "spectral_sections": 6
+    },
+    "DEEP": {
+      "decode_seconds": null,
+      "spectral_sections": 24
+    }
+  },
+  "bands": [
+    {
+      "min": 90,
+      "label": "Không phát hiện vấn đề đáng kể"
+    },
+    {
+      "min": 75,
+      "label": "Có điểm cần lưu ý"
+    },
+    {
+      "min": 50,
+      "label": "Đáng ngờ; nên kiểm tra thêm"
+    },
+    {
+      "min": 0,
+      "label": "Có bằng chứng sai lệch hoặc lỗi đáng kể"
+    }
+  ],
+  "flaccheck": {
+    "enabled": true,
+    "supported_version": "0.1.2",
+    "experimental": true
+  },
+  "confidence_coverage": 0.8
+}
