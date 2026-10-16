@@ -2311,7 +2311,9 @@ function initOrganize() {
     const apply = document.getElementById('metadata-organize-apply');
     const filter = document.getElementById('metadata-organize-filter');
     const more = document.getElementById('metadata-organize-more');
-    let plan = null, shown = 50;
+    const previous = document.getElementById('metadata-organize-prev');
+    let plan = null, page = 0;
+    const perPage = 20;
     const labels = {READY: 'Sẵn sàng', REVIEW: 'Cần kiểm tra', CONFLICT: 'Trùng đích', UNCHANGED: 'Đã đúng vị trí'};
     const buttons = ['metadata-organize-preview', 'metadata-organize-apply', 'metadata-organize-undo'];
     const setBusy = busy => {
@@ -2329,15 +2331,40 @@ function initOrganize() {
     const render = () => {
         const rows = document.getElementById('metadata-organize-rows'); rows.replaceChildren();
         const items = (plan?.items || []).filter(item => filter.value === 'all' || item.status === filter.value);
-        items.slice(0, shown).forEach(item => {
-            const row = document.createElement('tr');
-            [item.original_path, [item.artist, item.album, item.title].filter(Boolean).join(' / ') || 'Không có tag',
-                item.dest_path || 'Giữ nguyên', `${labels[item.status]} · ${item.reason}`].forEach(value => {
-                const cell = document.createElement('td'); cell.textContent = value; row.append(cell);
+        items.slice(page * perPage, (page + 1) * perPage).forEach(item => {
+            const row = document.createElement('article');
+            row.className = 'organize-item'; row.dataset.status = item.status;
+            row.setAttribute('role', 'listitem');
+            const add = (tag, className, value, parent) => {
+                const node = document.createElement(tag); node.className = className;
+                node.textContent = value; parent.append(node); return node;
+            };
+            const heading = add('div', 'organize-item-heading', '', row);
+            add('h3', 'organize-title', item.title || item.original_path.split('/').pop(), heading);
+            add('span', 'organize-badge', labels[item.status], heading);
+            const metadata = add('dl', 'organize-tags', '', row);
+            [['Nghệ sĩ', item.artist], ['Album', item.album]].forEach(([label, value]) => {
+                const group = add('div', '', '', metadata);
+                add('dt', '', label, group); add('dd', '', value || 'Chưa có tag', group);
             });
+            const paths = add('div', 'organize-paths', '', row);
+            [['Hiện tại', item.original_path], ['Sau sắp xếp', item.dest_path || 'Giữ nguyên vị trí hiện tại']].forEach(([label, value]) => {
+                const group = add('div', 'organize-path', '', paths);
+                add('span', 'organize-path-label', label, group);
+                add('p', '', value, group);
+            });
+            add('p', 'organize-reason', item.reason, row);
             rows.append(row);
         });
-        more.hidden = items.length <= shown;
+        if (!items.length) {
+            const empty = document.createElement('p'); empty.textContent = 'Không có bài trong nhóm này.'; rows.append(empty);
+        }
+        previous.disabled = page === 0;
+        more.disabled = (page + 1) * perPage >= items.length;
+        document.getElementById('metadata-organize-page').textContent = items.length
+            ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, items.length)} / ${items.length} bài trong nhóm`
+            : '0 bài trong nhóm';
+        apply.textContent = `Áp dụng ${plan?.counts.READY || 0} bài sẵn sàng (tất cả các trang)`;
     };
     form.addEventListener('submit', async event => {
         event.preventDefault(); plan = null; setBusy(true);
@@ -2345,7 +2372,7 @@ function initOrganize() {
         status.textContent = 'Đang đọc metadata trong thư mục và các thư mục con…';
         try {
             plan = await request('preview', {folder: document.getElementById('metadata-organize-folder').value.trim()});
-            shown = 50; filter.value = 'all'; render();
+            page = 0; filter.value = 'all'; render();
             const c = plan.counts;
             status.textContent = `${plan.total} bài · ${c.READY} sẵn sàng · ${c.REVIEW} cần kiểm tra · ${c.CONFLICT} trùng đích · ${c.UNCHANGED} đã đúng vị trí. Chưa thay đổi tệp.`;
             document.getElementById('metadata-organize-results').hidden = false;
@@ -2357,8 +2384,13 @@ function initOrganize() {
         document.getElementById('metadata-organize-results').hidden = true;
         status.textContent = 'Phạm vi đã đổi. Bấm đọc metadata để xem trước lại.';
     });
-    filter.addEventListener('change', () => { shown = 50; render(); });
-    more.addEventListener('click', () => { shown += 50; render(); });
+    filter.addEventListener('change', () => { page = 0; render(); });
+    const turnPage = step => {
+        page += step; render();
+        document.getElementById('metadata-organize-results').scrollIntoView({block: 'start'});
+    };
+    more.addEventListener('click', () => turnPage(1));
+    previous.addEventListener('click', () => turnPage(-1));
     const changeFiles = async undo => {
         if (!undo && !plan?.counts.READY) return;
         const preview = plan;

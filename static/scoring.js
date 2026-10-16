@@ -9,7 +9,7 @@
         FAIL: 'Lỗi', INCONCLUSIVE: 'Chưa kết luận', NOT_APPLICABLE: 'Không áp dụng'};
     let jobId = null, timer = null, offset = 0, lastCompleted = 0;
     let viewGeneration = 0;
-    let busy = false;
+    let busy = false, singleResult = false;
     const confidence = {HIGH: 'Cao', MEDIUM: 'Vừa', LOW: 'Thấp'};
     const jobLabels = {QUEUED: 'Đang chờ', SCANNING: 'Đang tìm tệp', RUNNING: 'Đang kiểm tra',
         CANCELLING: 'Đang hủy', COMPLETED: 'Đã hoàn tất', CANCELLED: 'Đã hủy',
@@ -115,7 +115,9 @@
         el('scoring-result').hidden = false;
         el('scoring-result').dataset.verdict = r.critical_failure ? 'critical' : r.verdict;
         el('auth-score').textContent = r.score == null ? 'N/A' : `${r.score}/100`;
-        el('auth-verdict').textContent = `${r.filename} · ${r.band}${r.preliminary ? ' · FAST sơ bộ' : ''}`;
+        el('auth-filename').textContent = r.filename;
+        el('auth-properties-panel').open = false;
+        el('auth-verdict').textContent = `${r.band}${r.preliminary ? ' · FAST sơ bộ' : ''}`;
         el('auth-confidence').textContent = `Độ tin cậy: ${confidence[r.assessment_confidence]} · Phạm vi đánh giá (coverage): ${(r.coverage*100).toFixed(1)}% (${r.assessed_weight}/${r.applicable_weight} trọng số áp dụng)`;
         el('auth-warnings').className = r.critical_failure ? 'critical' : '';
         el('auth-warnings').replaceChildren();
@@ -166,6 +168,8 @@
                 const button = text('button', 'Chi tiết', cell);
                 button.className = 'btn btn-secondary btn-sm';
                 button.addEventListener('click', () => {
+                    el('scoring-results').querySelectorAll('tr').forEach(item => item.classList.remove('scoring-row-active'));
+                    tr.classList.add('scoring-row-active');
                     selectLabTrack(row.filepath, r.filename); window.renderAuthenticity(r);
                     el('scoring-result').focus({preventScroll: true}); el('scoring-result').scrollIntoView({block: 'start'});
                 });
@@ -180,7 +184,7 @@
         const rows = await request(`/api/scoring/jobs/${jobId}/results?offset=${offset}&limit=50`);
         if (generation !== viewGeneration) return;
         appendRows(rows);
-        if (el('scoring-result').hidden) {
+        if (singleResult && el('scoring-result').hidden) {
             const first = rows.find(row => row.result);
             if (first) { selectLabTrack(first.filepath, first.result.filename); window.renderAuthenticity(first.result); }
         }
@@ -193,6 +197,7 @@
             if (generation !== viewGeneration) return;
             el('scoring-error').hidden = true;
             lastCompleted = state.completed;
+            singleResult = state.options.filepaths?.length === 1 && state.options.folder == null;
             el('scoring-progress').dataset.status = state.status;
             el('scoring-progress').textContent = `${jobLabels[state.status]} · ${state.completed}/${state.total} tệp · ${state.errors} lỗi. ${state.message}`;
             const active = ['QUEUED', 'SCANNING', 'RUNNING', 'CANCELLING'].includes(state.status);
@@ -219,6 +224,7 @@
     }
     function view(id) {
         clearTimeout(timer); jobId = id; offset = 0; lastCompleted = 0;
+        el('scoring-setup').open = false;
         clearLabAudit();
         viewGeneration += 1;
         el('scoring-result').hidden = true;

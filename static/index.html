@@ -71,7 +71,10 @@
 
         <nav class="nav-tabs">
             <button class="nav-tab active" data-tab="tab-library" id="btn-tab-library">
-                Kho nhạc &amp; sắp xếp
+                Kho nhạc
+            </button>
+            <button class="nav-tab" data-tab="tab-organize" id="btn-tab-organize">
+                Sắp xếp
             </button>
             <button class="nav-tab" data-tab="tab-audiophile" id="btn-tab-audiophile">
                 Kiểm tra âm thanh
@@ -94,8 +97,8 @@
     <!-- Main Container -->
     <main class="app-main">
         
-        <!-- Tab 1: Library & Quality Explorer -->
-        <section class="tab-content active" id="tab-library">
+        <!-- Metadata organization stays separate from browsing the library. -->
+        <section class="tab-content" id="tab-organize">
             <div class="pillar-card scoring-panel" id="metadata-organizer">
                 <h2>Sắp xếp nhạc từ metadata</h2>
                 <p>Quét cả thư mục con → đọc tag → xem tên và vị trí mới. Không cần kiểm định âm thanh trước.</p>
@@ -110,14 +113,24 @@
                         <label>Nhóm <select id="metadata-organize-filter"><option value="all">Tất cả</option><option value="READY">Sẵn sàng đổi tên</option><option value="REVIEW">Thiếu metadata / cần kiểm tra</option><option value="CONFLICT">Trùng đường dẫn đích</option><option value="UNCHANGED">Đã đúng vị trí</option></select></label>
                         <button type="button" class="btn btn-primary" id="metadata-organize-apply" disabled>Áp dụng đổi tên &amp; di chuyển</button>
                     </div>
-                    <div class="scoring-comparison"><table class="tracks-table"><thead><tr><th>Đường dẫn hiện tại</th><th>Metadata</th><th>Đường dẫn đề xuất</th><th>Trạng thái</th></tr></thead><tbody id="metadata-organize-rows"></tbody></table></div>
-                    <button type="button" class="btn btn-secondary btn-sm" id="metadata-organize-more" hidden>Xem thêm 50 bài</button>
+                    <div id="metadata-organize-rows" class="organize-list" role="list" aria-label="Xem trước sắp xếp từng bài"></div>
+                    <nav class="organize-pagination" aria-label="Trang xem trước">
+                        <span id="metadata-organize-page" role="status"></span>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-secondary btn-sm" id="metadata-organize-prev" disabled>← Trước</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="metadata-organize-more" disabled>Tiếp →</button>
+                        </div>
+                    </nav>
                 </div>
                 <details class="scoring-detail"><summary>Hoàn tác sắp xếp</summary>
                     <p>Khôi phục vị trí trước các lần sắp xếp metadata đã áp dụng. Không xóa thư mục rỗng hoặc ghi đè file.</p>
                     <button type="button" class="btn btn-secondary" id="metadata-organize-undo">Khôi phục vị trí cũ</button>
                 </details>
             </div>
+        </section>
+
+        <!-- Tab 1: Library & Quality Explorer -->
+        <section class="tab-content active" id="tab-library">
             <!-- Compact Interactive Quality Cards -->
             <div class="stats-grid mb-6">
                 <div class="stat-card border-emerald clickable" data-filter="true_hires" title="Bấm để lọc PCM sample rate cao">
@@ -350,8 +363,9 @@
             </div>
 
             <section class="pillar-card border-indigo scoring-panel" aria-labelledby="scoring-heading">
+                <details id="scoring-setup" open>
+                    <summary id="scoring-heading">Thiết lập kiểm tra · chọn nhạc và chế độ</summary>
                 <form id="scoring-form">
-                    <h2 id="scoring-heading">1. Chọn nhạc cần kiểm tra</h2>
                     <div class="scoring-controls">
                         <label>Phạm vi <select id="scoring-target"><option value="single">Một bài hát</option><option value="selected">Các bài đã chọn trong Kho nhạc</option><option value="folder">Thư mục / toàn bộ kho</option></select></label>
                     </div>
@@ -392,27 +406,33 @@
                     </div>
                 </details>
                 </form>
+                </details>
                 <p id="scoring-error" role="alert" tabindex="-1" hidden></p>
                 <progress id="scoring-meter" aria-label="Tiến độ kiểm tra" hidden></progress>
                 <p id="scoring-progress" role="status" aria-live="polite"></p>
                 <div class="scoring-controls">
                     <button class="btn btn-outline-rose" id="scoring-cancel" type="button" hidden disabled>Hủy lượt quét</button>
                     <label>Lượt quét đã lưu <select id="scoring-history"><option value="">Chọn lượt quét</option></select></label>
-                    <a id="scoring-export-json" class="btn btn-secondary" hidden>JSON</a>
-                    <a id="scoring-export-jsonl" class="btn btn-secondary" hidden>JSONL tăng dần</a>
-                    <a id="scoring-export-csv" class="btn btn-secondary" hidden>CSV</a>
+                    <details class="scoring-exports"><summary>Xuất kết quả</summary>
+                        <a id="scoring-export-json" class="btn btn-secondary" hidden>JSON</a>
+                        <a id="scoring-export-jsonl" class="btn btn-secondary" hidden>JSONL tăng dần</a>
+                        <a id="scoring-export-csv" class="btn btn-secondary" hidden>CSV</a>
+                    </details>
                 </div>
                 <details class="scoring-detail" id="scoring-comparison" hidden><summary id="scoring-comparison-title">Kết quả các tệp</summary>
+                <p class="text-secondary">Chọn một bài để xem điểm và bằng chứng. N/A nghĩa là chưa đủ dữ liệu để chấm điểm.</p>
                 <div class="table-container scoring-comparison"><table class="tracks-table"><thead><tr><th>Tệp</th><th>Điểm</th><th>Coverage</th><th>Kết quả</th><th></th></tr></thead><tbody id="scoring-results"></tbody></table></div>
                 <button id="scoring-more" class="btn btn-secondary" hidden>Xem thêm kết quả</button>
                 </details>
                 <section id="scoring-result" aria-labelledby="scoring-result-heading" tabindex="-1" hidden>
-                <h2 id="scoring-result-heading">Authenticity &amp; Integrity Score: <span id="auth-score">N/A</span></h2>
+                <p class="text-secondary">Chi tiết bài đang chọn</p>
+                <h2 id="auth-filename"></h2>
+                <div class="scoring-score-header"><h3 id="scoring-result-heading">Authenticity &amp; Integrity Score</h3><span id="auth-score">N/A</span></div>
                 <p id="auth-verdict" role="status">Chọn một bài ở bên dưới hoặc quét thư mục để đo.</p>
                 <p id="auth-confidence">Độ tin cậy: chưa đo · Coverage: chưa đo</p>
                 <p class="technical-note">Điểm phản ánh bằng chứng kỹ thuật, không phải xác suất file thật. Độ phân giải cao không đồng nghĩa chất lượng nghe cao.</p>
                 <div id="auth-warnings" role="alert"></div>
-                <div id="auth-properties"></div>
+                <details class="scoring-detail" id="auth-properties-panel"><summary>Đối chiếu thông số · khai báo và đo được</summary><div id="auth-properties"></div></details>
                 <div id="auth-details"></div>
                 <details class="scoring-detail"><summary>Phổ theo cửa sổ và từng kênh</summary>
                     <p>Phổ từ các cửa sổ đã đo, không nội suy qua phần chưa đo. Đường màu hồng đánh dấu biên phổ cần xem xét; không tự xác định nguồn lossy.</p>
