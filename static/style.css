@@ -2234,3 +2234,22 @@ body {
 .modal-confirm-card {
     max-width: 480px !important;
 }
+/* Audio evidence uses the existing Lab cards and palette. */
+.scoring-panel { margin-bottom: 1.5rem; }
+.scoring-panel h2 { margin-bottom: .75rem; }
+.scoring-panel p { margin: .6rem 0; line-height: 1.6; }
+.scoring-controls { display: flex; flex-wrap: wrap; gap: .8rem; align-items: end; margin: 1rem 0; }
+.scoring-controls label { display: flex; flex-direction: column; gap: .35rem; font-size: .85rem; }
+.scoring-controls input, .scoring-controls select { background: var(--bg-secondary, #111827); color: var(--text-primary, #f1f5f9); border: 1px solid var(--border-color); border-radius: 6px; padding: .6rem; max-width: 100%; }
+.scoring-controls input[type=number] { width: 125px; }
+.scoring-detail { border-top: 1px solid var(--border-color); padding: .85rem 0; }
+.scoring-detail summary { cursor: pointer; font-weight: 600; line-height: 1.6; }
+.scoring-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; font-size: .8rem; line-height: 1.5; }
+.scoring-comparison { max-height: 380px; overflow: auto; }
+#auth-warnings { color: #fbbf24; overflow-wrap: anywhere; }
+#auth-warnings.critical { color: #fb7185; border: 2px solid #fb7185; padding: .75rem; }
+#auth-properties { overflow: auto; margin-top: 1rem; }
+#auth-spectrum { display: block; width: 100%; height: auto; background: #0f172a; }
+.scoring-panel [hidden] { display: none !important; }
+.scoring-panel { min-width: 0; overflow-wrap: anywhere; }
+.scoring-panel .tracks-table { min-width: 640px; }

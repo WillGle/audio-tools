@@ -99,40 +99,40 @@
         <section class="tab-content active" id="tab-library">
             <!-- Compact Interactive Quality Cards -->
             <div class="stats-grid mb-6">
-                <div class="stat-card border-emerald clickable" data-filter="true_hires" title="Bấm để lọc True Hi-Res">
+                <div class="stat-card border-emerald clickable" data-filter="true_hires" title="Bấm để lọc PCM sample rate cao">
                     <div class="stat-header">
-                        <span class="stat-title">True Hi-Res</span>
+                        <span class="stat-title">PCM sample rate cao</span>
                         <span class="stat-tag tag-emerald">24/96k+</span>
                     </div>
                     <div class="stat-value text-emerald" id="stat-true-hires">—</div>
-                    <p class="stat-desc">Hài âm siêu âm mở rộng >24kHz đến 45kHz.</p>
+                    <p class="stat-desc">Nhóm định dạng; nguồn master chưa xác thực.</p>
                 </div>
 
-                <div class="stat-card border-cyan clickable" data-filter="dsd" title="Bấm để lọc True DSD">
+                <div class="stat-card border-cyan clickable" data-filter="dsd" title="Bấm để lọc Định dạng DSD">
                     <div class="stat-header">
-                        <span class="stat-title">True DSD</span>
+                        <span class="stat-title">Định dạng DSD</span>
                         <span class="stat-tag tag-cyan">Super Audio</span>
                     </div>
                     <div class="stat-value text-cyan" id="stat-true-dsd">—</div>
-                    <p class="stat-desc">Định dạng 1-bit SACD nguyên bản.</p>
+                    <p class="stat-desc">DSD; không chứng minh nguồn SACD/native.</p>
                 </div>
 
-                <div class="stat-card border-amber clickable" data-filter="studio_master" title="Bấm để lọc Studio Master">
+                <div class="stat-card border-amber clickable" data-filter="studio_master" title="Bấm để lọc Cần xem xét">
                     <div class="stat-header">
-                        <span class="stat-title">Studio Master</span>
+                        <span class="stat-title">Cần xem xét</span>
                         <span class="stat-tag tag-amber">24-bit</span>
                     </div>
                     <div class="stat-value text-amber" id="stat-studio-master">—</div>
-                    <p class="stat-desc">Bản xuất 24-bit phòng thu thật.</p>
+                    <p class="stat-desc">Có bằng chứng cần kiểm tra chi tiết.</p>
                 </div>
 
-                <div class="stat-card border-rose highlight-warning clickable" data-filter="fake_hires" title="Bấm để lọc Fake Hi-Res">
+                <div class="stat-card border-rose highlight-warning clickable" data-filter="fake_hires" title="Bấm để lọc Lỗi toàn vẹn">
                     <div class="stat-header">
-                        <span class="stat-title">Fake Hi-Res</span>
+                        <span class="stat-title">Lỗi toàn vẹn</span>
                         <span class="stat-tag tag-rose">Cần Chú Ý</span>
                     </div>
                     <div class="stat-value text-rose" id="stat-fake-hires">—</div>
-                    <p class="stat-desc">Gán mác 96k nhưng bị cắt cụt ở 22.05kHz.</p>
+                    <p class="stat-desc">Lỗi giải mã/frame/checksum đã phát hiện.</p>
                 </div>
 
                 <div class="stat-card border-indigo clickable" data-filter="cd_lossless" title="Bấm để lọc CD Lossless">
@@ -141,7 +141,7 @@
                         <span class="stat-tag tag-indigo">16/44.1k</span>
                     </div>
                     <div class="stat-value text-indigo" id="stat-cd-lossless">—</div>
-                    <p class="stat-desc">Lossless nguyên bản CD Red Book.</p>
+                    <p class="stat-desc">Nhóm định dạng lossless, chưa xác thực nguồn.</p>
                 </div>
 
                 <div class="stat-card border-slate clickable" data-filter="lossy" title="Bấm để lọc MP3/AAC">
@@ -163,9 +163,9 @@
 
                 <div class="filter-pills" id="filter-pills">
                     <button class="filter-pill active" data-filter="all">Tất cả (<span id="stat-total-pill">—</span>)</button>
-                    <button class="filter-pill pill-dot-emerald" data-filter="true_hires">True Hi-Res</button>
-                    <button class="filter-pill pill-dot-rose" data-filter="fake_hires">Fake Hi-Res</button>
-                    <button class="filter-pill pill-dot-amber" data-filter="studio_master">Studio Master</button>
+                    <button class="filter-pill pill-dot-emerald" data-filter="true_hires">PCM sample rate cao</button>
+                    <button class="filter-pill pill-dot-rose" data-filter="fake_hires">Lỗi toàn vẹn</button>
+                    <button class="filter-pill pill-dot-amber" data-filter="studio_master">Cần xem xét</button>
                     <button class="filter-pill pill-dot-indigo" data-filter="cd_lossless">CD Lossless</button>
                     <button class="filter-pill pill-dot-slate" data-filter="lossy">Lossy MP3</button>
                     <button class="filter-pill pill-dot-rose" data-filter="duplicate_meta" id="pill-filter-dupe-meta" title="Lọc các bài hát bị trùng lặp metadata trong kho nhạc">
@@ -246,11 +246,11 @@
                                 <select id="col-filter-verdict" class="col-filter-select">
                                     <option value="">Tất cả đánh giá</option>
                                     <option value="duplicate_meta">⚠️ Trùng Metadata (Cùng bài hát)</option>
-                                    <option value="true_hires">🟢 True Hi-Res</option>
-                                    <option value="true_dsd">🔵 True DSD</option>
-                                    <option value="studio_master">🟡 Studio Master</option>
+                                    <option value="true_hires">🟢 PCM sample rate cao</option>
+                                    <option value="true_dsd">🔵 Định dạng DSD</option>
+                                    <option value="studio_master">🟡 Cần xem xét</option>
                                     <option value="cd_lossless">🟣 CD Lossless</option>
-                                    <option value="fake_hires">🔴 Fake Hi-Res</option>
+                                    <option value="fake_hires">🔴 Lỗi toàn vẹn</option>
                                     <option value="lossy">⚪ Lossy MP3</option>
                                 </select>
                             </th>
@@ -314,7 +314,7 @@
                 <div class="audiophile-banner-content">
                     <div>
                         <h2>Phòng Kiểm Định 7 Chuẩn Audiophile</h2>
-                        <p>Đo lường Dynamic Range (DR Meter), đối chiếu Audio MD5 Streaminfo, bóc trần 24-bit giả, kiểm chứng DSD Noise Shaping, tính ReplayGain 2.0 &amp; EBU R128 và rà soát Gapless Playback.</p>
+                        <p>Đo lường Dynamic Range (DR Meter), đối chiếu Audio MD5 Streaminfo, đo bit usage, quan sát phổ nhiễu DSD, tính ReplayGain 2.0 &amp; EBU R128 và rà soát Gapless Playback.</p>
                     </div>
                     <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
                         <button class="btn btn-emerald" id="btn-audiophile-tag-now" style="display: none;">
@@ -326,6 +326,52 @@
                     </div>
                 </div>
             </div>
+
+            <section class="pillar-card border-indigo scoring-panel" aria-labelledby="scoring-heading">
+                <h2 id="scoring-heading">Authenticity &amp; Integrity Score: <span id="auth-score">N/A</span></h2>
+                <p id="auth-verdict" role="status">Chọn một bài ở bên dưới hoặc quét thư mục để đo.</p>
+                <p id="auth-confidence">Độ tin cậy: chưa đo · Coverage: chưa đo</p>
+                <p class="technical-note">Điểm phản ánh bằng chứng kỹ thuật, không phải xác suất file thật. Độ phân giải cao không đồng nghĩa chất lượng nghe cao. Không thể xác thực nguồn master chỉ từ phổ.</p>
+                <div id="auth-warnings" role="alert"></div>
+                <div class="scoring-controls">
+                    <label>Chế độ <select id="scoring-mode"><option>FAST</option><option selected>BALANCED</option><option>DEEP</option></select></label>
+                    <label>Số file song song <input id="scoring-workers" type="number" min="1" max="4" value="2"></label>
+                    <label>Thư mục trong kho <input id="scoring-folder" placeholder="Để trống = toàn bộ kho"></label>
+                    <button class="btn btn-primary" id="scoring-single">Đo bài đang chọn</button>
+                    <button class="btn btn-secondary" id="scoring-selected">Quét các bài đã chọn</button>
+                    <button class="btn btn-secondary" id="scoring-folder-start">Quét thư mục</button>
+                </div>
+                <details class="scoring-detail"><summary>Kỳ vọng của nguồn bán / tệp tham chiếu (tùy chọn)</summary>
+                    <p>Áp dụng cho mọi bài trong lượt quét. Đường dẫn tham chiếu phải nằm trong kho nhạc; mức tin cậy do bạn xác nhận.</p>
+                    <div class="scoring-controls">
+                        <label>Codec <input id="claim-codec" placeholder="flac / alac / pcm_s24le"></label>
+                        <label>Container <input id="claim-container" placeholder="flac / wav / m4a"></label>
+                        <label>Sample rate (Hz) <input id="claim-rate" type="number" min="1" placeholder="96000"></label>
+                        <label>Bit depth <input id="claim-depth" type="number" min="1" max="64" placeholder="24"></label>
+                        <label>Lossless <select id="claim-lossless"><option value="">Không có kỳ vọng</option><option value="true">Có</option><option value="false">Không</option></select></label>
+                        <label>Nguồn <input id="claim-source" maxlength="1000"></label>
+                        <label>Bản phát hành <input id="claim-release" maxlength="1000"></label>
+                        <label>Tệp tham chiếu <input id="claim-reference" placeholder="album/reference.flac"></label>
+                    </div>
+                </details>
+                <p id="scoring-progress" aria-live="polite"></p>
+                <div class="scoring-controls">
+                    <button class="btn btn-outline-rose" id="scoring-cancel" disabled>Hủy lượt quét</button>
+                    <label>Lượt quét đã lưu <select id="scoring-history"><option value="">Chọn lượt quét</option></select></label>
+                    <a id="scoring-export-json" class="btn btn-secondary" hidden>JSON</a>
+                    <a id="scoring-export-jsonl" class="btn btn-secondary" hidden>JSONL tăng dần</a>
+                    <a id="scoring-export-csv" class="btn btn-secondary" hidden>CSV</a>
+                </div>
+                <div class="table-container scoring-comparison"><table class="tracks-table"><thead><tr><th>Tệp</th><th>Điểm</th><th>Coverage</th><th>Kết quả</th><th></th></tr></thead><tbody id="scoring-results"></tbody></table></div>
+                <button id="scoring-more" class="btn btn-secondary" hidden>Xem thêm kết quả</button>
+                <div id="auth-properties"></div>
+                <div id="auth-details"></div>
+                <details class="scoring-detail"><summary>Phổ theo cửa sổ và từng kênh</summary>
+                    <p>Phổ từ các cửa sổ đã đo, không nội suy qua phần chưa đo. Đường màu hồng đánh dấu biên phổ cần xem xét; không tự xác định nguồn lossy.</p>
+                    <canvas id="auth-spectrum" width="960" height="360" aria-label="Phổ theo cửa sổ đo và kênh"></canvas>
+                    <p id="auth-spectrum-note"></p>
+                </details>
+            </section>
 
             <!-- Searchable Track Combobox for Lab -->
             <div class="track-picker-card" style="position: relative;">
@@ -344,7 +390,7 @@
             </div>
 
             <div id="audiophile-loading-box" style="display: none;" class="technical-note mb-4 text-center py-6">
-                <span class="text-secondary">Đang tính toán DR Meter, đối chiếu MD5 bit-perfect, phân tích LSB 24-bit và đo EBU R128...</span>
+                <span class="text-secondary">Đang tính toán DR Meter, đối chiếu STREAMINFO MD5, phân tích LSB 24-bit và đo EBU R128...</span>
             </div>
 
             <!-- 7 Pillars Container -->
@@ -356,7 +402,7 @@
                             <div class="pillar-icon-badge">🎚️</div>
                             <div>
                                 <h3 class="pillar-title">1. Dynamic Range (DR Meter)</h3>
-                                <p class="pillar-subtitle">Thang điểm Loudness War (dr.loudness-war.info)</p>
+                                <p class="pillar-subtitle">Ước lượng DR; không chấm authenticity</p>
                             </div>
                         </div>
                         <span class="stat-tag tag-amber" id="pillar-dr-badge">Chưa đo</span>
@@ -403,7 +449,7 @@
                         <div class="pillar-title-group">
                             <div class="pillar-icon-badge">🛡️</div>
                             <div>
-                                <h3 class="pillar-title">2. Bit-Perfect &amp; Bit-Rot</h3>
+                                <h3 class="pillar-title">2. Toàn vẹn dữ liệu &amp; checksum</h3>
                                 <p class="pillar-subtitle">FLAC Audio MD5 &amp; Frame CRC Integrity</p>
                             </div>
                         </div>
@@ -416,7 +462,7 @@
                     </div>
 
                     <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="integrity-msg-desc">
-                        Giải mã trực tiếp luồng bit PCM để đối chiếu tính toàn vẹn 100% với header gốc, loại bỏ nguy cơ Bit-Rot ổ cứng.
+                        Decode toàn file và kiểm tra frame/STREAMINFO MD5 khi có. Checksum không xác minh playback hay nguồn master.
                     </p>
                 </div>
 
@@ -426,8 +472,8 @@
                         <div class="pillar-title-group">
                             <div class="pillar-icon-badge">🔬</div>
                             <div>
-                                <h3 class="pillar-title">3. Phát Hiện "24-bit Giả" &amp; Cắt Tần (fakeflac)</h3>
-                                <p class="pillar-subtitle">Zero-Padded LSB Histogram &amp; Reverse Spectral Sweeping</p>
+                                <h3 class="pillar-title">3. Bit usage &amp; giới hạn phổ</h3>
+                                <p class="pillar-subtitle">Padding chính xác toàn file, theo từng kênh</p>
                             </div>
                         </div>
                         <span class="stat-tag tag-rose" id="pillar-bitdepth-badge">Chờ quét</span>
@@ -443,13 +489,13 @@
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
                             <span>0% (Độn Bit 0 Giả)</span>
-                            <span>&gt;90% (24-bit Thật)</span>
+                            <span>&gt;90% (Bit thấp có dữ liệu)</span>
                         </div>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem;">
                         <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Điểm Cắt Tần (fakeflac)</div>
+                            <div class="dr-stat-label">Biên phổ (sàng lọc)</div>
                             <div class="dr-stat-val" id="pillar-cutoff-hz">-- Hz</div>
                         </div>
                         <div class="dr-stat-mini">
@@ -459,7 +505,7 @@
                     </div>
 
                     <p class="mt-3 text-secondary" style="font-size: 0.82rem;" id="bitdepth-msg-desc">
-                        Bóc trần các bản thu 16-bit bị chèn 8 bit 0 ở đuôi hoặc upsampled từ MP3 320k / CD bằng thuật toán quét phổ ngược fakeflac.
+                        Bit thấp luôn bằng 0 có thể xác lập padding PCM. Cutoff phổ chỉ là bằng chứng cần xem xét; không xác định codec hoặc bitrate nguồn.
                     </p>
                 </div>
 
@@ -469,7 +515,7 @@
                         <div class="pillar-title-group">
                             <div class="pillar-icon-badge">💿</div>
                             <div>
-                                <h3 class="pillar-title">4. DSD / SACD Purity</h3>
+                                <h3 class="pillar-title">4. DSD: định dạng &amp; phổ nhiễu</h3>
                                 <p class="pillar-subtitle">Sigma-Delta Noise Shaping &gt;30kHz &amp; Surround</p>
                             </div>
                         </div>
@@ -488,7 +534,7 @@
                     </div>
 
                     <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="dsd-msg-desc">
-                        Phân tích năng lượng lượng tử siêu âm trên 30kHz đặc trưng của chuẩn DSD thật so với DSD giả lập từ file PCM.
+                        Quan sát nhiễu siêu âm DSD; không thể xác lập nguồn SACD/native hoặc lịch sử chuyển đổi từ PCM.
                     </p>
                 </div>
 
@@ -586,7 +632,7 @@
                 <div class="audiophile-banner-content">
                     <div>
                         <h2>Tự Động Xuất Cấu Trúc Kho Nhạc 3 Cấp (Vault Tiering)</h2>
-                        <p>1-Click tổ chức toàn bộ thư viện thành 3 tầng chuẩn Audiophile: DSD &amp; Hi-Res thật, Lossless CD nguyên bản, và Cách ly (Quarantine) các tệp Fake Hi-Res, MP3, Bit-Rot lỗi.</p>
+                        <p>1-Click tổ chức toàn bộ thư viện thành 3 tầng chuẩn Audiophile: DSD &amp; PCM sample rate cao, định dạng Lossless, và Cách ly (Quarantine) các tệp Lỗi toàn vẹn, MP3, Bit-Rot lỗi.</p>
                     </div>
                 </div>
             </div>
@@ -598,7 +644,7 @@
                     <h3>01_DSD &amp; Hi-Res</h3>
                     <p class="text-muted" style="font-size: 0.78rem;">Chuẩn &gt;24-bit / 96kHz &amp; Native DSD</p>
                     <div class="vault-tier-metric" id="tier1-count">67 bài</div>
-                    <p class="vault-tier-desc">DSD SACD 1-bit nguyên bản và các bản master PCM 24/96k - 24/192k có dải sóng hài siêu âm tự nhiên.</p>
+                    <p class="vault-tier-desc">Phân nhóm theo định dạng DSD hoặc sample rate PCM cao; không xác thực nguồn master.</p>
                     <div class="text-secondary" style="font-size: 0.8rem;" id="tier1-size">Dung lượng: ~11.4 GB</div>
                 </div>
 
@@ -607,16 +653,16 @@
                     <h3>02_Lossless CD</h3>
                     <p class="text-muted" style="font-size: 0.78rem;">Chuẩn Red Book 16/44.1k &amp; Studio 24/44-48k</p>
                     <div class="vault-tier-metric" id="tier2-count">649 bài</div>
-                    <p class="vault-tier-desc">Toàn bộ kho nhạc FLAC/WAV chuẩn CD 16-bit bit-perfect và bản master 24-bit/48k nguyên chất.</p>
+                    <p class="vault-tier-desc">Nhóm định dạng lossless theo header; độ phân giải nguồn và master chưa xác thực.</p>
                     <div class="text-secondary" style="font-size: 0.8rem;" id="tier2-size">Dung lượng: ~18.9 GB</div>
                 </div>
 
                 <div class="vault-tier-card tier-3 clickable-tier" data-tier="03_Quarantine" style="cursor: pointer;" title="Bấm để lọc bảng kế hoạch theo Tầng 3">
                     <span class="tier-header-badge">TẦNG 3 &bull; CÁCH LY</span>
                     <h3>03_Quarantine</h3>
-                    <p class="text-muted" style="font-size: 0.78rem;">Fake Hi-Res, Fake 24-bit, MP3, File Lỗi</p>
+                    <p class="text-muted" style="font-size: 0.78rem;">Lỗi toàn vẹn, Fake 24-bit, MP3, File Lỗi</p>
                     <div class="vault-tier-metric" id="tier3-count">928 bài</div>
-                    <p class="vault-tier-desc">Khu vực cách ly các bản nhạc upsample giả mạo, 24-bit độn số 0, file FLAC bị Bit-Rot và nhạc nén MP3/AAC.</p>
+                    <p class="vault-tier-desc">Phân nhóm quản lý tệp lỗi, padding đã đo hoặc định dạng lossy; phân nhóm không chứng minh gian lận.</p>
                     <div class="text-secondary" style="font-size: 0.8rem;" id="tier3-size">Dung lượng: ~7.4 GB</div>
                 </div>
             </div>
@@ -779,12 +825,12 @@
                     </div>
                     <div class="card-body">
                         <p class="text-muted mb-3">
-                            Ghi tag <code>[True Hi-Res]</code> hoặc <code>[Fake Hi-Res]</code> vào trường <code>COMMENT</code> của file nhạc để tạo <strong>Smart Playlist</strong> tự động trên Navidrome.
+                            Ghi tag <code>[PCM sample rate cao]</code> hoặc <code>[Lỗi toàn vẹn]</code> vào trường <code>COMMENT</code> của file nhạc để tạo <strong>Smart Playlist</strong> tự động trên Navidrome.
                         </p>
                         <div class="alert-box alert-indigo mb-4">
                             <div class="alert-content">
                                 <strong>Tiêu chí Smart Playlist:</strong>
-                                <code>comment contains "[True Hi-Res]"</code>
+                                <code>comment contains "[PCM sample rate cao]"</code>
                             </div>
                         </div>
 
@@ -846,7 +892,7 @@
                             <div class="dr-stat-val" id="modal-audit-gain">-- dB</div>
                         </div>
                         <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Cắt Tần (fakeflac)</div>
+                            <div class="dr-stat-label">Biên phổ (sàng lọc)</div>
                             <div class="dr-stat-val" id="modal-audit-cutoff">-- kHz</div>
                         </div>
                         <div class="dr-stat-mini">
@@ -932,6 +978,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=3.2"></script>
+    <script src="app.js?v=3.3"></script>
+    <script src="scoring.js?v=1"></script>
 </body>
 </html>

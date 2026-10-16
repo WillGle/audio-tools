@@ -809,9 +809,12 @@ async function loadTracks() {
         let html = '';
         tracks.forEach((track, idx) => {
             const verdictStyles = {
-                TRUE_HIRES: ['emerald', 'True Hi-Res'],
+                FORMAT_HIRES: ['indigo', 'PCM sample rate cao'],
+                DSD_SOURCE_UNVERIFIED: ['cyan', 'DSD, nguồn chưa xác thực'],
+                REVIEW: ['amber', 'Cần xem xét'],
+                INTEGRITY_FAIL: ['rose', 'Lỗi toàn vẹn'],
                 TRUE_DSD: ['cyan', 'True DSD'],
-                STUDIO_MASTER_24BIT: ['amber', 'Studio Master'],
+
                 FAKE_HIRES_UPSAMPLED: ['rose', 'Fake Hi-Res'],
                 FAKE_LOSSLESS: ['rose', 'Fake Lossless'],
                 FAKE_24BIT: ['rose', 'Fake 24-bit'],
@@ -1174,6 +1177,7 @@ async function runAudiophileAuditForPath(filepath) {
             body: JSON.stringify({ filepath })
         });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Không phân tích được audio');
         currentAuditResult = data;
 
         renderAudiophileAuditResults(data);
@@ -1188,6 +1192,7 @@ async function runAudiophileAuditForPath(filepath) {
 }
 
 function renderAudiophileAuditResults(data) {
+    if (data.authenticity && window.renderAuthenticity) window.renderAuthenticity(data.authenticity);
     // 1. Dynamic Range Meter
     const dr = data.dynamic_range || {};
     const drScore = dr.dr_score || 0;
@@ -1246,7 +1251,7 @@ function renderAudiophileAuditResults(data) {
         elCutoffHz.textContent = spec.cutoff_hz ? `${spec.cutoff_hz.toLocaleString()} Hz` : 'N/A';
     }
     if (elCutoffDrop) {
-        elCutoffDrop.textContent = spec.cutoff_drop_db !== undefined ? `-${spec.cutoff_drop_db} dB` : '--';
+        elCutoffDrop.textContent = spec.cutoff_drop_db != null ? `-${spec.cutoff_drop_db} dB` : '--';
     }
 
     // 4. DSD / SACD Purity
@@ -1264,12 +1269,12 @@ function renderAudiophileAuditResults(data) {
     const loudness = data.loudness || {};
     const loudBadge = document.getElementById('pillar-loudness-badge');
     if (loudBadge) {
-        loudBadge.textContent = loudness.replaygain_track_gain || 'ReplayGain OK';
+        loudBadge.textContent = loudness.replaygain_track_gain || 'ReplayGain chưa đo được';
     }
     document.getElementById('loudness-lufs-val').textContent = `${loudness.integrated_lufs !== undefined ? loudness.integrated_lufs + ' LUFS' : '--'}`;
     document.getElementById('loudness-peak-val').textContent = `${loudness.true_peak_db !== undefined ? loudness.true_peak_db + ' dBTP' : '--'}`;
     document.getElementById('loudness-rg-val').textContent = loudness.replaygain_track_gain || '--';
-    document.getElementById('loudness-msg-desc').textContent = `Target: -18 LUFS (ReplayGain 2.0) | R128 Gain: ${loudness.r128_track_gain || '--'}. Bit-perfect, không suy hao âm chất.`;
+    document.getElementById('loudness-msg-desc').textContent = loudness.error || `Target: -18 LUFS (ReplayGain 2.0) | R128 Gain: ${loudness.r128_track_gain || '--'}. Bit-perfect, không suy hao âm chất.`;
 
     // 6. Gapless Playback
     const gapless = data.gapless || {};
@@ -2519,7 +2524,7 @@ async function openSpectrogramModal(filepath, title, specs) {
         const cutoffLabel = data.cutoff_hz ? (data.cutoff_hz > 24000 ? '>24 kHz (Full Range)' : `${(data.cutoff_hz/1000).toFixed(1)} kHz (-${data.cutoff_drop_db || 0}dB)`) : 'Không rõ';
         dspGrid.innerHTML = `
             <div class="dsp-metric">
-                <span class="dsp-metric-label">Cắt Tần (fakeflac)</span>
+                <span class="dsp-metric-label">Biên phổ (sàng lọc)</span>
                 <span class="dsp-metric-value" style="color: ${data.cutoff_drop_db >= 20 ? '#f43f5e' : '#10b981'}">${cutoffLabel}</span>
             </div>
             <div class="dsp-metric">
@@ -2532,7 +2537,7 @@ async function openSpectrogramModal(filepath, title, specs) {
             </div>
             <div class="dsp-metric">
                 <span class="dsp-metric-label">Đánh Giá Phổ Âm</span>
-                <span class="dsp-metric-value" style="color: ${data.badge_color || '#fff'}">${data.badge || data.verdict}</span>
+                <span class="dsp-metric-value" style="color: ${data.badge_color || '#fff'}">${escapeHtml(data.badge || data.verdict || '')}</span>
             </div>
         `;
     })
