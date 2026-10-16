@@ -1,0 +1,16 @@
+{
+  "page_errors": [],
+  "batch_rows": 25,
+  "checks": [
+    "single padding",
+    "legacy audit",
+    "recursive batch",
+    "comparison",
+    "critical warning with N/A",
+    "JSON export",
+    "spectrogram",
+    "stream",
+    "track list",
+    "mobile rendering"
+  ]
+}

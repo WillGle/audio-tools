@@ -1,0 +1,147 @@
+# Audio scoring validation results
+
+Measured locally on 2026-10-16, Linux x86_64, Python 3.14, NumPy 2.5.4,
+FFmpeg/ffprobe 8.0, FLAC 1.5.0, optional flaccheck 0.1.2. Rules: 1.0.0.
+These results verify implementation behavior on generated signals. They do
+**not** establish real-world music provenance accuracy or production certification.
+
+## Automated regressions
+
+`python -m pytest -q`: **31 passed**, 61.39 seconds after debloat, without optional
+flaccheck. The earlier integration run also passed **31 tests** in 69.44 seconds
+with the pinned flaccheck release in PATH. The DEEP calibration below was rerun
+with flaccheck after cleanup.
+
+Coverage includes actual decoding, exact per-channel padding, a single nonzero
+low-bit counterexample, dither, silence/very-low-level abstention, opposite-polarity
+channels, native Hi-Res and legitimate low-pass controls, MP3/AAC transcodes,
+mixed-source audio, suspected upsampling, full-scale plateaus, NaN/Inf, floating
+headroom and near-rail values, corruption, missing MD5, claims/reference/FAST,
+Unicode paths, queue persistence/cache invalidation, cancellation, runtime/output
+limits, symlink traversal rejection, API exports and legacy audit fallback.
+
+Independent review found two regressions, both reproduced before repair and now
+covered: metadata-only truncated FLAC must remain a critical integrity failure;
+DSD must be grouped before high-rate PCM, including extension fallback. A
+confirmed FLAC failure also survives an independent decoder allocation error.
+Unknown MP3 bit depth cannot create a fictitious user-claim mismatch.
+The DSD grouping test exercises application logic; it is not a real DSD recording
+or DSD provenance validation.
+
+The managed execution sandbox exhibited an AnyIO thread-wakeup hang even in a
+minimal standalone reproduction. API/full-suite and Chromium validation ran
+outside that sandbox against disposable caches and synthetic vaults. No real
+music library was modified or used as calibration data.
+
+## Reproducible fixtures and calibration
+
+[`tests/audio_fixtures.py`](../tests/audio_fixtures.py) uses seed 20261016 and
+actual FFmpeg encoders/decoders. It creates 22 labeled analysis fixtures, generally
+four seconds long (the mixed-source fixture concatenates two sections). All
+samples are self-generated. Intermediate MP3/AAC files are also present for scans.
+AAC encoding was available in this environment. No copyrighted reference music
+is distributed.
+
+[`examples/calibration.json`](examples/calibration.json) contains all measured
+rows. Its DEEP run used optional flaccheck; per-file runtime ranged from 1.2908
+to 2.0478 seconds, median 1.4675 seconds. Cache was not used in this calibration.
+
+| Fixture / actual JSON | Observed result | Score / coverage |
+|---|---|---|
+| [Valid 16-bit/44.1 kHz](examples/valid_cd.json) | Full decode, FLAC checksum verified; source history INCONCLUSIVE | 100 / 61.54% |
+| [16-bit padded to 24-bit](examples/padded_24.json) | All eight low bits zero in both channels; exact padding deduction | 78.2 / 68.75% |
+| [44.1 → 96 kHz](examples/upsampled_96000.json) | Spectral bandwidth REVIEW; suspected source rate null | N/A / 55% |
+| [MP3 128 kbps → FLAC](examples/mp3_128k.json) | Source-history REVIEW, no unsupported codec/bitrate claim or penalty | 100 / 68.75% |
+| [Truncated FLAC](examples/truncated.json) | Critical integrity FAIL independently displayed | N/A / 46.15% |
+| [Legitimate 20 kHz low-pass](examples/legitimate_lowpass.json) | Spectral REVIEW, no transcode accusation/deduction | 100 / 61.54% |
+
+A score of 100 on the measured subset does not resolve lossy history. Coverage
+and REVIEW must accompany it. The 192 kHz upsample fixture also yields N/A/55%.
+Dither prevents an exact-padding finding but cannot restore or prove source
+resolution. The clipped fixture scores 87.5; DC offset is REVIEW without a penalty.
+All nine labeled lossless controls avoid automatic source-history accusations
+and associated deductions. This does not imply all nine were positively verified
+as original lossless sources.
+
+| Decision policy, 4 lossy positives / 9 lossless controls | TP | FP | Missed positives | Precision | Recall |
+|---|---:|---:|---:|---:|---:|
+| Automatic lossy accusation (SUSPECT/FAIL) | 0 | 0 | 4 including abstentions | N/A | 0% |
+| REVIEW screening, including optional flaccheck | 4 | 3 | 0 | 57.14% | 100% |
+| Raw flaccheck TRANSCODED/SUSPICIOUS labels | 3 | 3 | 1 | 50% | 75% |
+
+Automatic source-history abstention is **100%**: four positive and nine negative
+cases abstain, with zero definitive true-negative source-history decisions.
+Operational recall above counts abstained positives as misses; REVIEW is a
+request for inspection, not a positive fraud classification. The three REVIEW
+false positives are the two intentionally low-pass lossless controls and the
+wideband synthetic Hi-Res control. flaccheck misses the mixed-source fixture.
+Without optional flaccheck, both low-pass controls still trigger spectral REVIEW.
+These small, synthetic sets cannot justify published accuracy claims. Lossy and
+sample-rate penalties remain disabled pending independently labeled real-music
+validation across distinct detector families.
+
+## Runtime and memory
+
+[`examples/performance.json`](examples/performance.json) measures BALANCED native
+96 kHz stereo FLAC in a fresh interpreter for each duration, with optional
+flaccheck disabled. Full decode, FLAC verification and EBU R128 all completed.
+
+| Audio duration | Engine wall time | Python peak RSS | Largest individual child peak RSS |
+|---|---:|---:|---:|
+| 4 seconds | 2.3720 seconds | 51.02 MiB | 79.95 MiB |
+| 120 seconds | 4.8328 seconds | 51.65 MiB | 79.92 MiB |
+
+RSS uses Linux `getrusage`; the child column is not summed simultaneous memory.
+The near-constant values support bounded streaming for these inputs only.
+Calibration-process RSS includes fixture generation and must not be confused
+with isolated engine RSS. No thousand-file, six-hour or maximum-concurrency soak
+was performed; disk speed, channels, rates and optional tools affect performance.
+
+## Dashboard checks
+
+The real Chromium smoke run uses Playwright 1.58.0 and system Chromium 149,
+a disposable uvicorn server, cache and generated vault. It exercises single-file
+padding analysis, legacy audit, recursive scanning, comparison selection,
+critical warning with N/A, JSON export, FFmpeg spectrogram, streaming, live track
+listing and rendering at a 390px viewport. See
+[`examples/browser-results.json`](examples/browser-results.json) for actual counts
+and JavaScript errors. Mobile rendering is a smoke check, not a responsive-layout
+or accessibility certification; the pre-existing header can overflow narrow
+viewports. Screenshots are produced in the chosen temporary output directory.
+
+## Re-run
+
+From the repository root, with development dependencies and system tools:
+
+```bash
+uv run pytest -q
+uv run python -m tests.calibrate_audio /tmp/audio-fixtures /tmp/audio-results
+uv run --extra browser python tests/browser_audio.py /tmp/audio-fixtures /tmp/audio-browser
+uv run python -m tests.performance_audio /tmp/audio-performance
+```
+
+Add the verified flaccheck 0.1.2 binary to PATH to reproduce the optional-detector
+column. JSON examples include hashes, actual timestamp, engine digest, detector
+versions and configuration. They are saved measurements, never runtime detector
+inputs. Fixture generator and performance commands are intended for dedicated
+temporary directories and recreate their generated files there.
+
+Remaining validation boundaries: real-world provenance labels, short mixed-source
+segments outside sampled windows, validated independent MDCT/pre-echo/resampling
+signatures, Windows/macOS runtime behavior, external-reference trust, real DSD
+recordings, very large library stress and crash/disk-full recovery. Unfinished
+jobs are explicitly INTERRUPTED after restart rather than automatically resumed.
+
+## Debloat pass
+
+Removed 114 net Python lines: unused legacy DSP/wrappers, duplicate loudness
+parsing, unused block-peak buffers and redundant metadata subprocesses. A real
+full audit now uses one metadata probe and emits the authenticity report once:
+22,419 bytes versus 42,111 bytes if the same report were duplicated in spectrum.
+The six complete analysis snapshots use compact JSON; no measurements or evidence
+fields were removed (approximately 56% smaller across example reports).
+
+Removed unused dr14meter. Playwright and its dependencies are opt-in through the
+`browser` extra; they are not required for the app or Python regressions.
+Experimental flaccheck runs only in DEEP. Queue, cache, cancellation, subprocess
+limits, fixtures, evidence, reference comparison and existing dashboard remain.
