@@ -58,6 +58,7 @@ def run(root, output):
                 page.evaluate('window.scrollTo(0,0)')
                 page.screenshot(path=str(output/'scoring-desktop.png'), full_page=True)
                 # Editing search clears stale selection; supplementary audit uses the selected file.
+                page.locator('#scoring-setup > summary').click()
                 search.fill('valid_cd')
                 assert page.locator('#scoring-single').is_disabled()
                 page.locator('.combobox-item', has_text='valid_cd.flac').click()
@@ -83,6 +84,7 @@ def run(root, output):
                 export = page.request.get(base+page.locator('#scoring-export-json').get_attribute('href'))
                 rows = export.json()
                 assert len(rows) == total and all('result' in row for row in rows)
+                assert page.locator('#scoring-result').is_hidden()  # batch waits for explicit selection
                 # Select the critical result; score may be N/A, warning must remain visible.
                 for row in page.locator('#scoring-results tr').all():
                     if row.locator('td').first.inner_text() == 'truncated.flac':
@@ -92,6 +94,7 @@ def run(root, output):
                 assert page.locator('#auth-warnings').get_attribute('class') == 'critical'
                 assert page.locator('#btn-audiophile-tag-now').is_hidden()
                 # A bad folder reports an actionable error and leaves retry available.
+                page.locator('#scoring-setup > summary').click()
                 page.locator('#scoring-folder').fill('../outside')
                 page.locator('#scoring-single').click()
                 page.locator('#scoring-error').wait_for(state='visible')
@@ -115,7 +118,7 @@ def run(root, output):
                 for name in ['padded_24.flac', 'valid_cd.flac']:
                     page.locator(f'.track-row-checkbox[data-path="{name}"]').check()
                 page.locator('#btn-batch-score').click()
-                assert page.locator('#scoring-selected-count').inner_text() == '2'
+                assert page.locator('#scoring-selected-count').text_content() == '2'
                 page.wait_for_function("document.getElementById('scoring-progress').dataset.status === 'COMPLETED' && document.querySelectorAll('#scoring-results tr').length === 2", timeout=60000)
                 assert not errors, errors
                 (output/'browser-results.json').write_text(json.dumps({'page_errors': errors,

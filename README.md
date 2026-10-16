@@ -59,11 +59,14 @@ Truy cập giao diện Web tại: **`http://localhost:5050`**. Mặc định ch�
 
 ## Duyệt và sắp xếp kho nhạc local
 
-Ở tab **Kho nhạc & sắp xếp**, nhập thư mục tải mới (tương đối trong kho,
+Ở tab **Sắp xếp**, nhập thư mục tải mới (tương đối trong kho,
 ví dụ `Downloads`), hoặc để trống để quét toàn bộ. Bấm **Đọc metadata & xem trước**.
 Ứng dụng đọc tag trong cả thư mục con và đề xuất
 `Nghệ sĩ / Album / Số bài - Tên bài.ext`, ưu tiên album artist để gom album.
 Lọc nhóm sẵn sàng, thiếu metadata, trùng đích hoặc đã đúng vị trí để kiểm tra.
+Mỗi bài có thẻ riêng, hiển thị metadata và đường dẫn cũ/mới xuống dòng đầy đủ;
+danh sách chia 20 bài/trang. Nút áp dụng xử lý mọi bài sẵn sàng trong bản xem trước,
+kể cả các trang khác và các bài ngoài nhóm đang lọc.
 
 **Áp dụng đổi tên & di chuyển** yêu cầu xác nhận bản xem trước. Chỉ các bài sẵn
 sàng được chuyển; không ghi đè, sửa tag hoặc mã hóa lại audio. Thiếu tên/nghệ sĩ
@@ -84,6 +87,9 @@ phím mũi tên/Enter, hoặc chọn nhiều bài ở Kho Nhạc rồi bấm nú
 Kết quả hiển thị điểm authenticity, confidence, coverage, cảnh báo toàn vẹn và
 đối chiếu khai báo với phép đo. Chọn **Chi tiết** trong bảng để xem từng bài;
 mở thẻ chẩn đoán để đọc bằng chứng và số liệu. Có thể hủy hoặc xem lại lượt quét.
+Thiết lập tự thu gọn khi bắt đầu quét và có thể mở lại. Khi quét nhiều bài,
+chọn **Chi tiết** để mở kết quả từng bài; bảng đối chiếu thông số và menu xuất
+kết quả được thu gọn để ưu tiên tiến độ và danh sách.
 Các kiểm tra playback, ReplayGain, gapless, fingerprint và phân tầng nằm trong
 phần chẩn đoán bổ sung, tách khỏi điểm. Ghi tag và quản lý file vẫn là thao tác riêng.
 

@@ -33,6 +33,7 @@ cache/spectrograms/*.png
 cache/*.sqlite
 cache/*.sqlite-journal
 cache/*.sqlite-wal
+cache/metadata_organize_plan.json
 
 # Rollback and plan temporary files
 .vault_tiering_rollback.json

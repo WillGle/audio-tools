@@ -121,6 +121,10 @@ separate rollback journals, stale plans, changed sources, traversal/symlink esca
 rejection and a 390px viewport with no document overflow; no JavaScript errors.
 These checks cover the FLAC workflow, not metadata compatibility for every codec
 or simultaneous changes made by another application during a move.
+The redesigned preview was additionally exercised with 23 long-tag/path fixtures
+(27 files total): 20-item pages, next/previous, group-filter page reset, explicit
+all-pages apply count, and wrapping without horizontal overflow at desktop and
+390px widths. No moves were applied to the long-name fixtures.
 
 ## Re-run
 
