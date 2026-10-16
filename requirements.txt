@@ -1,0 +1,13 @@
+# Hi-Res Vault Companion & Audiophile 7-Pillar Studio
+# Python Requirements
+#
+# System requirements (non-python):
+#   - ffmpeg / ffprobe (>= 4.4)
+#   - flac (>= 1.3)
+
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+mutagen>=1.47.0
+numpy>=1.26.0
+scipy>=1.12.0

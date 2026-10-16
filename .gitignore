@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+
+# App Cache & Logs
+app.log
+cache/spectrograms/*.png
+cache/*.sqlite
+cache/*.sqlite-journal
+cache/*.sqlite-wal
+
+# Rollback and plan temporary files
+.vault_tiering_rollback.json
+.organize_rollback.json
