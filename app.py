@@ -463,6 +463,7 @@ _organize_plan_file = CACHE_DIR / 'metadata_organize_plan.json'
 class OrganizeRequest(BaseModel):
     folder: str = ''
     plan_id: str = ''
+    filename_format: str = '{track} - {title}'
 
 
 @app.post('/api/organize/preview')
@@ -471,7 +472,7 @@ def preview_metadata_organization(req: OrganizeRequest):
     from uuid import uuid4
     with _organize_lock:
         try:
-            plan = metadata_plan(ROOT_DIR, req.folder)
+            plan = metadata_plan(ROOT_DIR, req.folder, req.filename_format)
         except (ValueError, OSError) as exc:
             raise HTTPException(status_code=400, detail=str(exc))
         plan['plan_id'] = uuid4().hex
