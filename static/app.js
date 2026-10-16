@@ -2314,12 +2314,16 @@ function initOrganize() {
     const filter = document.getElementById('metadata-organize-filter');
     const more = document.getElementById('metadata-organize-more');
     const previous = document.getElementById('metadata-organize-prev');
+    const filenameFormat = document.getElementById('metadata-organize-format');
+    const search = document.getElementById('metadata-organize-search');
+    const changeFilter = document.getElementById('metadata-organize-change');
     let plan = null, page = 0;
-    const perPage = 20;
+    const perPage = 50;
     const labels = {READY: 'Sẵn sàng', REVIEW: 'Cần kiểm tra', CONFLICT: 'Trùng đích', UNCHANGED: 'Đã đúng vị trí'};
     const buttons = ['metadata-organize-preview', 'metadata-organize-apply', 'metadata-organize-undo'];
     const setBusy = busy => {
         document.getElementById('metadata-organize-folder').disabled = busy;
+        filenameFormat.disabled = busy;
         buttons.forEach(id => {
             document.getElementById(id).disabled = busy || (id === 'metadata-organize-apply' && !plan?.counts.READY);
         });
@@ -2332,40 +2336,67 @@ function initOrganize() {
     };
     const render = () => {
         const rows = document.getElementById('metadata-organize-rows'); rows.replaceChildren();
-        const items = (plan?.items || []).filter(item => filter.value === 'all' || item.status === filter.value);
+        const query = search.value.trim().toLocaleLowerCase();
+        const items = (plan?.items || []).filter(item => {
+            if (filter.value !== 'all' && item.status !== filter.value) return false;
+            const renamed = item.dest_path && item.original_path.split('/').pop() !== item.dest_path.split('/').pop();
+            const moved = item.dest_path && item.original_path !== item.dest_path;
+            if (changeFilter.value === 'rename' && !renamed) return false;
+            if (changeFilter.value === 'move' && (renamed || !moved)) return false;
+            return !query || [item.original_path, item.dest_path, item.title, item.artist, item.album]
+                .some(value => (value || '').toLocaleLowerCase().includes(query));
+        });
         items.slice(page * perPage, (page + 1) * perPage).forEach(item => {
-            const row = document.createElement('article');
+            const row = document.createElement('tr');
             row.className = 'organize-item'; row.dataset.status = item.status;
-            row.setAttribute('role', 'listitem');
             const add = (tag, className, value, parent) => {
                 const node = document.createElement(tag); node.className = className;
                 node.textContent = value; parent.append(node); return node;
             };
-            const heading = add('div', 'organize-item-heading', '', row);
-            add('h3', 'organize-title', item.title || item.original_path.split('/').pop(), heading);
-            add('span', 'organize-badge', labels[item.status], heading);
-            const metadata = add('dl', 'organize-tags', '', row);
-            [['Nghệ sĩ', item.artist], ['Album', item.album]].forEach(([label, value]) => {
-                const group = add('div', '', '', metadata);
-                add('dt', '', label, group); add('dd', '', value || 'Chưa có tag', group);
+            const oldName = item.original_path.split('/').pop();
+            const newName = item.dest_path ? item.dest_path.split('/').pop() : oldName;
+            const oldFolder = item.original_path.includes('/') ? item.original_path.slice(0, item.original_path.lastIndexOf('/')) : '.';
+            const newFolder = item.dest_path ? item.dest_path.slice(0, item.dest_path.lastIndexOf('/')) || '.' : oldFolder;
+            const renamed = oldName !== newName, moved = oldFolder !== newFolder;
+            const before = Array.from(oldName), after = Array.from(newName);
+            let prefix = 0, suffix = 0;
+            while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) prefix++;
+            while (suffix < before.length - prefix && suffix < after.length - prefix && before[before.length - 1 - suffix] === after[after.length - 1 - suffix]) suffix++;
+            [['Tên hiện tại', before, 'old'], ['Tên đề xuất', after, 'new']].forEach(([label, chars, side]) => {
+                const group = add('td', 'organize-path', '', row);
+                group.dataset.label = label;
+                group.dataset.side = side;
+                const name = add('p', 'organize-filename', '', group);
+                if (side === 'new' && !item.dest_path) name.textContent = 'Chưa có đề xuất';
+                else if (renamed) {
+                    name.append(document.createTextNode(chars.slice(0, prefix).join('')));
+                    if (chars.length - suffix > prefix) add('mark', '', chars.slice(prefix, chars.length - suffix).join(''), name);
+                    name.append(document.createTextNode(chars.slice(chars.length - suffix).join('')));
+                } else name.textContent = chars.join('');
             });
-            const paths = add('div', 'organize-paths', '', row);
-            [['Hiện tại', item.original_path], ['Sau sắp xếp', item.dest_path || 'Giữ nguyên vị trí hiện tại']].forEach(([label, value]) => {
-                const group = add('div', 'organize-path', '', paths);
-                add('span', 'organize-path-label', label, group);
-                add('p', '', value, group);
+            const info = add('td', 'organize-info', '', row);
+            info.dataset.label = 'Trạng thái / Chi tiết';
+            add('span', 'organize-badge', labels[item.status], info);
+            const details = add('details', 'organize-details', '', info);
+            add('summary', '', 'Chi tiết', details);
+            add('span', 'organize-change-kind', renamed ? `Đổi tên${moved ? ' + chuyển thư mục' : ''}` : moved ? 'Chỉ chuyển thư mục' : item.dest_path ? 'Giữ nguyên' : 'Chưa có đề xuất', details);
+            [['Nghệ sĩ', item.artist || 'Chưa có tag'], ['Album', item.album || 'Chưa có tag'],
+                ['Thư mục cũ', oldFolder === '.' ? 'Gốc kho nhạc' : oldFolder],
+                ['Thư mục mới', item.dest_path ? newFolder : 'Chưa có đề xuất']].forEach(([label, value]) => {
+                add('p', 'organize-directory', `${label}: ${value}`, details);
             });
-            add('p', 'organize-reason', item.reason, row);
+            if (item.status !== 'READY' || item.reason.includes('Thiếu album')) add('p', 'organize-reason', item.reason, details);
             rows.append(row);
         });
         if (!items.length) {
-            const empty = document.createElement('p'); empty.textContent = 'Không có bài trong nhóm này.'; rows.append(empty);
+            const empty = rows.insertRow().insertCell(); empty.colSpan = 3;
+            empty.textContent = 'Không có bài khớp bộ lọc hoặc từ khóa.';
         }
         previous.disabled = page === 0;
         more.disabled = (page + 1) * perPage >= items.length;
         document.getElementById('metadata-organize-page').textContent = items.length
-            ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, items.length)} / ${items.length} bài trong nhóm`
-            : '0 bài trong nhóm';
+            ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, items.length)} / ${items.length} bài khớp bộ lọc`
+            : '0 bài khớp bộ lọc';
         apply.textContent = `Áp dụng ${plan?.counts.READY || 0} bài sẵn sàng (tất cả các trang)`;
     };
     form.addEventListener('submit', async event => {
@@ -2373,20 +2404,24 @@ function initOrganize() {
         document.getElementById('metadata-organize-results').hidden = true;
         status.textContent = 'Đang đọc metadata trong thư mục và các thư mục con…';
         try {
-            plan = await request('preview', {folder: document.getElementById('metadata-organize-folder').value.trim()});
-            page = 0; filter.value = 'all'; render();
+            plan = await request('preview', {folder: document.getElementById('metadata-organize-folder').value.trim(), filename_format: filenameFormat.value});
+            page = 0; filter.value = 'all'; search.value = ''; changeFilter.value = 'all'; render();
             const c = plan.counts;
             status.textContent = `${plan.total} bài · ${c.READY} sẵn sàng · ${c.REVIEW} cần kiểm tra · ${c.CONFLICT} trùng đích · ${c.UNCHANGED} đã đúng vị trí. Chưa thay đổi tệp.`;
             document.getElementById('metadata-organize-results').hidden = false;
         } catch (error) { status.textContent = error.message; }
         finally { setBusy(false); }
     });
-    document.getElementById('metadata-organize-folder').addEventListener('input', () => {
+    const invalidatePreview = () => {
         plan = null; apply.disabled = true;
         document.getElementById('metadata-organize-results').hidden = true;
-        status.textContent = 'Phạm vi đã đổi. Bấm đọc metadata để xem trước lại.';
-    });
+        status.textContent = 'Thư mục hoặc mẫu tên đã đổi. Bấm đọc metadata để xem trước lại.';
+    };
+    document.getElementById('metadata-organize-folder').addEventListener('input', invalidatePreview);
+    filenameFormat.addEventListener('input', invalidatePreview);
     filter.addEventListener('change', () => { page = 0; render(); });
+    search.addEventListener('input', () => { page = 0; render(); });
+    changeFilter.addEventListener('change', () => { page = 0; render(); });
     const turnPage = step => {
         page += step; render();
         document.getElementById('metadata-organize-results').scrollIntoView({block: 'start'});

@@ -104,16 +104,22 @@
                 <p>Quét cả thư mục con → đọc tag → xem tên và vị trí mới. Không cần kiểm định âm thanh trước.</p>
                 <form id="metadata-organize-form" class="scoring-controls">
                     <label>Thư mục tải mới trong kho <input id="metadata-organize-folder" placeholder="Để trống để duyệt toàn bộ kho"></label>
+                    <label class="organize-pattern-field">Mẫu tên file <input id="metadata-organize-format" value="{track} - {title}" list="metadata-organize-formats" maxlength="240" aria-describedby="metadata-organize-format-help" required></label>
+                    <datalist id="metadata-organize-formats"><option value="{track} - {title}"><option value="{artist} - {title}"><option value="{title}"><option value="{disc}-{track} - {title}"></datalist>
                     <button class="btn btn-primary" id="metadata-organize-preview" type="submit">Đọc metadata &amp; xem trước</button>
                 </form>
-                <p class="text-secondary">Cấu trúc: Nghệ sĩ / Album / Số bài - Tên bài. Thiếu tên hoặc nghệ sĩ: giữ nguyên. Không ghi đè tệp trùng, không sửa tag hay mã hóa lại audio.</p>
+                <p id="metadata-organize-format-help" class="text-secondary">Sửa mẫu hoặc chọn gợi ý. Biến: {track} số bài, {title} tên bài, {artist} nghệ sĩ, {album} album, {disc} số đĩa. Đuôi file giữ tự động; số bài/đĩa có 2 chữ số.</p>
+                <p class="text-secondary">Thư mục đích: Nghệ sĩ / Album. Thiếu tên hoặc nghệ sĩ: giữ nguyên. Không ghi đè tệp trùng hay sửa nội dung audio/tag.</p>
                 <p id="metadata-organize-status" role="status" aria-live="polite"></p>
                 <div id="metadata-organize-results" hidden>
                     <div class="scoring-controls">
+                        <label class="organize-search-field">Tìm bài <input type="search" id="metadata-organize-search" placeholder="Tên file, nghệ sĩ, album, thư mục…"></label>
                         <label>Nhóm <select id="metadata-organize-filter"><option value="all">Tất cả</option><option value="READY">Sẵn sàng đổi tên</option><option value="REVIEW">Thiếu metadata / cần kiểm tra</option><option value="CONFLICT">Trùng đường dẫn đích</option><option value="UNCHANGED">Đã đúng vị trí</option></select></label>
+                        <label>Thay đổi <select id="metadata-organize-change"><option value="all">Tất cả thay đổi</option><option value="rename">Có đổi tên</option><option value="move">Chỉ chuyển thư mục</option></select></label>
                         <button type="button" class="btn btn-primary" id="metadata-organize-apply" disabled>Áp dụng đổi tên &amp; di chuyển</button>
                     </div>
-                    <div id="metadata-organize-rows" class="organize-list" role="list" aria-label="Xem trước sắp xếp từng bài"></div>
+                    <p class="table-hint">Phần tô màu là ký tự thay đổi. Mở Chi tiết để xem metadata và thư mục. Áp dụng cho tất cả bài sẵn sàng, kể cả ngoài bộ lọc.</p>
+                    <div class="organize-table-scroll" tabindex="0" role="region" aria-label="So sánh tên file"><table class="organize-table"><thead><tr><th scope="col">Tên hiện tại</th><th scope="col">Tên đề xuất</th><th scope="col">Trạng thái / Chi tiết</th></tr></thead><tbody id="metadata-organize-rows"></tbody></table></div>
                     <nav class="organize-pagination" aria-label="Trang xem trước">
                         <span id="metadata-organize-page" role="status"></span>
                         <div class="btn-group">
