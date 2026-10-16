@@ -5,3 +5,147 @@ ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0', 5050)
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
 Khởi động Hi-Res Vault Companion Web App tại http://0.0.0.0:5050
+INFO:     Started server process [1149353]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5050 (Press CTRL+C to quit)
+Khởi động Hi-Res Vault Companion Web App tại http://127.0.0.1:5050
+INFO:     127.0.0.1:60846 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60860 - "POST /api/organize/edit HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:59194 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59194 - "GET /style.css?v=3.2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59194 - "GET /app.js?v=3.3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59198 - "GET /scoring.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59204 - "GET /api/scoring/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59204 - "GET /api/scoring/jobs/f131b6f62e7046f69e471b4e5f49ecf5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59204 - "GET /api/scoring/jobs/f131b6f62e7046f69e471b4e5f49ecf5/results?offset=0&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59204 - "GET /api/scoring/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59198 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59194 - "GET /api/tracks?filter=all&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59194 - "POST /api/organize/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39974 - "POST /api/organize/edit HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:39974 - "POST /api/organize/edit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44674 - "POST /api/organize/apply HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44674 - "GET /api/tracks?filter=all&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45062 - "GET /api/duplicates?refresh=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45062 - "GET /api/tracks?filter=all&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36202 - "POST /api/organize/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "POST /api/organize/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53332 - "GET /api/vault/tiering/plan HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:54656 - "POST /api/organize/apply HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54656 - "GET /api/tracks?filter=all&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46786 - "GET /api/duplicates?refresh=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46786 - "GET /api/duplicates?refresh=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46786 - "GET /api/duplicates?refresh=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48146 - "GET /api/scoring/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56686 - "GET /api/scoring/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56696 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1149353]
+INFO:     Started server process [1322027]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5050 (Press CTRL+C to quit)
+Khởi động Hi-Res Vault Companion Web App tại http://127.0.0.1:5050
+INFO:     127.0.0.1:56790 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56794 - "GET /api/scoring/jobs/f131b6f62e7046f69e471b4e5f49ecf5/results?limit=50&sort=score&descending=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56804 - "GET /api/scoring/jobs/f131b6f62e7046f69e471b4e5f49ecf5/results?limit=1&sort=warning&descending=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34034 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34034 - "GET /style.css?v=3.2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34042 - "GET /scoring.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34034 - "GET /app.js?v=3.3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34046 - "GET /api/scoring/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34046 - "GET /api/scoring/jobs/f131b6f62e7046f69e471b4e5f49ecf5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34046 - "GET /api/scoring/jobs/f131b6f62e7046f69e471b4e5f49ecf5/results?offset=0&limit=50&sort=sequence&descending=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34046 - "GET /api/scoring/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34042 - "GET /api/tracks?filter=all&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34034 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34042 - "GET /api/duplicates?refresh=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36490 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33876 - "POST /api/duplicates/archive-byte-dupes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33876 - "GET /api/duplicates?refresh=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33876 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33876 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34742 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34742 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53716 - "GET /api/stream?filepath=daoko%2FUchiage%20Hanabi%2FUchiage%20Hanabi.mp3 HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:53728 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55376 - "GET /api/stream?filepath=Kenshi%20Yonezu%2FBOOTLEG%2FUchiage%20Hanabi.mp3 HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:55388 - "GET /api/stream?filepath=Kenshi%20Yonezu%2FBOOTLEG%2FUchiage%20Hanabi.mp3 HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:38504 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56176 - "GET /api/stream?filepath=GReeeeN%2F%E7%B8%81%2F%E3%83%93%E3%83%AA%E3%83%BC%E3%83%B4.mp3 HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:56182 - "GET /api/stream?filepath=GReeeeN%2F%E3%81%BE%E3%82%8B%E3%82%8F%E3%81%8B%E3%82%8A!_%20%E3%83%A1%E3%82%AC%E3%83%9F%E3%83%83%E3%82%AF%E3%82%B93%20%EF%BD%9E5ReeeeN%EF%BD%9E%2F%E3%83%93%E3%83%AA%E3%83%BC%E3%83%B4.mp3 HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:56182 - "GET /api/stream?filepath=GReeeeN%2F%E7%B8%81%2F%E3%83%93%E3%83%AA%E3%83%BC%E3%83%B4.mp3 HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:36432 - "POST /api/duplicates/archive-byte-dupes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34034 - "GET /api/vault/tiering/plan HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:36432 - "GET /api/duplicates?refresh=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36432 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36432 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60270 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60270 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60270 - "GET /api/stream?filepath=GReeeeN%2F%E7%B8%81%2F%E9%81%A0%E3%81%8F%E3%81%AE%E7%A9%BA%20%E6%8C%87%E3%81%95%E3%81%99%E3%82%93%E3%81%A0.mp3 HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:41192 - "GET /api/stream?filepath=GReeeeN%2F%E3%81%BE%E3%82%8B%E3%82%8F%E3%81%8B%E3%82%8A!_%20%E3%83%A1%E3%82%AC%E3%83%9F%E3%83%83%E3%82%AF%E3%82%B93%20%EF%BD%9E5ReeeeN%EF%BD%9E%2F%E9%81%A0%E3%81%8F%E3%81%AE%E7%A9%BA%20%E6%8C%87%E3%81%95%E3%81%99%E3%82%93%E3%81%A0.mp3 HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:41202 - "GET /api/stream?filepath=GReeeeN%2F%E3%81%BE%E3%82%8B%E3%82%8F%E3%81%8B%E3%82%8A!_%20%E3%83%A1%E3%82%AC%E3%83%9F%E3%83%83%E3%82%AF%E3%82%B93%20%EF%BD%9E5ReeeeN%EF%BD%9E%2F%E9%81%A0%E3%81%8F%E3%81%AE%E7%A9%BA%20%E6%8C%87%E3%81%95%E3%81%99%E3%82%93%E3%81%A0.mp3 HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:41202 - "GET /api/stream?filepath=GReeeeN%2F%E7%B8%81%2F%E9%81%A0%E3%81%8F%E3%81%AE%E7%A9%BA%20%E6%8C%87%E3%81%95%E3%81%99%E3%82%93%E3%81%A0.mp3 HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:41010 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41010 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41010 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51632 - "GET /api/stream?filepath=Tatsuro%20Yamashita%2FCOME%20ALONG%20II%2FYOUR%20EYES.flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:59468 - "GET /api/stream?filepath=Yamashita%20Tatsuro%2FFor%20You%2FYour%20Eyes.flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:59480 - "GET /api/stream?filepath=Yamashita%20Tatsuro%2FFor%20You%2FYour%20Eyes.flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:59492 - "GET /api/stream?filepath=Tatsuro%20Yamashita%2FCOME%20ALONG%20II%2FYOUR%20EYES.flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:59492 - "GET /api/stream?filepath=Tatsuro%20Yamashita%2FCOME%20ALONG%20II%2FYOUR%20EYES.flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:40470 - "GET /api/stream?filepath=Tatsuro%20Yamashita%2FCOME%20ALONG%20II%2FYOUR%20EYES.flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:41918 - "GET /api/stream?filepath=Yamashita%20Tatsuro%2FFor%20You%2FYour%20Eyes.flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:41928 - "POST /api/fingerprint/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41928 - "GET /api/stream?filepath=Tatsuro%20Yamashita%2FCOME%20ALONG%20II%2FLOVE%20TALKIN%27%20(honey%20it%27s%20you).flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:46096 - "GET /api/stream?filepath=Yamashita%20Tatsuro%2FFor%20You%2FLove%20Talkin%27%20(honey%20it%27s%20you).flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:46098 - "GET /api/stream?filepath=Yamashita%20Tatsuro%2FFor%20You%2FLove%20Talkin%27%20(honey%20it%27s%20you).flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:57494 - "GET /api/scoring/jobs/f131b6f62e7046f69e471b4e5f49ecf5/results?offset=0&limit=50&sort=coverage&descending=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57494 - "GET /api/scoring/jobs/f131b6f62e7046f69e471b4e5f49ecf5/results?offset=0&limit=50&sort=coverage&descending=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53146 - "GET /api/tracks?filter=all&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53146 - "GET /api/tracks?filter=dsd&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53146 - "GET /api/tracks?filter=fake_hires&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53146 - "GET /api/tracks?filter=studio_master&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53146 - "GET /api/tracks?filter=cd_lossless&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53146 - "GET /api/tracks?filter=lossy&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53146 - "GET /api/stream?filepath=(FREE)%20MICK%20JENKINS%20x%20J%20DILLA%20BEAT%20MOVIN%20ON%20_%20CHILL%20RAP%20TYPE%20BEAT.m4a HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:55600 - "GET /api/spectrogram?filepath=(FREE)%20MICK%20JENKINS%20x%20J%20DILLA%20BEAT%20MOVIN%20ON%20_%20CHILL%20RAP%20TYPE%20BEAT.m4a HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53146 - "POST /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55586 - "POST /api/audiophile/audit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55188 - "POST /api/scoring/jobs HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:55188 - "GET /api/scoring/jobs/08114171dd574314ac80b835e26973d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55188 - "GET /api/scoring/jobs/08114171dd574314ac80b835e26973d3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55188 - "GET /api/scoring/jobs/08114171dd574314ac80b835e26973d3/results?offset=0&limit=50&sort=sequence&descending=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55188 - "GET /api/scoring/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36278 - "GET /api/tracks?filter=lossy&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36286 - "GET /api/tracks?filter=true_hires&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50918 - "GET /api/stream?filepath=Bee%20Gees%2FThe%20Ultimate%20Bee%20Gees%20%5BCD%202%5D%2FToo%20Much%20Heaven.flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:50936 - "GET /api/spectrogram?filepath=Bee%20Gees%2FThe%20Ultimate%20Bee%20Gees%20%5BCD%202%5D%2FToo%20Much%20Heaven.flac HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50920 - "POST /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50926 - "POST /api/audiophile/audit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52056 - "GET /api/stream?filepath=Lana%20Del%20Rey%2FBorn%20To%20Die%20(Deluxe%20Version)%2FRadio.flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:52850 - "GET /api/spectrogram?filepath=Lana%20Del%20Rey%2FBorn%20To%20Die%20(Deluxe%20Version)%2FRadio.flac HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52838 - "POST /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52842 - "POST /api/audiophile/audit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45964 - "POST /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45968 - "POST /api/audiophile/audit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58940 - "POST /api/scoring/jobs HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:58940 - "GET /api/scoring/jobs/0f02566cc63e4eacb807e99289bb086c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58940 - "GET /api/scoring/jobs/0f02566cc63e4eacb807e99289bb086c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58940 - "GET /api/scoring/jobs/0f02566cc63e4eacb807e99289bb086c/results?offset=0&limit=50&sort=sequence&descending=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58940 - "GET /api/scoring/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46140 - "GET /api/tracks?filter=true_hires&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59242 - "GET /api/vault/tiering/plan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40764 - "GET /api/stream?filepath=RPT%20MCK%2FHVL%2FC%E1%BA%A3m%20%C6%A0n.flac HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:40792 - "GET /api/spectrogram?filepath=RPT%20MCK%2FHVL%2FC%E1%BA%A3m%20%C6%A0n.flac HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40780 - "POST /api/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40784 - "POST /api/audiophile/audit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43400 - "POST /api/scoring/jobs HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:43400 - "GET /api/scoring/jobs/a9f1b027ae904670b6b4c016ff0861e1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43400 - "GET /api/scoring/jobs/a9f1b027ae904670b6b4c016ff0861e1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43400 - "GET /api/scoring/jobs/a9f1b027ae904670b6b4c016ff0861e1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43400 - "GET /api/scoring/jobs/a9f1b027ae904670b6b4c016ff0861e1/results?offset=0&limit=50&sort=sequence&descending=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43400 - "GET /api/scoring/jobs HTTP/1.1" 200 OK

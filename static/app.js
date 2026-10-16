@@ -1409,6 +1409,7 @@ async function loadVaultTieringPlan() {
     try {
         const res = await fetch('/api/vault/tiering/plan');
         const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Không tải được kế hoạch phân cấp.');
         currentTieringPlan = data;
 
         const sum = data.summary || {};
@@ -1429,7 +1430,11 @@ async function loadVaultTieringPlan() {
 
         renderVaultTieringPlanTable();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-rose">Lỗi tải kế hoạch: ${e.message}</td></tr>`;
+        currentTieringPlan = null;
+        tbody.replaceChildren();
+        const cell = tbody.insertRow().insertCell(); cell.colSpan = 4;
+        cell.className = 'text-center py-6 text-rose';
+        cell.textContent = `Lỗi tải kế hoạch: ${e.message}. Chọn lại tab để thử lại.`;
     }
 }
 
@@ -2329,7 +2334,9 @@ function initOrganize() {
     const request = async (action, body = {}) => {
         const res = await fetch(`/api/organize/${action}`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Không hoàn tất thao tác.');
+        if (!res.ok) throw new Error(res.status === 405 && action === 'edit'
+            ? 'Máy chủ đang chạy bản cũ, chưa hỗ trợ lưu tên. Hãy khởi động lại ứng dụng rồi thử lại.'
+            : data.detail || 'Không hoàn tất thao tác.');
         return data;
     };
     const render = () => {

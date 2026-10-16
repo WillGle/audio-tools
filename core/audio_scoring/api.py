@@ -72,8 +72,10 @@ def scoring_router(service):
         return guarded(service.job, job_id)
 
     @router.get('/jobs/{job_id}/results')
-    def results(job_id: str, offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=500)):
-        return guarded(service.results, job_id, offset, limit)
+    def results(job_id: str, offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=500),
+                sort: Literal['sequence', 'filepath', 'score', 'coverage', 'warning'] = 'sequence',
+                descending: bool = False):
+        return guarded(service.results, job_id, offset, limit, sort, descending)
 
     @router.get('/jobs/{job_id}/export')
     def export(job_id: str, format: Literal['json', 'jsonl', 'csv'] = 'json'):

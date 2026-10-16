@@ -422,8 +422,10 @@
                     </details>
                 </div>
                 <details class="scoring-detail" id="scoring-comparison" hidden><summary id="scoring-comparison-title">Kết quả các tệp</summary>
-                <p class="text-secondary">Chọn một bài để xem điểm và bằng chứng. N/A nghĩa là chưa đủ dữ liệu để chấm điểm.</p>
-                <div class="table-container scoring-comparison"><table class="tracks-table"><thead><tr><th>Tệp</th><th>Điểm</th><th>Coverage</th><th>Kết quả</th><th></th></tr></thead><tbody id="scoring-results"></tbody></table></div>
+                <p class="text-secondary">Bấm tiêu đề cột để sắp xếp toàn bộ lượt quét sau khi hoàn tất. Bấm lần nữa để đảo chiều; N/A luôn ở cuối cột số.</p>
+                <details class="scoring-raw"><summary>Ngưỡng cảnh báo</summary><p id="scoring-thresholds" class="text-secondary scoring-thresholds"></p></details>
+                <p class="scoring-legend"><span data-level="good">Xanh: không cảnh báo</span><span data-level="review">Vàng: cần xem xét / độ phủ hạn chế</span><span data-level="suspect">Cam: đáng ngờ</span><span data-level="danger">Đỏ: lỗi / sai lệch đáng kể</span><span data-level="unknown">Xám: chưa đủ bằng chứng</span></p>
+                <div class="table-container scoring-comparison"><table class="tracks-table"><thead><tr><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="filepath" disabled>Tệp <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="score" disabled>Điểm <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="coverage" disabled>Coverage <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="warning" disabled>Kết quả <span aria-hidden="true">↕</span></button></th><th scope="col" aria-label="Chi tiết"></th></tr></thead><tbody id="scoring-results"></tbody></table></div>
                 <button id="scoring-more" class="btn btn-secondary" hidden>Xem thêm kết quả</button>
                 </details>
                 <section id="scoring-result" aria-labelledby="scoring-result-heading" tabindex="-1" hidden>

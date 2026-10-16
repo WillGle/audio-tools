@@ -166,6 +166,24 @@ repeated successfully; both browser runs reported no JavaScript errors. These
 edits affect proposed filenames only, not the metadata that generated them.
 The existing Python suite passed 31 tests in 61.43 seconds after this backend change.
 
+Warning presentation was checked with saved real analysis JSONs for valid CD,
+padded 24-bit, truncated FLAC and suspected upsampling. Additional display-only
+inputs exercised 90/89, 75/74, 50/49, 0, N/A and the 60%/80% coverage boundaries,
+customized score thresholds, and FAIL/REVIEW priority over favorable scores.
+Chromium verified distinct badge colors, an amber 100-point limited-coverage
+result, red critical N/A, and no mobile document overflow or JavaScript errors.
+These boundary inputs test presentation, not detector accuracy. The existing
+18-workflow browser check also passed with 25 real batch results and no
+JavaScript errors.
+
+Column sorting was checked against 122 disposable stored rows based on the saved
+analysis JSONs, with errors beyond the initial 50 rows. All four columns sorted
+globally in both directions; numeric N/A stayed last, ties remained stable and
+loading the next page preserved order. Chromium checked header arrows/aria-sort,
+keyboard activation, details after sorting, and desktop/mobile overflow with no
+JavaScript errors. Invalid sort columns returned 422, and JSON export kept its
+original sequence. The six existing job/API tests passed in 16.52 seconds.
+
 Shared layout checks covered all six tabs, the track modal, supplementary
 diagnostics and duplicate-name groups at 1440, 1024, 768 and 390px, plus mobile
 playback/batch actions and a long confirmation message (30 views). With generated

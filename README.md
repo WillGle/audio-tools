@@ -118,6 +118,9 @@ phần chẩn đoán bổ sung, tách khỏi điểm. Ghi tag và quản lý fil
   bitrate hay upsampling. Các detector lịch sử nguồn hiện chưa được phép trừ điểm.
 - Điểm 100 có thể chỉ bao phủ 61.5% trọng số áp dụng. Xem coverage và các rule chưa
   kết luận; nhiều tệp Hi-Res sẽ có N/A. Lỗi toàn vẹn luôn hiện độc lập với điểm.
+- Sau khi lượt quét dừng, bấm tiêu đề Tệp / Điểm / Coverage / Kết quả để sắp xếp
+  toàn bộ kết quả; bấm lại để đảo chiều. Kết quả ưu tiên lỗi nặng trước, N/A luôn
+  ở cuối cột số. Xem thêm tiếp tục đúng thứ tự; xuất file giữ thứ tự ghi nhận.
 
 FFmpeg/ffprobe và `flac` là công cụ chính, đã kiểm thử bằng FFmpeg 8.0 / FLAC 1.5.0
 trên Linux. flaccheck 0.1.2 là **tùy chọn, thử nghiệm**, gọi riêng qua PATH; xem

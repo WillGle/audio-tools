@@ -10,11 +10,33 @@
     let jobId = null, timer = null, offset = 0, lastCompleted = 0;
     let viewGeneration = 0;
     let busy = false, singleResult = false;
+    let sortColumn = 'sequence', sortDescending = false;
     const confidence = {HIGH: 'Cao', MEDIUM: 'Vừa', LOW: 'Thấp'};
     const jobLabels = {QUEUED: 'Đang chờ', SCANNING: 'Đang tìm tệp', RUNNING: 'Đang kiểm tra',
         CANCELLING: 'Đang hủy', COMPLETED: 'Đã hoàn tất', CANCELLED: 'Đã hủy',
         FAILED: 'Không hoàn tất', INTERRUPTED: 'Bị gián đoạn khi khởi động lại'};
 
+    function warningStyle(r, error) {
+        if (!r || error) return {level: 'danger', label: 'Không phân tích được', coverage: 'unknown'};
+        const config = r.configuration;
+        const coverage = r.coverage < config.minimum_coverage ? 'unknown' : r.coverage < config.confidence_coverage ? 'review' : 'good';
+        const checks = Object.values(r.rules);
+        const needsReview = checks.some(rule => rule.status === 'REVIEW') || r.verdict === 'REVIEW';
+        if (r.critical_failure) return {level: 'danger', label: 'Lỗi toàn vẹn tệp', coverage};
+        if (checks.some(rule => rule.status === 'FAIL')) return {level: 'danger', label: 'Có phép kiểm tra báo lỗi', coverage};
+        const band = r.score == null ? -1 : config.bands.findIndex(b => r.score >= b.min);
+        if (band >= 3) return {level: 'danger', label: config.bands[band].label, coverage};
+        if (checks.some(rule => rule.status === 'SUSPECT') || band === 2) return {level: 'suspect', label: 'Đáng ngờ · cần kiểm tra', coverage};
+        if (r.score == null) return {level: needsReview ? 'review' : 'unknown', label: needsReview ? 'Cần xem xét · chưa đủ bằng chứng' : r.preliminary ? 'Sơ bộ · chưa chấm điểm' : 'Chưa đủ bằng chứng', coverage};
+        if (needsReview || band === 1) return {level: 'review', label: 'Cần xem xét', coverage};
+        if (coverage !== 'good') return {level: 'review', label: 'Phạm vi đánh giá hạn chế', coverage};
+        return {level: 'good', label: 'Không cảnh báo trong phạm vi đo', coverage};
+    }
+    function warningBadge(parent, value, level, title = '') {
+        const badge = text('span', value, parent);
+        badge.className = 'scoring-warning-badge'; badge.dataset.level = level; badge.title = title;
+        return badge;
+    }
     async function request(url, options) {
         const res = await fetch(url, options);
         const data = await res.json();
@@ -113,11 +135,14 @@
     window.renderAuthenticity = r => {
         clearLabAudit();
         el('scoring-result').hidden = false;
+        const warning = warningStyle(r);
+        el('scoring-result').dataset.level = warning.level;
         el('scoring-result').dataset.verdict = r.critical_failure ? 'critical' : r.verdict;
         el('auth-score').textContent = r.score == null ? 'N/A' : `${r.score}/100`;
         el('auth-filename').textContent = r.filename;
         el('auth-properties-panel').open = false;
-        el('auth-verdict').textContent = `${r.band}${r.preliminary ? ' · FAST sơ bộ' : ''}`;
+        el('auth-verdict').textContent = `${warning.label}${r.preliminary ? ' · FAST sơ bộ' : ''}`;
+        el('auth-verdict').title = r.band;
         el('auth-confidence').textContent = `Độ tin cậy: ${confidence[r.assessment_confidence]} · Phạm vi đánh giá (coverage): ${(r.coverage*100).toFixed(1)}% (${r.assessed_weight}/${r.applicable_weight} trọng số áp dụng)`;
         el('auth-warnings').className = r.critical_failure ? 'critical' : '';
         el('auth-warnings').replaceChildren();
@@ -180,7 +205,25 @@
     function appendRows(rows) {
         rows.forEach(row => {
             const tr = document.createElement('tr'), r = row.result;
-            [row.filepath, r?.score == null ? 'N/A' : `${r.score}/100`, r ? `${(r.coverage*100).toFixed(1)}%` : '—', row.error || r?.band].forEach(v => text('td', v, tr));
+            const warning = warningStyle(r, row.error);
+            tr.dataset.level = warning.level;
+            text('td', row.filepath, tr);
+            const scoreCell = text('td', '', tr);
+            warningBadge(scoreCell, r?.score == null ? 'N/A' : `${r.score}/100`, warning.level, r?.band || row.error);
+            const coverageCell = text('td', '', tr);
+            warningBadge(coverageCell, r ? `${(r.coverage*100).toFixed(1)}%` : '—', warning.coverage,
+                r ? `Đã đánh giá ${r.assessed_weight}/${r.applicable_weight} trọng số áp dụng; không phải xác suất file thật.` : 'Chưa có kết quả');
+            if (r) text('small', warning.coverage === 'good' ? 'Đủ phạm vi' : warning.coverage === 'review' ? 'Phạm vi hạn chế' : 'Chưa đủ / sơ bộ', coverageCell).className = 'scoring-row-note';
+            const verdictCell = text('td', '', tr);
+            warningBadge(verdictCell, warning.label, warning.level, row.error || r?.band);
+            if (r) {
+                const flagged = Object.entries(r.rules).filter(([,rule]) => ['FAIL', 'SUSPECT', 'REVIEW'].includes(rule.status));
+                const note = flagged.length ? flagged.map(([key, rule]) => `${names[key]}: ${statuses[rule.status]}`).join(' · ')
+                    : r.inconclusive_checks?.length ? `${r.inconclusive_checks.length} phép kiểm tra chưa kết luận` : 'Chỉ áp dụng trong phạm vi đã đo';
+                text('small', note, verdictCell).className = 'scoring-row-note';
+                const c = r.configuration;
+                el('scoring-thresholds').textContent = `Ngưỡng điểm: ${c.bands.map((b, i) => `${b.min}${i ? '–' + (c.bands[i-1].min-1) : '–100'}: ${b.label}`).join(' · ')}. Coverage tối thiểu ${Math.round(c.minimum_coverage*100)}%; dưới ${Math.round(c.confidence_coverage*100)}%: phạm vi hạn chế. Lỗi và cảnh báo từ từng phép kiểm tra được ưu tiên hơn điểm.`;
+            } else if (row.error) text('small', row.error, verdictCell).className = 'scoring-row-note';
             const cell = document.createElement('td');
             if (r) {
                 const button = text('button', 'Chi tiết', cell);
@@ -196,10 +239,18 @@
         });
         offset += rows.length;
     }
+    function updateSortHeaders() {
+        document.querySelectorAll('.scoring-sort').forEach(button => {
+            const selected = button.dataset.sort === sortColumn;
+            button.disabled = busy || !jobId;
+            button.closest('th').setAttribute('aria-sort', selected ? sortDescending ? 'descending' : 'ascending' : 'none');
+            button.querySelector('span').textContent = selected ? sortDescending ? '↓' : '↑' : '↕';
+        });
+    }
     async function loadMore(generation) {
         if (el('scoring-more').disabled) return;
         el('scoring-more').disabled = true;
-        const rows = await request(`/api/scoring/jobs/${jobId}/results?offset=${offset}&limit=50`);
+        const rows = await request(`/api/scoring/jobs/${jobId}/results?offset=${offset}&limit=50&sort=${sortColumn}&descending=${sortDescending}`);
         if (generation !== viewGeneration) return;
         appendRows(rows);
         if (singleResult && el('scoring-result').hidden) {
@@ -219,7 +270,7 @@
             el('scoring-progress').dataset.status = state.status;
             el('scoring-progress').textContent = `${jobLabels[state.status]} · ${state.completed}/${state.total} tệp · ${state.errors} lỗi. ${state.message}`;
             const active = ['QUEUED', 'SCANNING', 'RUNNING', 'CANCELLING'].includes(state.status);
-            busy = active; syncSelection();
+            busy = active; syncSelection(); updateSortHeaders();
             el('scoring-cancel').disabled = !active || state.status === 'CANCELLING';
             el('scoring-cancel').hidden = !active;
             el('scoring-meter').hidden = !active && !state.total;
@@ -242,6 +293,8 @@
     }
     function view(id) {
         clearTimeout(timer); jobId = id; offset = 0; lastCompleted = 0;
+        sortColumn = 'sequence'; sortDescending = false;
+        busy = true; updateSortHeaders();
         el('scoring-setup').open = false;
         clearLabAudit();
         viewGeneration += 1;
@@ -277,6 +330,19 @@
         catch (error) { busy = false; syncSelection(); fail(error); }
     }
     document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.scoring-sort').forEach(button => button.addEventListener('click', () => {
+            if (busy || !jobId) return;
+            const column = button.dataset.sort;
+            sortDescending = column === sortColumn ? !sortDescending : ['coverage', 'warning'].includes(column);
+            sortColumn = column;
+            updateSortHeaders();
+            viewGeneration += 1; offset = 0;
+            el('scoring-results').replaceChildren();
+            el('scoring-more').disabled = false;
+            el('scoring-more').hidden = true;
+            el('scoring-result').hidden = true;
+            loadMore(viewGeneration).catch(error => { el('scoring-more').disabled = false; fail(error); });
+        }));
         el('scoring-form').addEventListener('submit', event => {
             event.preventDefault();
             const scope = el('scoring-target').value;

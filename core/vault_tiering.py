@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from core.paths import vault_path
 from core.analyzer import get_audio_specs
@@ -74,7 +75,8 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
     tier_2_items = []
     tier_3_items = []
 
-    for full_path, rel_path in all_files:
+    def classify_file(file_pair):
+        full_path, rel_path = file_pair
         ext = full_path.suffix.lower()
         size_bytes = full_path.stat().st_size
         v_info = hires_verdicts.get(str(full_path), {})
@@ -138,12 +140,19 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
             'specs': specs
         }
 
-        if target_tier == 'tier_1':
-            tier_1_items.append(item_entry)
-        elif target_tier == 'tier_2':
-            tier_2_items.append(item_entry)
-        else:
-            tier_3_items.append(item_entry)
+        return target_tier, item_entry
+
+
+    # ffprobe is process-bound and can block on damaged files; bounded workers keep
+    # a large library scan responsive without spawning one process per file.
+    with ThreadPoolExecutor(max_workers=min(8, max(1, (os.cpu_count() or 2)))) as pool:
+        for target_tier, item_entry in pool.map(classify_file, all_files):
+            if target_tier == 'tier_1':
+                tier_1_items.append(item_entry)
+            elif target_tier == 'tier_2':
+                tier_2_items.append(item_entry)
+            else:
+                tier_3_items.append(item_entry)
 
     total_files = len(tier_1_items) + len(tier_2_items) + len(tier_3_items)
     total_size = sum(x['size_bytes'] for x in tier_1_items + tier_2_items + tier_3_items)

@@ -34,6 +34,17 @@ not the likelihood of genuine provenance; the aggregate is deliberately capped
 at MEDIUM even at complete coverage. Critical integrity FAIL overrides the band
 and suppresses a favorable score independently of numeric-score availability.
 
+The dashboard colors scores and verdicts using the result's stored configuration:
+90–100, 75–89, 50–74 and 0–49 are the initial score bands. Confirmed rule FAIL
+or critical integrity failure takes red priority; SUSPECT takes orange; REVIEW
+takes amber, including when no numeric score is available. Otherwise coverage
+below the configured confidence threshold (initially 80%) produces an amber
+scope warning even at 100 points. Unassessed results without such warnings are
+gray. Green means no warning in the assessed scope, never verified provenance.
+Coverage uses its own colors and the configured 60%/80% gates; insufficient
+coverage does not establish a defective or fraudulent file. These are display
+rules and do not alter measurements, penalties, score gates or cached results.
+
 Example: declared CD PCM excludes the Hi-Res bit-depth and sample-rate rules.
 A valid file may score 100 with 40/65 = 61.54% coverage; **25 weighted points of
 lossy-source history remain unresolved**. This is not 100% authenticity. A lossy

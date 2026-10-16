@@ -2377,9 +2377,22 @@ body {
 .scoring-raw summary { font-size: .85rem; font-weight: 400; }
 #scoring-result { margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; scroll-margin-top: 130px; }
 #auth-score { display: inline-block; font-size: 2rem; color: var(--accent-cyan); }
-#scoring-result[data-verdict="critical"] #auth-score { color: #fb7185; }
-#scoring-result[data-verdict="REVIEW"] #auth-score { color: #fbbf24; }
-#scoring-result[data-verdict="INSUFFICIENT_EVIDENCE"] #auth-score { color: var(--text-secondary); }
+[data-level="good"] { --scoring-tone: #6ee7b7; --scoring-tint: rgba(16,185,129,.12); }
+[data-level="review"] { --scoring-tone: #fcd34d; --scoring-tint: rgba(245,158,11,.12); }
+[data-level="suspect"] { --scoring-tone: #fdba74; --scoring-tint: rgba(249,115,22,.14); }
+[data-level="danger"] { --scoring-tone: #fda4af; --scoring-tint: rgba(244,63,94,.14); }
+[data-level="unknown"] { --scoring-tone: #cbd5e1; --scoring-tint: rgba(148,163,184,.12); }
+.scoring-sort { display: flex; align-items: center; gap: .5rem; width: 100%; padding: .25rem 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.scoring-sort:disabled { cursor: default; opacity: .6; }
+.scoring-sort span { color: var(--text-secondary); }
+#scoring-comparison th[aria-sort]:not([aria-sort="none"]) { color: var(--accent-cyan); }
+.scoring-warning-badge { display: inline-block; padding: .2rem .5rem; border-radius: 5px; font-size: .85rem; font-weight: 600; color: var(--scoring-tone); background: var(--scoring-tint); }
+#scoring-results tr td:first-child { border-left: 3px solid var(--scoring-tone); }
+#scoring-result[data-level] #auth-score, #scoring-result[data-level] #auth-verdict { color: var(--scoring-tone); }
+.scoring-row-note { display: block; margin-top: .35rem; font-size: .8rem; line-height: 1.5; color: var(--text-secondary); }
+.scoring-legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; font-size: .8rem; }
+.scoring-legend span { color: var(--scoring-tone); }
+.scoring-thresholds { font-size: .8rem; }
 .scoring-comparison td:first-child { min-width: 180px; }
 .scoring-comparison td:nth-child(2), .scoring-comparison td:nth-child(3), .scoring-comparison .btn { white-space: nowrap; }
 .scoring-detail[data-status="FAIL"] > summary, .scoring-detail[data-status="SUSPECT"] > summary { color: #fb7185; }

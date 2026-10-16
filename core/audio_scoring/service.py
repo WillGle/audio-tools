@@ -245,9 +245,32 @@ class AnalysisService:
             rows = conn.execute('SELECT id FROM scoring_jobs ORDER BY rowid DESC LIMIT 30').fetchall()
         return [self.job(row[0]) for row in rows]
 
-    def results(self, job_id, offset=0, limit=100):
+    def results(self, job_id, offset=0, limit=100, sort='sequence', descending=False):
         self.job(job_id)
+        score = "json_extract(payload, '$.result.score')"
+        coverage = "json_extract(payload, '$.result.coverage')"
+        # Match dashboard warning priority without decoding every stored result in Python.
+        severity = f"""CASE
+            WHEN json_extract(payload, '$.error') IS NOT NULL
+                OR json_extract(payload, '$.result') IS NULL
+                OR json_extract(payload, '$.result.critical_failure') = 1
+                OR EXISTS (SELECT 1 FROM json_each(payload, '$.result.rules') WHERE json_extract(value, '$.status') = 'FAIL')
+                OR {score} < json_extract(payload, '$.result.configuration.bands[2].min') THEN 5
+            WHEN EXISTS (SELECT 1 FROM json_each(payload, '$.result.rules') WHERE json_extract(value, '$.status') = 'SUSPECT')
+                OR {score} < json_extract(payload, '$.result.configuration.bands[1].min') THEN 4
+            WHEN EXISTS (SELECT 1 FROM json_each(payload, '$.result.rules') WHERE json_extract(value, '$.status') = 'REVIEW')
+                OR json_extract(payload, '$.result.verdict') = 'REVIEW'
+                OR {score} < json_extract(payload, '$.result.configuration.bands[0].min') THEN 3
+            WHEN {score} IS NULL THEN 2
+            WHEN {coverage} < json_extract(payload, '$.result.configuration.confidence_coverage') THEN 3
+            ELSE 1 END"""
+        columns = {'sequence': 'seq', 'filepath': 'filepath COLLATE NOCASE',
+                   'score': score, 'coverage': coverage, 'warning': severity}
+        if sort not in columns:
+            raise ValueError('Cột sắp xếp không hợp lệ')
+        direction = 'DESC' if descending else 'ASC'
+        nulls = f'{columns[sort]} IS NULL ASC, ' if sort in ('score', 'coverage') else ''
         with closing(self.connect()) as conn:
-            rows = conn.execute('SELECT payload FROM scoring_results WHERE job_id=? ORDER BY seq LIMIT ? OFFSET ?',
+            rows = conn.execute(f'SELECT payload FROM scoring_results WHERE job_id=? ORDER BY {nulls}{columns[sort]} {direction}, seq ASC LIMIT ? OFFSET ?',
                                 (job_id, limit, offset)).fetchall()
         return [json.loads(row[0]) for row in rows]
