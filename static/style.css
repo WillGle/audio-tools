@@ -33,6 +33,8 @@
     box-sizing: border-box;
 }
 
+[hidden] { display: none !important; }
+
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background-color: var(--bg-main);
@@ -2250,6 +2252,43 @@ body {
 #auth-warnings.critical { color: #fb7185; border: 2px solid #fb7185; padding: .75rem; }
 #auth-properties { overflow: auto; margin-top: 1rem; }
 #auth-spectrum { display: block; width: 100%; height: auto; background: #0f172a; }
-.scoring-panel [hidden] { display: none !important; }
 .scoring-panel { min-width: 0; overflow-wrap: anywhere; }
 .scoring-panel .tracks-table { min-width: 640px; }
+.scoring-panel .track-picker-card { margin-bottom: 1rem; padding: 0; border: 0; background: transparent; }
+.scoring-panel select { min-width: 0; max-width: 100%; }
+.combobox-item { width: 100%; border: 0; color: var(--text-primary); background: transparent; text-align: left; font: inherit; }
+.combobox-item-title, .combobox-item-sub { display: block; overflow-wrap: anywhere; }
+.scoring-raw { margin: .75rem 0; color: var(--text-secondary); }
+.scoring-raw summary { font-size: .85rem; font-weight: 400; }
+#scoring-result { margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; scroll-margin-top: 130px; }
+#auth-score { display: inline-block; font-size: 2rem; color: var(--accent-cyan); }
+#scoring-result[data-verdict="critical"] #auth-score { color: #fb7185; }
+#scoring-result[data-verdict="REVIEW"] #auth-score { color: #fbbf24; }
+#scoring-result[data-verdict="INSUFFICIENT_EVIDENCE"] #auth-score { color: var(--text-secondary); }
+.scoring-comparison td:first-child { min-width: 180px; }
+.scoring-comparison td:nth-child(2), .scoring-comparison td:nth-child(3), .scoring-comparison .btn { white-space: nowrap; }
+.scoring-detail[data-status="FAIL"] > summary, .scoring-detail[data-status="SUSPECT"] > summary { color: #fb7185; }
+.scoring-detail[data-status="REVIEW"] > summary { color: #fbbf24; }
+#scoring-error { border-left: 3px solid #fb7185; padding: .75rem; color: #fda4af; }
+#scoring-meter { width: 100%; height: 12px; margin-top: 1rem; accent-color: var(--accent-indigo); }
+.scoring-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .75rem; margin: 1rem 0; }
+.scoring-metrics div { padding: .75rem; background: rgba(255,255,255,.03); border-radius: var(--radius-sm); }
+.scoring-metrics dt { font-size: .8rem; color: var(--text-secondary); }
+.scoring-metrics dd { margin-top: .35rem; font-weight: 600; }
+:where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 3px; }
+@media (max-width: 960px) {
+    .app-header { flex-direction: column; align-items: stretch; gap: .75rem; padding: 1rem; }
+    .nav-tabs { max-width: 100%; overflow-x: auto; }
+    .nav-tab { flex-shrink: 0; white-space: nowrap; }
+}
+@media (max-width: 600px) {
+    .app-main { padding: 1rem; min-width: 0; }
+    .pillar-card { padding: 1rem; min-width: 0; }
+    .audiophile-pillars-grid { grid-template-columns: minmax(0, 1fr); }
+    .scoring-controls label, .scoring-controls > .btn { width: 100%; min-width: 0; }
+    .scoring-controls input[type=number] { width: 100%; }
+    .track-picker-card > div { min-width: 0; }
+    .brand-icon { flex-shrink: 0; }
+    .floating-batch-bar { max-width: calc(100% - 2rem); flex-wrap: wrap; padding: .75rem; }
+    .batch-actions-group { flex-wrap: wrap; }
+}

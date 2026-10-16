@@ -71,11 +71,10 @@
 
         <nav class="nav-tabs">
             <button class="nav-tab active" data-tab="tab-library" id="btn-tab-library">
-                Kho Nhạc &amp; Phổ Âm
+                Kho nhạc &amp; sắp xếp
             </button>
             <button class="nav-tab" data-tab="tab-audiophile" id="btn-tab-audiophile">
-                Kiểm Định 7 Chuẩn
-                <span class="audiophile-nav-badge">7 Pillars</span>
+                Kiểm tra âm thanh
             </button>
             <button class="nav-tab" data-tab="tab-vault" id="btn-tab-vault">
                 Cấu Trúc Kho 3 Cấp
@@ -97,6 +96,28 @@
         
         <!-- Tab 1: Library & Quality Explorer -->
         <section class="tab-content active" id="tab-library">
+            <div class="pillar-card scoring-panel" id="metadata-organizer">
+                <h2>Sắp xếp nhạc từ metadata</h2>
+                <p>Quét cả thư mục con → đọc tag → xem tên và vị trí mới. Không cần kiểm định âm thanh trước.</p>
+                <form id="metadata-organize-form" class="scoring-controls">
+                    <label>Thư mục tải mới trong kho <input id="metadata-organize-folder" placeholder="Để trống để duyệt toàn bộ kho"></label>
+                    <button class="btn btn-primary" id="metadata-organize-preview" type="submit">Đọc metadata &amp; xem trước</button>
+                </form>
+                <p class="text-secondary">Cấu trúc: Nghệ sĩ / Album / Số bài - Tên bài. Thiếu tên hoặc nghệ sĩ: giữ nguyên. Không ghi đè tệp trùng, không sửa tag hay mã hóa lại audio.</p>
+                <p id="metadata-organize-status" role="status" aria-live="polite"></p>
+                <div id="metadata-organize-results" hidden>
+                    <div class="scoring-controls">
+                        <label>Nhóm <select id="metadata-organize-filter"><option value="all">Tất cả</option><option value="READY">Sẵn sàng đổi tên</option><option value="REVIEW">Thiếu metadata / cần kiểm tra</option><option value="CONFLICT">Trùng đường dẫn đích</option><option value="UNCHANGED">Đã đúng vị trí</option></select></label>
+                        <button type="button" class="btn btn-primary" id="metadata-organize-apply" disabled>Áp dụng đổi tên &amp; di chuyển</button>
+                    </div>
+                    <div class="scoring-comparison"><table class="tracks-table"><thead><tr><th>Đường dẫn hiện tại</th><th>Metadata</th><th>Đường dẫn đề xuất</th><th>Trạng thái</th></tr></thead><tbody id="metadata-organize-rows"></tbody></table></div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="metadata-organize-more" hidden>Xem thêm 50 bài</button>
+                </div>
+                <details class="scoring-detail"><summary>Hoàn tác sắp xếp</summary>
+                    <p>Khôi phục vị trí trước các lần sắp xếp metadata đã áp dụng. Không xóa thư mục rỗng hoặc ghi đè file.</p>
+                    <button type="button" class="btn btn-secondary" id="metadata-organize-undo">Khôi phục vị trí cũ</button>
+                </details>
+            </div>
             <!-- Compact Interactive Quality Cards -->
             <div class="stats-grid mb-6">
                 <div class="stat-card border-emerald clickable" data-filter="true_hires" title="Bấm để lọc PCM sample rate cao">
@@ -274,6 +295,7 @@
                     <span>Đã chọn <strong id="batch-selected-count">0</strong> bài hát</span>
                 </div>
                 <div class="batch-actions-group">
+                    <button class="btn btn-sm btn-primary" id="btn-batch-score">Kiểm tra đã chọn</button>
                     <button class="btn btn-sm btn-emerald" id="btn-batch-tag" title="Ghi tag chuẩn chất lượng vào các bài đã chọn">
                         🏷️ Ghi Tag Metadata
                     </button>
@@ -313,8 +335,8 @@
             <div class="audiophile-banner">
                 <div class="audiophile-banner-content">
                     <div>
-                        <h2>Phòng Kiểm Định 7 Chuẩn Audiophile</h2>
-                        <p>Đo lường Dynamic Range (DR Meter), đối chiếu Audio MD5 Streaminfo, đo bit usage, quan sát phổ nhiễu DSD, tính ReplayGain 2.0 &amp; EBU R128 và rà soát Gapless Playback.</p>
+                        <h2>Kiểm tra âm thanh</h2>
+                        <p>Chọn nhạc → kiểm tra → xem bằng chứng. Phân tích cục bộ, không thay đổi tệp nhạc.</p>
                     </div>
                     <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
                         <button class="btn btn-emerald" id="btn-audiophile-tag-now" style="display: none;">
@@ -328,22 +350,37 @@
             </div>
 
             <section class="pillar-card border-indigo scoring-panel" aria-labelledby="scoring-heading">
-                <h2 id="scoring-heading">Authenticity &amp; Integrity Score: <span id="auth-score">N/A</span></h2>
-                <p id="auth-verdict" role="status">Chọn một bài ở bên dưới hoặc quét thư mục để đo.</p>
-                <p id="auth-confidence">Độ tin cậy: chưa đo · Coverage: chưa đo</p>
-                <p class="technical-note">Điểm phản ánh bằng chứng kỹ thuật, không phải xác suất file thật. Độ phân giải cao không đồng nghĩa chất lượng nghe cao. Không thể xác thực nguồn master chỉ từ phổ.</p>
-                <div id="auth-warnings" role="alert"></div>
-                <div class="scoring-controls">
-                    <label>Chế độ <select id="scoring-mode"><option>FAST</option><option selected>BALANCED</option><option>DEEP</option></select></label>
-                    <label>Số file song song <input id="scoring-workers" type="number" min="1" max="4" value="2"></label>
-                    <label>Thư mục trong kho <input id="scoring-folder" placeholder="Để trống = toàn bộ kho"></label>
-                    <button class="btn btn-primary" id="scoring-single">Đo bài đang chọn</button>
-                    <button class="btn btn-secondary" id="scoring-selected">Quét các bài đã chọn</button>
-                    <button class="btn btn-secondary" id="scoring-folder-start">Quét thư mục</button>
+                <form id="scoring-form">
+                    <h2 id="scoring-heading">1. Chọn nhạc cần kiểm tra</h2>
+                    <div class="scoring-controls">
+                        <label>Phạm vi <select id="scoring-target"><option value="single">Một bài hát</option><option value="selected">Các bài đã chọn trong Kho nhạc</option><option value="folder">Thư mục / toàn bộ kho</option></select></label>
+                    </div>
+            <div class="track-picker-card" data-scan-scope="single">
+                <div style="flex: 1; position: relative;">
+                    <div class="combobox-input-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" id="lab-combobox-input" class="combobox-input" placeholder="Tìm tên bài, nghệ sĩ hoặc đường dẫn…" autocomplete="off" role="combobox" aria-label="Tìm bài trong kho nhạc" aria-autocomplete="list" aria-expanded="false" aria-controls="lab-combobox-dropdown">
+                        <button type="button" id="lab-combobox-clear" class="combobox-clear-btn" style="display:none;" title="Xóa tìm kiếm">✕</button>
+                    </div>
+                    <div id="lab-combobox-dropdown" class="combobox-dropdown-menu" role="listbox" aria-label="Bài hát phù hợp" style="display: none;"></div>
+                    <input type="hidden" id="lab-selected-path" value="">
                 </div>
-                <details class="scoring-detail"><summary>Kỳ vọng của nguồn bán / tệp tham chiếu (tùy chọn)</summary>
+            </div>
+
+                    <p id="scoring-selection" data-scan-scope="selected" hidden>Đã chọn <strong id="scoring-selected-count">0</strong> bài. <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('tab-library')">Chọn bài trong Kho nhạc</button></p>
+                    <div class="scoring-controls" data-scan-scope="folder" hidden>
+                        <label>Thư mục trong kho <input id="scoring-folder" placeholder="Để trống để quét toàn bộ kho"></label>
+                        <p>Quét cả thư mục con. Đường dẫn tính từ thư mục kho nhạc.</p>
+                    </div>
+                    <div class="scoring-controls">
+                        <label>Chế độ <select id="scoring-mode" aria-describedby="scoring-mode-help"><option value="FAST">Nhanh · sơ bộ</option><option value="BALANCED" selected>Cân bằng · khuyên dùng</option><option value="DEEP">Chuyên sâu · lâu hơn</option></select></label>
+                        <button type="submit" class="btn btn-primary" id="scoring-single" disabled>Bắt đầu kiểm tra</button>
+                    </div>
+                    <p id="scoring-mode-help" class="text-secondary">Giải mã toàn tệp, kiểm tra toàn vẹn và đo nhiều vùng phổ.</p>
+                <details class="scoring-detail"><summary>Tùy chọn nâng cao · kỳ vọng nguồn và tệp tham chiếu</summary>
                     <p>Áp dụng cho mọi bài trong lượt quét. Đường dẫn tham chiếu phải nằm trong kho nhạc; mức tin cậy do bạn xác nhận.</p>
                     <div class="scoring-controls">
+                        <label>Số tệp song song <input id="scoring-workers" type="number" min="1" max="4" value="2"></label>
                         <label>Codec <input id="claim-codec" placeholder="flac / alac / pcm_s24le"></label>
                         <label>Container <input id="claim-container" placeholder="flac / wav / m4a"></label>
                         <label>Sample rate (Hz) <input id="claim-rate" type="number" min="1" placeholder="96000"></label>
@@ -354,16 +391,27 @@
                         <label>Tệp tham chiếu <input id="claim-reference" placeholder="album/reference.flac"></label>
                     </div>
                 </details>
-                <p id="scoring-progress" aria-live="polite"></p>
+                </form>
+                <p id="scoring-error" role="alert" tabindex="-1" hidden></p>
+                <progress id="scoring-meter" aria-label="Tiến độ kiểm tra" hidden></progress>
+                <p id="scoring-progress" role="status" aria-live="polite"></p>
                 <div class="scoring-controls">
-                    <button class="btn btn-outline-rose" id="scoring-cancel" disabled>Hủy lượt quét</button>
+                    <button class="btn btn-outline-rose" id="scoring-cancel" type="button" hidden disabled>Hủy lượt quét</button>
                     <label>Lượt quét đã lưu <select id="scoring-history"><option value="">Chọn lượt quét</option></select></label>
                     <a id="scoring-export-json" class="btn btn-secondary" hidden>JSON</a>
                     <a id="scoring-export-jsonl" class="btn btn-secondary" hidden>JSONL tăng dần</a>
                     <a id="scoring-export-csv" class="btn btn-secondary" hidden>CSV</a>
                 </div>
+                <details class="scoring-detail" id="scoring-comparison" hidden><summary id="scoring-comparison-title">Kết quả các tệp</summary>
                 <div class="table-container scoring-comparison"><table class="tracks-table"><thead><tr><th>Tệp</th><th>Điểm</th><th>Coverage</th><th>Kết quả</th><th></th></tr></thead><tbody id="scoring-results"></tbody></table></div>
                 <button id="scoring-more" class="btn btn-secondary" hidden>Xem thêm kết quả</button>
+                </details>
+                <section id="scoring-result" aria-labelledby="scoring-result-heading" tabindex="-1" hidden>
+                <h2 id="scoring-result-heading">Authenticity &amp; Integrity Score: <span id="auth-score">N/A</span></h2>
+                <p id="auth-verdict" role="status">Chọn một bài ở bên dưới hoặc quét thư mục để đo.</p>
+                <p id="auth-confidence">Độ tin cậy: chưa đo · Coverage: chưa đo</p>
+                <p class="technical-note">Điểm phản ánh bằng chứng kỹ thuật, không phải xác suất file thật. Độ phân giải cao không đồng nghĩa chất lượng nghe cao.</p>
+                <div id="auth-warnings" role="alert"></div>
                 <div id="auth-properties"></div>
                 <div id="auth-details"></div>
                 <details class="scoring-detail"><summary>Phổ theo cửa sổ và từng kênh</summary>
@@ -371,30 +419,20 @@
                     <canvas id="auth-spectrum" width="960" height="360" aria-label="Phổ theo cửa sổ đo và kênh"></canvas>
                     <p id="auth-spectrum-note"></p>
                 </details>
+                </section>
             </section>
 
-            <!-- Searchable Track Combobox for Lab -->
-            <div class="track-picker-card" style="position: relative;">
-                <div style="flex: 1; position: relative;">
-                    <div class="combobox-input-box">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" id="lab-combobox-input" class="combobox-input" placeholder="🔍 Gõ tìm bài hát, ca sĩ, tên file (trong 1.701 bài)..." autocomplete="off">
-                        <button id="lab-combobox-clear" class="combobox-clear-btn" style="display:none;" title="Xóa tìm kiếm">✕</button>
-                    </div>
-                    <div id="lab-combobox-dropdown" class="combobox-dropdown-menu" style="display: none;"></div>
-                    <input type="hidden" id="lab-selected-path" value="">
-                </div>
-                <button class="btn btn-primary" id="btn-run-audiophile-audit">
-                    Khởi Chạy Kiểm Định 7 Tiêu Chuẩn
-                </button>
-            </div>
-
+            <details class="scoring-detail" id="additional-diagnostics">
+                <summary>Chẩn đoán bổ sung · ReplayGain, Gapless, DSD và ghi tag</summary>
+                <p>Áp dụng cho bài đang chọn. Chạy chẩn đoán không thay đổi tệp; ghi tag là thao tác riêng.</p>
+                <button class="btn btn-secondary" id="btn-run-audiophile-audit" disabled>Đo chẩn đoán bổ sung</button>
+                <p id="additional-current" role="status">Chưa đo chẩn đoán bổ sung cho bài đang chọn.</p>
             <div id="audiophile-loading-box" style="display: none;" class="technical-note mb-4 text-center py-6">
                 <span class="text-secondary">Đang tính toán DR Meter, đối chiếu STREAMINFO MD5, phân tích LSB 24-bit và đo EBU R128...</span>
             </div>
 
             <!-- 7 Pillars Container -->
-            <div class="audiophile-pillars-grid" id="audiophile-pillars-grid">
+            <div class="audiophile-pillars-grid" id="audiophile-pillars-grid" hidden>
                 <!-- Pillar 1: Dynamic Range -->
                 <div class="pillar-card border-amber" id="pillar-dr-card">
                     <div class="pillar-card-header">
@@ -624,6 +662,7 @@
                     </div>
                 </div>
             </div>
+            </details>
         </section>
 
         <!-- Tab 3: 3-Tier Vault Storage Organization -->

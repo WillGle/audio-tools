@@ -3,12 +3,17 @@
     'use strict';
     const el = id => document.getElementById(id);
     const names = {integrity: 'Toàn vẹn tệp', metadata: 'Container, codec và kỳ vọng',
-        lossy_transcode: 'Phân tích nguồn lossy', bit_depth: 'Bit-depth authenticity',
-        sample_rate: 'Sample-rate authenticity', signal_defects: 'Lỗi kỹ thuật tín hiệu'};
+        lossy_transcode: 'Dấu hiệu nguồn lossy', bit_depth: 'Độ sâu bit',
+        sample_rate: 'Tần số lấy mẫu', signal_defects: 'Lỗi kỹ thuật tín hiệu'};
     const statuses = {PASS: 'Đạt trong phạm vi kiểm tra', REVIEW: 'Cần xem xét', SUSPECT: 'Có bằng chứng đáng ngờ',
         FAIL: 'Lỗi', INCONCLUSIVE: 'Chưa kết luận', NOT_APPLICABLE: 'Không áp dụng'};
     let jobId = null, timer = null, offset = 0, lastCompleted = 0;
     let viewGeneration = 0;
+    let busy = false;
+    const confidence = {HIGH: 'Cao', MEDIUM: 'Vừa', LOW: 'Thấp'};
+    const jobLabels = {QUEUED: 'Đang chờ', SCANNING: 'Đang tìm tệp', RUNNING: 'Đang kiểm tra',
+        CANCELLING: 'Đang hủy', COMPLETED: 'Đã hoàn tất', CANCELLED: 'Đã hủy',
+        FAILED: 'Không hoàn tất', INTERRUPTED: 'Bị gián đoạn khi khởi động lại'};
 
     async function request(url, options) {
         const res = await fetch(url, options);
@@ -17,7 +22,18 @@
         return data;
     }
     const post = (url, body) => request(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
-    const fail = error => { el('scoring-progress').textContent = error.message; };
+    const fail = error => {
+        el('scoring-error').textContent = error.message;
+        el('scoring-error').hidden = false;
+    };
+    function syncSelection() {
+        const scope = el('scoring-target').value;
+        document.querySelectorAll('[data-scan-scope]').forEach(node => { node.hidden = node.dataset.scanScope !== scope; });
+        el('scoring-selected-count').textContent = selectedTrackPaths.size;
+        el('scoring-single').disabled = busy || (scope === 'single' && !el('lab-selected-path').value) || (scope === 'selected' && !selectedTrackPaths.size);
+        el('scoring-single').textContent = busy ? 'Đang kiểm tra…' : 'Bắt đầu kiểm tra';
+        el('btn-run-audiophile-audit').disabled = busy || !el('lab-selected-path').value;
+    }
     function text(tag, content, parent) {
         const node = document.createElement(tag);
         node.textContent = content;
@@ -29,7 +45,12 @@
         box.className = 'scoring-detail';
         text('summary', title, box);
         text('p', description, box);
-        text('pre', JSON.stringify(data, null, 2), box);
+        const raw = document.createElement('details'); raw.className = 'scoring-raw';
+        text('summary', 'Số liệu kỹ thuật', raw);
+        raw.addEventListener('toggle', () => {
+            if (raw.open && !raw.querySelector('pre')) text('pre', JSON.stringify(data, null, 2), raw);
+        });
+        box.append(raw);
         parent.append(box);
         return box;
     }
@@ -46,7 +67,7 @@
         ['Thuộc tính', 'Header khai báo', 'Kỳ vọng người dùng', 'Đo được'].forEach(v => text('th', v, heading));
         table.append(heading);
         [ ['Codec', declared.codec, expected.codec, 'Xác thực khả năng decode, không xác minh codec nguồn'],
-          ['Container', declared.container, expected.container, r.rules.metadata.status],
+          ['Container', declared.container, expected.container, statuses[r.rules.metadata.status]],
           ['Sample rate', declared.sample_rate, expected.sample_rate, `Bandwidth ${rate.observed_bandwidth ?? 'N/A'} Hz; rate nguồn chưa rõ`],
           ['Bit depth', declared.bit_depth, expected.bit_depth, depth.observed_bit_usage ? depth.observed_bit_usage.join(' / ') + ' bit sử dụng theo kênh' : 'Chưa xác lập độ phân giải nguồn']
         ].forEach(values => {
@@ -90,20 +111,34 @@
         el('auth-spectrum-note').textContent = regions.length ? `${r.spectral.method}. Độ phân giải ${r.spectral.frequency_resolution_hz.toFixed(1)} Hz. Trục ngang: các cửa sổ 1 giây được đo, ghi mốc bắt đầu.` : 'Chưa có dữ liệu phổ đủ để hiển thị.';
     }
     window.renderAuthenticity = r => {
+        clearLabAudit();
+        el('scoring-result').hidden = false;
+        el('scoring-result').dataset.verdict = r.critical_failure ? 'critical' : r.verdict;
         el('auth-score').textContent = r.score == null ? 'N/A' : `${r.score}/100`;
         el('auth-verdict').textContent = `${r.filename} · ${r.band}${r.preliminary ? ' · FAST sơ bộ' : ''}`;
-        el('auth-confidence').textContent = `Độ tin cậy đánh giá: ${r.assessment_confidence} · Coverage: ${(r.coverage*100).toFixed(1)}% (${r.assessed_weight}/${r.applicable_weight} trọng số áp dụng)`;
+        el('auth-confidence').textContent = `Độ tin cậy: ${confidence[r.assessment_confidence]} · Phạm vi đánh giá (coverage): ${(r.coverage*100).toFixed(1)}% (${r.assessed_weight}/${r.applicable_weight} trọng số áp dụng)`;
         el('auth-warnings').className = r.critical_failure ? 'critical' : '';
         el('auth-warnings').replaceChildren();
         r.warnings.forEach(w => text('p', w, el('auth-warnings')));
         const parent = el('auth-details'); parent.replaceChildren();
-        Object.entries(r.rules).forEach(([key, rule]) => {
-            const box = detail(parent, `${names[key]} · ${statuses[rule.status]} · trừ ${rule.penalty_applied} điểm trọng số`, rule.explanation, rule.measurements);
-            text('p', `Tin cậy: ${rule.confidence}. Detector: ${rule.detector} (${rule.detector_version}).`, box);
+        const priority = {FAIL: 0, SUSPECT: 1, REVIEW: 2, INCONCLUSIVE: 3, PASS: 4, NOT_APPLICABLE: 5};
+        Object.entries(r.rules).sort((a, b) => priority[a[1].status] - priority[b[1].status]).forEach(([key, rule]) => {
+            const penalty = rule.penalty_applied ? ` · trừ ${rule.penalty_applied} điểm trọng số` : '';
+            const box = detail(parent, `${names[key]} · ${statuses[rule.status]}${penalty}`, rule.explanation, rule.measurements);
+            box.dataset.status = rule.status;
+            text('p', `Tin cậy: ${confidence[rule.confidence]}. Công cụ: ${rule.detector} (${rule.detector_version}).`, box);
             rule.evidence.forEach(e => text('p', `${e.code}: ${e.detail}`, box));
             rule.limitations.forEach(l => text('p', l, box));
         });
-        detail(parent, 'Mastering & Signal Diagnostics · tách khỏi điểm authenticity', 'LUFS, LRA, peak, RMS, crest factor và DR được đo; loudness hoặc DR thấp không bị trừ điểm.', r.mastering);
+        const mastering = detail(parent, 'Chẩn đoán mastering và tín hiệu', 'Các phép đo dưới đây không đánh giá chất lượng nghe. Loudness hoặc DR thấp không bị trừ điểm.', r.mastering);
+        const metrics = document.createElement('dl'); metrics.className = 'scoring-metrics';
+        [['Loudness', 'integrated_lufs', 'LUFS'], ['Loudness Range', 'lra_lu', 'LU'],
+            ['DR ước lượng', 'dr_estimate', 'dB'], ['Crest factor', 'crest_factor_db', 'dB'],
+            ['Sample peak', 'sample_peak_dbfs', 'dBFS'], ['True peak', 'true_peak_dbtp', 'dBTP'], ['RMS', 'rms_dbfs', 'dBFS']].forEach(([label, key, unit]) => {
+            const item = document.createElement('div'); text('dt', label, item);
+            text('dd', r.mastering[key] == null ? 'Chưa đo được' : `${r.mastering[key].toFixed(1)} ${unit}`, item); metrics.append(item);
+        });
+        mastering.insertBefore(metrics, mastering.querySelector('.scoring-raw'));
         if (r.reference) detail(parent, 'So sánh tệp tham chiếu', r.reference.explanation, r.reference);
         detail(parent, 'Thông tin tái lập phân tích', `Rule ${r.rule_version} · ${r.analysis_timestamp}`, {
             file_sha256: r.file_sha256, versions: r.detector_versions, configuration: r.configuration,
@@ -130,36 +165,69 @@
             if (r) {
                 const button = text('button', 'Chi tiết', cell);
                 button.className = 'btn btn-secondary btn-sm';
-                button.addEventListener('click', () => window.renderAuthenticity(r));
+                button.addEventListener('click', () => {
+                    selectLabTrack(row.filepath, r.filename); window.renderAuthenticity(r);
+                    el('scoring-result').focus({preventScroll: true}); el('scoring-result').scrollIntoView({block: 'start'});
+                });
             }
             tr.append(cell); el('scoring-results').append(tr);
         });
         offset += rows.length;
     }
     async function loadMore(generation) {
+        if (el('scoring-more').disabled) return;
+        el('scoring-more').disabled = true;
         const rows = await request(`/api/scoring/jobs/${jobId}/results?offset=${offset}&limit=50`);
         if (generation !== viewGeneration) return;
         appendRows(rows);
-        if (offset === 1 && rows[0]?.result) window.renderAuthenticity(rows[0].result);
+        if (el('scoring-result').hidden) {
+            const first = rows.find(row => row.result);
+            if (first) { selectLabTrack(first.filepath, first.result.filename); window.renderAuthenticity(first.result); }
+        }
+        el('scoring-more').disabled = false;
         el('scoring-more').hidden = offset >= lastCompleted;
     }
     async function poll(generation) {
         try {
             const state = await request(`/api/scoring/jobs/${jobId}`);
             if (generation !== viewGeneration) return;
+            el('scoring-error').hidden = true;
             lastCompleted = state.completed;
-            el('scoring-progress').textContent = `${state.status} · ${state.completed}/${state.total} tệp · ${state.errors} lỗi. ${state.message}`;
+            el('scoring-progress').dataset.status = state.status;
+            el('scoring-progress').textContent = `${jobLabels[state.status]} · ${state.completed}/${state.total} tệp · ${state.errors} lỗi. ${state.message}`;
             const active = ['QUEUED', 'SCANNING', 'RUNNING', 'CANCELLING'].includes(state.status);
-            el('scoring-cancel').disabled = !active;
+            busy = active; syncSelection();
+            el('scoring-cancel').disabled = !active || state.status === 'CANCELLING';
+            el('scoring-cancel').hidden = !active;
+            el('scoring-meter').hidden = !active && !state.total;
+            el('scoring-meter').max = Math.max(1, state.total);
+            if (state.status === 'SCANNING' || state.status === 'QUEUED') el('scoring-meter').removeAttribute('value');
+            else el('scoring-meter').value = state.completed;
+            if (el('scoring-comparison').hidden && state.completed && state.total > 1) el('scoring-comparison').open = true;
+            el('scoring-comparison').hidden = !state.completed;
+            el('scoring-comparison-title').textContent = `Kết quả ${state.completed} tệp · chọn Chi tiết để xem bằng chứng`;
             if (offset < state.completed && offset < 200) await loadMore(generation);
             el('scoring-more').hidden = offset >= state.completed;
             if (active) timer = setTimeout(() => poll(generation), 1000);
             else await history();
-        } catch (error) { fail(error); }
+        } catch (error) {
+            if (generation !== viewGeneration) return;
+            el('scoring-more').disabled = false;
+            fail(new Error(`Chưa cập nhật được tiến độ. Đang thử lại… ${error.message}`));
+            timer = setTimeout(() => poll(generation), 3000);
+        }
     }
     function view(id) {
         clearTimeout(timer); jobId = id; offset = 0; lastCompleted = 0;
+        clearLabAudit();
         viewGeneration += 1;
+        el('scoring-result').hidden = true;
+        el('scoring-comparison').hidden = true;
+        el('scoring-comparison').open = false;
+        el('scoring-more').disabled = false;
+        el('scoring-error').hidden = true;
+        el('scoring-progress').textContent = 'Đang tải lượt kiểm tra…';
+        el('scoring-progress').dataset.status = 'QUEUED';
         localStorage.setItem('audio-scoring-job', id);
         el('scoring-results').replaceChildren();
         ['json', 'jsonl', 'csv'].forEach(format => {
@@ -171,28 +239,42 @@
     async function history() {
         const jobs = await request('/api/scoring/jobs');
         const select = el('scoring-history'); select.replaceChildren(new Option('Chọn lượt quét', ''));
-        jobs.forEach(j => select.add(new Option(`${j.status} · ${j.completed}/${j.total} · ${j.id.slice(0, 8)}`, j.id)));
+        jobs.forEach(j => {
+            const scope = j.options.folder != null ? j.options.folder === '.' ? 'Toàn bộ kho' : j.options.folder : j.options.filepaths.length === 1 ? j.options.filepaths[0] : `${j.total} tệp đã chọn`;
+            select.add(new Option(`${jobLabels[j.status]} · ${j.completed}/${j.total} · ${scope}`, j.id));
+        });
         select.value = jobId || '';
     }
     async function start(target) {
+        if (busy) return;
+        el('scoring-error').hidden = true;
+        busy = true; syncSelection();
         try { const job = await post('/api/scoring/jobs', {...options(), ...target}); view(job.job_id); }
-        catch (error) { fail(error); }
+        catch (error) { busy = false; syncSelection(); fail(error); }
     }
     document.addEventListener('DOMContentLoaded', () => {
-        el('scoring-single').addEventListener('click', () => {
-            const path = el('lab-selected-path').value;
-            if (!path) return fail(new Error('Chọn một bài trong ô tìm kiếm của Lab.'));
-            start({filepaths: [path]});
+        el('scoring-form').addEventListener('submit', event => {
+            event.preventDefault();
+            const scope = el('scoring-target').value;
+            const paths = scope === 'single' ? [el('lab-selected-path').value].filter(Boolean) : [...selectedTrackPaths];
+            if (scope !== 'folder' && !paths.length) return fail(new Error('Chọn bài trước khi kiểm tra.'));
+            start(scope === 'folder' ? {folder: el('scoring-folder').value.trim()} : {filepaths: paths});
         });
-        el('scoring-selected').addEventListener('click', () => {
-            const paths = [...selectedTrackPaths];
-            if (!paths.length) return fail(new Error('Chọn bài trong bảng Kho nhạc trước khi quét.'));
-            start({filepaths: paths});
+        el('scoring-target').addEventListener('change', syncSelection);
+        document.addEventListener('audio-selection-change', syncSelection);
+        el('btn-batch-score').addEventListener('click', () => {
+            switchTab('tab-audiophile'); el('scoring-target').value = 'selected'; syncSelection(); el('scoring-single').click();
         });
-        el('scoring-folder-start').addEventListener('click', () => start({folder: el('scoring-folder').value.trim()}));
-        el('scoring-cancel').addEventListener('click', () => post(`/api/scoring/jobs/${jobId}/cancel`, {}).then(() => poll(viewGeneration)).catch(fail));
+        el('scoring-mode').addEventListener('change', () => {
+            el('scoring-mode-help').textContent = {FAST: 'Chỉ sàng lọc 20 giây đầu; chưa có điểm kết luận.', BALANCED: 'Giải mã toàn tệp, kiểm tra toàn vẹn và đo nhiều vùng phổ.', DEEP: 'Nhiều vùng phổ hơn và detector thử nghiệm nếu có; cần thêm thời gian.'}[el('scoring-mode').value];
+        });
+        el('scoring-cancel').addEventListener('click', () => {
+            el('scoring-cancel').disabled = true;
+            post(`/api/scoring/jobs/${jobId}/cancel`, {}).catch(fail);
+        });
         el('scoring-history').addEventListener('change', e => { if (e.target.value) view(e.target.value); });
-        el('scoring-more').addEventListener('click', () => loadMore(viewGeneration).catch(fail));
+        el('scoring-more').addEventListener('click', () => loadMore(viewGeneration).catch(error => { el('scoring-more').disabled = false; fail(error); }));
+        syncSelection();
         history().then(() => {
             const saved = localStorage.getItem('audio-scoring-job');
             if (saved && [...el('scoring-history').options].some(option => option.value === saved)) view(saved);
