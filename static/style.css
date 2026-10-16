@@ -232,7 +232,6 @@ body {
 
 /* Main Layout */
 .app-main {
-    max-width: 1680px;
     width: 100%;
     margin: 0 auto;
     padding: 1.5rem 2rem;
@@ -2291,7 +2290,6 @@ body {
     max-width: 480px !important;
 }
 /* Audio evidence uses the existing Lab cards and palette. */
-#tab-audiophile, #tab-organize { max-width: 1240px; margin-inline: auto; }
 #scoring-setup > summary { font-size: 1.1rem; font-weight: 600; cursor: pointer; padding-block: .35rem; }
 #scoring-setup:not([open]) { padding-bottom: .75rem; border-bottom: 1px solid var(--border-color); }
 .scoring-score-header { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
