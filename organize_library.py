@@ -80,6 +80,7 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
     codec = ext[1:]
     
     p_str = str(filepath)
+    metadata_available = p_str in pre_scanned_specs
     if p_str in pre_scanned_specs:
         spec = pre_scanned_specs[p_str]
         codec = spec.get('codec', codec)
@@ -89,6 +90,7 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
     try:
         m = mutagen.File(p, easy=True)
         if m:
+            metadata_available = True
             title = clean_str(m.get('title', [''])[0])
             artist = clean_str(m.get('artist', [''])[0] or m.get('albumartist', [''])[0])
             album = clean_str(m.get('album', [''])[0])
@@ -101,6 +103,8 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
                 sr = getattr(m.info, 'sample_rate', sr)
                 bits = getattr(m.info, 'bits_per_sample', bits)
                 codec = getattr(m.info, 'codec', codec)
+                if codec.lower().startswith('mp4a.'):
+                    codec = 'aac'
     except Exception:
         pass
         
@@ -146,6 +150,7 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
         tier = '03_Lossy_MP3_AAC'
 
     return {
+        'metadata_available': metadata_available,
         'title': title,
         'artist': artist,
         'album': album,

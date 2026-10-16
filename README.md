@@ -81,6 +81,6 @@ Truy cập giao diện Web tại: **`http://localhost:5050`**. Mặc định ch�
    - `03_Quarantine (Fake Hi-Res, MP3, File Lỗi)`
    - Hỗ trợ chế độ **Symlink** (không chuyển file gốc, từ chối ghi đè đích đã tồn tại) và **Move** (kèm file rollback).
 
-Danh sách bài hát được quét từ vault hiện tại. Dashboard chỉ đếm kết quả kiểm định đã lưu; bài chưa kiểm định không được gán số liệu chất lượng mẫu.
+Danh sách bài hát được quét từ vault hiện tại. Dashboard dùng kết quả kiểm định đã lưu; nhóm CD/lossy có thể phân loại từ metadata khi chưa kiểm định, với chú thích ở nhãn bài hát. Bài chưa xác định không được gán số liệu chất lượng mẫu.
 
 CLI tổ chức thư viện dùng chung nhật ký `.vault_tiering_rollback.json` với Vault Tiering; khôi phục bằng `python organize_library.py --rollback /path/to/vault`. Khi có xung đột, file đích được giữ nguyên và mục rollback lỗi được giữ lại để thử lại.

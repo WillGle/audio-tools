@@ -106,18 +106,28 @@ def save_verdict(result):
         temp.replace(VERDICTS_CACHE_FILE)
 
 
+def cached_by_path(cache_file, path_key):
+    try:
+        records = json.loads(cache_file.read_text(encoding='utf-8'))
+    except (ValueError, OSError):
+        return {}
+    result = {}
+    for record in records:
+        try:
+            path = vault_path(ROOT_DIR, record[path_key])
+        except (KeyError, ValueError, OSError):
+            continue
+        result[str(path)] = record
+    return result
+
+
 def library_items():
     from organize_library import process_file_metadata
     from core.dedup import IGNORE_DIRS
     import os
 
-    verdicts = []
-    if VERDICTS_CACHE_FILE.exists():
-        try:
-            verdicts = json.loads(VERDICTS_CACHE_FILE.read_text(encoding='utf-8'))
-        except (ValueError, OSError):
-            pass
-    by_path = {item.get('filepath'): item for item in verdicts}
+    by_path = cached_by_path(VERDICTS_CACHE_FILE, 'filepath')
+    specs_by_path = cached_by_path(METADATA_CACHE_FILE, 'path')
     items = []
     for directory, dirs, files in os.walk(ROOT_DIR):
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS and not d.startswith('.')]
@@ -131,14 +141,21 @@ def library_items():
                     continue
             except (ValueError, OSError):
                 continue
-            meta = process_file_metadata(str(path), {}, by_path)
+            meta = process_file_metadata(str(resolved), specs_by_path, by_path)
+            verdict = by_path.get(str(resolved), {}).get('verdict', 'UNKNOWN')
+            source = 'audit' if verdict != 'UNKNOWN' else 'unknown'
+            if verdict == 'UNKNOWN' and meta['metadata_available']:
+                if meta['tier'] == '02_Lossless_CD':
+                    verdict, source = 'CD_LOSSLESS', 'metadata'
+                elif meta['codec'].lower() in ('mp3', 'aac', 'vorbis', 'opus', 'wmav1', 'wmav2', 'wmapro', 'ac3', 'eac3'):
+                    verdict, source = 'LOSSY', 'metadata'
             items.append({
                 'original_path': str(path.relative_to(ROOT_DIR)),
                 'tier': meta['tier'], 'title': meta['title'] or path.stem,
                 'artist': meta['artist'] or 'Unknown Artist',
                 'album': meta['album'] or 'Singles',
                 'specs': f"{meta['codec'].upper()} {meta['bits']}bit/{meta['sr']/1000:.1f}kHz",
-                'verdict': by_path.get(str(path), {}).get('verdict', 'UNKNOWN')
+                'verdict': verdict, 'verdict_source': source
             })
     return sorted(items, key=lambda item: item['original_path'])
 

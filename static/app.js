@@ -808,24 +808,23 @@ async function loadTracks() {
 
         let html = '';
         tracks.forEach((track, idx) => {
-            const tier = track.tier || '';
-            let verdictBadge = '';
-            
-            if (tier.includes('Upsampled_Fake_HiRes')) {
-                verdictBadge = `<span class="stat-tag tag-rose"><span class="badge-dot-rose"></span>Fake Hi-Res</span>`;
-            } else if (tier === '01_Hi-Res & DSD') {
-                if (track.original_path.endsWith('.dsf') || track.specs.includes('DSD')) {
-                    verdictBadge = `<span class="stat-tag tag-cyan"><span class="badge-dot-cyan"></span>True DSD</span>`;
-                } else if (track.specs.includes('24bit/96') || track.specs.includes('24bit/176') || track.specs.includes('24bit/192')) {
-                    verdictBadge = `<span class="stat-tag tag-emerald"><span class="badge-dot-emerald"></span>True Hi-Res</span>`;
-                } else {
-                    verdictBadge = `<span class="stat-tag tag-amber"><span class="badge-dot-amber"></span>Studio Master</span>`;
-                }
-            } else if (tier === '02_Lossless_CD') {
-                verdictBadge = `<span class="stat-tag tag-indigo"><span class="badge-dot-indigo"></span>CD Lossless</span>`;
-            } else {
-                verdictBadge = `<span class="stat-tag tag-slate"><span class="badge-dot-slate"></span>Lossy MP3</span>`;
-            }
+            const verdictStyles = {
+                TRUE_HIRES: ['emerald', 'True Hi-Res'],
+                TRUE_DSD: ['cyan', 'True DSD'],
+                STUDIO_MASTER_24BIT: ['amber', 'Studio Master'],
+                FAKE_HIRES_UPSAMPLED: ['rose', 'Fake Hi-Res'],
+                FAKE_LOSSLESS: ['rose', 'Fake Lossless'],
+                FAKE_24BIT: ['rose', 'Fake 24-bit'],
+                DSD_CONVERTED_FROM_PCM: ['rose', 'DSD từ PCM'],
+                CD_LOSSLESS: ['indigo', 'CD Lossless'],
+                LOSSY: ['slate', 'Lossy'],
+                SUSPICIOUS_HIRES: ['amber', 'Cần kiểm định thêm']
+            };
+            const [color, label] = verdictStyles[track.verdict] || ['slate', 'Chưa kiểm định'];
+            const note = track.verdict_source === 'metadata'
+                ? 'Phân loại từ định dạng và metadata; chưa kiểm định chất lượng âm thanh'
+                : '';
+            const verdictBadge = `<span class="stat-tag tag-${color}" title="${note}">${label}</span>`;
 
             let dupeBadge = '';
             if (track.is_duplicate_meta) {
