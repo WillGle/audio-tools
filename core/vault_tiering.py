@@ -186,17 +186,17 @@ def _write_rollback(path, records):
     temp.replace(path)
 
 
-def execute_tiering(vault_dir, plan_items, mode='symlink'):
+def execute_tiering(vault_dir, plan_items, mode='symlink', *, rollback_name='.vault_tiering_rollback.json'):
     with _tiering_lock:
-        return _execute_tiering(vault_dir, plan_items, mode)
+        return _execute_tiering(vault_dir, plan_items, mode, rollback_name)
 
 
-def _execute_tiering(vault_dir, plan_items, mode):
+def _execute_tiering(vault_dir, plan_items, mode, rollback_name):
     if mode not in ('symlink', 'move'):
         raise ValueError('Chế độ phải là symlink hoặc move')
     vault_dir = Path(vault_dir).resolve()
     target_base = vault_dir if mode == 'move' else vault_path(vault_dir, '_Vault_3_Tier_Symlinks')
-    rollback_file = vault_path(vault_dir, '.vault_tiering_rollback.json')
+    rollback_file = vault_path(vault_dir, rollback_name)
     records = json.loads(rollback_file.read_text()) if rollback_file.exists() else []
     if not isinstance(records, list):
         raise ValueError('Tệp rollback không hợp lệ')
@@ -235,16 +235,16 @@ def _execute_tiering(vault_dir, plan_items, mode):
     }
 
 
-def rollback_vault_tiering(vault_dir):
+def rollback_vault_tiering(vault_dir, *, rollback_name='.vault_tiering_rollback.json'):
     with _tiering_lock:
-        return _rollback_vault_tiering(vault_dir)
+        return _rollback_vault_tiering(vault_dir, rollback_name)
 
 
-def _rollback_vault_tiering(vault_dir):
+def _rollback_vault_tiering(vault_dir, rollback_name):
     vault_dir = Path(vault_dir).resolve()
-    rollback_file = vault_path(vault_dir, '.vault_tiering_rollback.json')
+    rollback_file = vault_path(vault_dir, rollback_name)
     if not rollback_file.exists():
-        return {'success': False, 'message': 'Không tìm thấy tệp rollback .vault_tiering_rollback.json'}
+        return {'success': False, 'message': f'Không tìm thấy nhật ký hoàn tác {rollback_name}'}
     records = json.loads(rollback_file.read_text())
     if not isinstance(records, list):
         raise ValueError('Tệp rollback không hợp lệ')

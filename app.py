@@ -455,6 +455,69 @@ def organize_dry_run():
         'error': res.stderr
     }
 
+
+_organize_lock = Lock()
+_organize_plan_file = CACHE_DIR / 'metadata_organize_plan.json'
+
+
+class OrganizeRequest(BaseModel):
+    folder: str = ''
+    plan_id: str = ''
+
+
+@app.post('/api/organize/preview')
+def preview_metadata_organization(req: OrganizeRequest):
+    from core.organizer import metadata_plan
+    from uuid import uuid4
+    with _organize_lock:
+        try:
+            plan = metadata_plan(ROOT_DIR, req.folder)
+        except (ValueError, OSError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        plan['plan_id'] = uuid4().hex
+        temp = _organize_plan_file.with_suffix('.tmp')
+        temp.write_text(json.dumps(plan, ensure_ascii=False), encoding='utf-8')
+        temp.replace(_organize_plan_file)
+        return plan
+
+
+@app.post('/api/organize/apply')
+def apply_metadata_organization(req: OrganizeRequest):
+    from core.organizer import file_stamp, ROLLBACK_NAME
+    with _organize_lock:
+        if not _organize_plan_file.exists():
+            raise HTTPException(status_code=409, detail='Hãy tạo bản xem trước mới.')
+        plan = json.loads(_organize_plan_file.read_text(encoding='utf-8'))
+        if not req.plan_id or plan['plan_id'] != req.plan_id:
+            raise HTTPException(status_code=409, detail='Bản xem trước đã thay đổi. Hãy xem lại trước khi áp dụng.')
+        ready = [item for item in plan['items'] if item['status'] == 'READY']
+        try:
+            for item in ready:
+                path = audio_path(item['original_path'])
+                if file_stamp(path) != item['stamp']:
+                    raise ValueError('Tệp nguồn đã thay đổi; hãy tạo bản xem trước mới.')
+                dest = vault_path(ROOT_DIR, item['dest_path'])
+                if dest.exists() or dest.is_symlink():
+                    raise ValueError('Đích đã tồn tại; hãy tạo bản xem trước mới.')
+        except (ValueError, OSError) as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
+        result = execute_tiering(ROOT_DIR, ready, mode='move', rollback_name=ROLLBACK_NAME)
+        _organize_plan_file.unlink(missing_ok=True)
+        global _dupe_map_cache
+        _dupe_map_cache = None
+        return result
+
+
+@app.post('/api/organize/rollback')
+def undo_metadata_organization():
+    from core.organizer import ROLLBACK_NAME
+    with _organize_lock:
+        result = rollback_vault_tiering(ROOT_DIR, rollback_name=ROLLBACK_NAME)
+        _organize_plan_file.unlink(missing_ok=True)
+        global _dupe_map_cache
+        _dupe_map_cache = None
+        return result
+
 @app.get("/api/duplicates")
 def get_duplicates_report(refresh: bool = False):
     dupes = scan_duplicates(ROOT_DIR, force_refresh=refresh)
