@@ -45,8 +45,13 @@ def clean_title_for_clustering(title, artist, rel_path):
     if a:
         t = re.sub(r'\s*-\s*' + re.escape(a) + r'\b', '', t, flags=re.I)
         t = re.sub(r'^' + re.escape(a) + r'\s*-\s*', '', t, flags=re.I)
-    t = re.sub(r'[\(\[]\s*\d+\s*[\)\]]', '', t).strip()
-    t = re.sub(r'[\(\[](?:official\s*(?:mv|music\s*video|audio|video)|320\s*kbps|128\s*kbps)[\)\]]', '', t, flags=re.I).strip()
+    # Strip track number prefixes like '01. ', '1-05 '
+    t = re.sub(r'^\d+[\s\.\-_]+', '', t)
+    t = re.sub(r'^\d+-\d+[\s\.\-_]+', '', t)
+    # Strip (Remaster), (2017 Remaster), [2011 Remastered], etc.
+    t = re.sub(r'[\(\[]\s*(?:\d{4}\s*)?remaster(?:ed)?\s*[\)\]]', '', t, flags=re.I)
+    t = re.sub(r'[\(\[]\s*\d+\s*[\)\]]', '', t)
+    t = re.sub(r'[\(\[](?:official\s*(?:mv|music\s*video|audio|video)|320\s*kbps|128\s*kbps)[\)\]]', '', t, flags=re.I)
     return normalize_text(t)
 
 def score_file_for_keeping(rel_path, cache_row=None):
@@ -336,13 +341,21 @@ def scan_duplicates(root_dir, force_refresh=False):
     meta_duplicates = []
     for c_tit, flist in by_meta.items():
         if len(flist) > 1:
-            # Cluster by duration (+/- 4s)
+            # Cluster by duration and artist similarity
             subclusters = []
             for item in flist:
                 matched = False
                 for cluster in subclusters:
-                    dur_match = abs(cluster[0]['duration'] - item['duration']) <= 4.0
-                    if dur_match:
+                    dur_diff = abs(cluster[0]['duration'] - item['duration'])
+                    c_art = normalize_text(cluster[0].get('artist', ''))
+                    i_art = normalize_text(item.get('artist', ''))
+                    same_art = (c_art == i_art) and (c_art != '')
+                    
+                    # Match if:
+                    # 1. Same artist and duration diff <= 15s (remasters, intro/outro silence diff)
+                    # 2. Duration diff <= 6.0s (even if artist naming differs e.g. English vs Kanji, or missing)
+                    # 3. Either duration is 0 (mutagen couldn't parse length)
+                    if (same_art and dur_diff <= 15.0) or (dur_diff <= 6.0) or (item['duration'] == 0 or cluster[0]['duration'] == 0):
                         cluster.append(item)
                         matched = True
                         break

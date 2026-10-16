@@ -385,39 +385,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "02.LOSER.m4a",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2017] BOOTLEG/02. LOSER.m4a",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "BOOTLEG",
-    "title": "LOSER",
-    "specs": "AAC 0bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "CAM - -KHNG SAO U- (feat. SHINASTY  T.R.I) Audio.mp3",
-    "target_path": "03_Lossy_MP3_AAC/CAM/Singles/CAM - -KHNG SAO U- (feat. SHINASTY T.R.I) Audio.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "CAM",
-    "album": "Singles",
-    "title": "-KHNG SAO U- (feat. SHINASTY T.R.I) Audio",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "06. 蝶々結び.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Aimer/[2016] daydream/06. 蝶々結び.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Aimer",
-    "album": "daydream",
-    "title": "蝶々結び",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "Rich Brian - Drive Safe _ A COLORS SHOW (320  kbps).mp3",
     "target_path": "03_Lossy_MP3_AAC/Rich Brian/Singles/Rich Brian - Drive Safe A COLORS SHOW.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -550,17 +517,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "3104323071934674221.mp3",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/LOSER _ ナンバーナイン/01. LOSER.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "LOSER _ ナンバーナイン",
-    "title": "LOSER",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": true,
-    "is_recovered": true
-  },
-  {
     "original_path": "おやすみジブリ・夏夜のピアノメドレー【睡眠用BGM】Studio Ghibli Summer Night Piano Collection Piano Cove.m4a",
     "target_path": "03_Lossy_MP3_AAC/Unknown Artist/Singles/おやすみジブリ・夏夜のピアノメドレー【睡眠用BGM】Studio Ghibli Summer Night Piano Collection Piano Cove.m4a",
     "tier": "03_Lossy_MP3_AAC",
@@ -623,17 +579,6 @@
     "album": "Singles",
     "title": "Anh Nắng Của Anh (Chờ Em Đến Ngày Mai OST)",
     "specs": "MP3 16bit/48.0kHz",
-    "was_numeric": true,
-    "is_recovered": true
-  },
-  {
-    "original_path": "8187446591434286396.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Kenshi Yonezu/Orion/01. orion.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Kenshi Yonezu",
-    "album": "Orion",
-    "title": "orion",
-    "specs": "MP3 16bit/44.1kHz",
     "was_numeric": true,
     "is_recovered": true
   },
@@ -957,17 +902,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "07.Moonlight.m4a",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2017] BOOTLEG/07. Moonlight.m4a",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "BOOTLEG",
-    "title": "Moonlight",
-    "specs": "AAC 0bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "MAU den trang - Ngot (NhacPro.net).flac",
     "target_path": "02_Lossless_CD/Ngọt/3 (Tuyển Tập Nhạc Ngọt Mới Trẻ Sôi Động 2019)/Màu (Đen Trắng).flac",
     "tier": "02_Lossless_CD",
@@ -1100,17 +1034,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "2514759337792295245.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Imagine Dragons/Night Visions/Demons.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Imagine Dragons",
-    "album": "Night Visions",
-    "title": "Demons",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": true,
-    "is_recovered": true
-  },
-  {
     "original_path": "7431827423284720915.mp3",
     "target_path": "03_Lossy_MP3_AAC/Imagine Dragons/[2017] Believer/01. Believer.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -1164,17 +1087,6 @@
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": true,
     "is_recovered": true
-  },
-  {
-    "original_path": "Swalla - Jason Derulo, Nicki Minaj, Ty Dolla $ign.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Jason Derulo, Nicki Minaj, Ty Dolla/Singles/Jason Derulo, Nicki Minaj, Ty Dolla - Swalla.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Jason Derulo, Nicki Minaj, Ty Dolla",
-    "album": "Singles",
-    "title": "Swalla - Jason Derulo, Nicki Minaj, Ty Dolla",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
   },
   {
     "original_path": "2301504502207619147.mp3",
@@ -1274,17 +1186,6 @@
     "specs": "MP3 16bit/48.0kHz",
     "was_numeric": false,
     "is_recovered": false
-  },
-  {
-    "original_path": "119030628364100836.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Kenshi Yonezu, daoko,/Singles/Kenshi Yonezu, daoko, - Uchiage Hanabi.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Kenshi Yonezu, daoko,",
-    "album": "Singles",
-    "title": "Uchiage Hanabi",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": true,
-    "is_recovered": true
   },
   {
     "original_path": "2577046077229689873.mp3",
@@ -2101,17 +2002,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "01.ピースサイン.mp3",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2017] ピースサイン/01. ピースサイン.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "ピースサイン",
-    "title": "ピースサイン",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "12. us.mp3",
     "target_path": "03_Lossy_MP3_AAC/Aimer/[2016] daydream/12. us.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -2163,28 +2053,6 @@
     "album": "Leave The Door Open",
     "title": "Leave The Door Open (Live)",
     "specs": "FLAC 24bit/48.0kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "01.Flamingo.mp3",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2018] Flamingo _ TEENAGE RIOT/01. Flamingo.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "Flamingo _ TEENAGE RIOT",
-    "title": "Flamingo",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "Rich Brian - DOA (Official Music Video) (320  kbps) (1).mp3",
-    "target_path": "03_Lossy_MP3_AAC/Rich Brian/Singles/Rich Brian - DOA (1).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Rich Brian",
-    "album": "Singles",
-    "title": "DOA (1)",
-    "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
   },
@@ -2427,28 +2295,6 @@
     "album": "22",
     "title": "Em Là",
     "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "07. カタオモイ.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Aimer/[2016] daydream/07. カタオモイ.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Aimer",
-    "album": "daydream",
-    "title": "カタオモイ",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "12.Nighthawks.m4a",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2017] BOOTLEG/12. Nighthawks.m4a",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "BOOTLEG",
-    "title": "Nighthawks",
-    "specs": "AAC 0bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
   },
@@ -2882,17 +2728,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "08. Your Eyes.flac",
-    "target_path": "02_Lossless_CD/Yamashita Tatsuro/[1982] For You/08. Your Eyes.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Yamashita Tatsuro",
-    "album": "For You",
-    "title": "Your Eyes",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "keshi - like i need u.mp3",
     "target_path": "03_Lossy_MP3_AAC/keshi/Singles/keshi - like i need u.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -3089,28 +2924,6 @@
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": true,
     "is_recovered": true
-  },
-  {
-    "original_path": "Đá tan - Ngọt - 2022.flac",
-    "target_path": "02_Lossless_CD/Ngọt, Mạc Mai Sương/[2022] Gieo/08. Đá tan.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Ngọt, Mạc Mai Sương",
-    "album": "Gieo",
-    "title": "Đá tan",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "05. Loveland, Island.flac",
-    "target_path": "02_Lossless_CD/Yamashita Tatsuro/[1982] For You/05. Loveland, Island.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Yamashita Tatsuro",
-    "album": "For You",
-    "title": "Loveland, Island",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
   },
   {
     "original_path": "7843698623675605948.mp3",
@@ -3674,17 +3487,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "03. Morning Glory.flac",
-    "target_path": "02_Lossless_CD/Yamashita Tatsuro/[1982] For You/03. Morning Glory.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Yamashita Tatsuro",
-    "album": "For You",
-    "title": "Morning Glory",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "02. Nella Fantasia.flac",
     "target_path": "02_Lossless_CD/Il Divo/[2012] The Greatest Hits (Deluxe)/02. Nella Fantasia.flac",
     "tier": "02_Lossless_CD",
@@ -3837,17 +3639,6 @@
     "specs": "AAC 0bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
-  },
-  {
-    "original_path": "9193739207397323045.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Kai Đinh/Singles/Kai Đinh - Điều Buồn Nhất.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Kai Đinh",
-    "album": "Singles",
-    "title": "Điều Buồn Nhất",
-    "specs": "MP3 16bit/48.0kHz",
-    "was_numeric": true,
-    "is_recovered": true
   },
   {
     "original_path": "8311501512362531553.mp3",
@@ -4158,17 +3949,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "EPIK HIGH (에픽하이) - 빈차 (HOME IS FAR AWAY) ft. 오혁 of HYUKOH [Official MV] (320  kbps) (1).mp3",
-    "target_path": "03_Lossy_MP3_AAC/EPIK HIGH (에픽하이)/Singles/EPIK HIGH (에픽하이) - 빈차 (HOME IS FAR AWAY) ft. 오혁 of HYUKOH [Official MV] (1).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "EPIK HIGH (에픽하이)",
-    "album": "Singles",
-    "title": "빈차 (HOME IS FAR AWAY) ft. 오혁 of HYUKOH [Official MV] (1)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "The Escape - Satoshi Takebe.flac",
     "target_path": "02_Lossless_CD/Satoshi Takebe/[2011] From Up On Poppy Hill Soundtrack/20. The Escape.flac",
     "tier": "02_Lossless_CD",
@@ -4290,17 +4070,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "573161551040538354.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Lukas Graham/Lukas Graham (Blue Album)/7 Years.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Lukas Graham",
-    "album": "Lukas Graham (Blue Album)",
-    "title": "7 Years",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": true,
-    "is_recovered": true
-  },
-  {
     "original_path": "A Dream - Satoshi Takebe.flac",
     "target_path": "02_Lossless_CD/Satoshi Takebe/[2011] From Up On Poppy Hill Soundtrack/18. A Dream.flac",
     "tier": "02_Lossless_CD",
@@ -4341,17 +4110,6 @@
     "album": "Black Bird _ Tiny Dancers _ 思い出は奇麗で",
     "title": "思い出は奇麗で",
     "specs": "AAC 0bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "Orion-KenshiYonezu-4772077 (1).mp3",
-    "target_path": "03_Lossy_MP3_AAC/Kenshi Yonezu/Singles/Kenshi Yonezu - Orion.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Kenshi Yonezu",
-    "album": "Singles",
-    "title": "Orion - Kenshi Yonezu",
-    "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
   },
@@ -4620,17 +4378,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "05.orion.m4a",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2017] BOOTLEG/05. orion.m4a",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "BOOTLEG",
-    "title": "orion",
-    "specs": "AAC 0bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "Xổ số.mp3",
     "target_path": "03_Lossy_MP3_AAC/Unknown Artist/Singles/Xổ số.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -4714,17 +4461,6 @@
     "artist": "Không sau đâu",
     "album": "Singles",
     "title": "Cam - (feat. SHINASTY T.R.I) Audio",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "02 ナンバーナイン.mp3",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2016] LOSER _ ナンバーナイン/02. ナンバーナイン.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "LOSER _ ナンバーナイン",
-    "title": "ナンバーナイン",
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -4891,28 +4627,6 @@
     "album": "Lỡ Yêu",
     "title": "Lỡ Yêu",
     "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "5063494416329765455.mp3",
-    "target_path": "03_Lossy_MP3_AAC/JustaTee, Binz/[2016] Cơn Mưa Cuối (Single)/01. Cơn Mưa Cuối.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "JustaTee, Binz",
-    "album": "Cơn Mưa Cuối (Single)",
-    "title": "Cơn Mưa Cuối",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": true,
-    "is_recovered": true
-  },
-  {
-    "original_path": "Mấy Khi - Ngọt - 2022.flac",
-    "target_path": "02_Lossless_CD/Ngọt/[2022] Gieo/02. Mấy Khi.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Ngọt",
-    "album": "Gieo",
-    "title": "Mấy Khi",
-    "specs": "FLAC 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
   },
@@ -5111,17 +4825,6 @@
     "album": "まるわかり!_ メガミックス3 ～5ReeeeN～",
     "title": "Green boys",
     "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "02. Music Book.flac",
-    "target_path": "02_Lossless_CD/Yamashita Tatsuro/[1982] For You/02. Music Book.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Yamashita Tatsuro",
-    "album": "For You",
-    "title": "Music Book",
-    "specs": "FLAC 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
   },
@@ -5445,17 +5148,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "3443712101256544632 (1).mp3",
-    "target_path": "03_Lossy_MP3_AAC/Kenshi Yonezu/Peace Sign/01. Peace Sign.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Kenshi Yonezu",
-    "album": "Peace Sign",
-    "title": "Peace Sign",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "5381167415131191204.mp3",
     "target_path": "03_Lossy_MP3_AAC/Martin Jensen/All I Wanna Do - Single/01. All I Wanna Do.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -5696,17 +5388,6 @@
     "specs": "MP3 16bit/48.0kHz",
     "was_numeric": true,
     "is_recovered": true
-  },
-  {
-    "original_path": "02.TEENAGE RIOT.mp3",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2018] Flamingo _ TEENAGE RIOT/02. TEENAGE RIOT.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "Flamingo _ TEENAGE RIOT",
-    "title": "TEENAGE RIOT",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
   },
   {
     "original_path": "TattoosTogether-Lauv-6204587.mp3",
@@ -6028,17 +5709,6 @@
     "is_recovered": true
   },
   {
-    "original_path": "01. Sparkle.flac",
-    "target_path": "02_Lossless_CD/Yamashita Tatsuro/[1982] For You/01. Sparkle.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Yamashita Tatsuro",
-    "album": "For You",
-    "title": "Sparkle",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "FuckIMLonely-LauvAnneMarie-6083108.mp3",
     "target_path": "03_Lossy_MP3_AAC/Lauv,Anne-Marie/Fuck, I'M Lonely/Fuck, I'M Lonely.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -6303,17 +5973,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "01 Lemon.mp3",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2018] Lemon/01. Lemon.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "Lemon",
-    "title": "Lemon",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "2208104675634602332.mp3",
     "target_path": "03_Lossy_MP3_AAC/One Direction/Singles/One Direction - What Makes You Beautiful.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -6562,17 +6221,6 @@
     "artist": "米津玄師",
     "album": "LOSER _ ナンバーナイン",
     "title": "amen",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "MeanIt-LauvLany-6136311.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Lauv, Lany/Mean It/Mean It.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Lauv, Lany",
-    "album": "Mean It",
-    "title": "Mean It",
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -7502,17 +7150,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "02. ninelie.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Aimer with chelly (EGOIST)/[2016] daydream/02. ninelie.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Aimer with chelly (EGOIST)",
-    "album": "daydream",
-    "title": "ninelie",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "Believed-Lauv-6231335.mp3",
     "target_path": "03_Lossy_MP3_AAC/Lauv/~how i'm feeling~/Believed.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -7575,17 +7212,6 @@
     "album": "Fly Away (feat. Anjulie)",
     "title": "Fly Away",
     "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "LonelyLove-TrangHanHoangThongTDK-5649019.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Trang Hàn, Hoàng Thống, TDK/Lonely Love/Lonely Love.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Trang Hàn, Hoàng Thống, TDK",
-    "album": "Lonely Love",
-    "title": "Lonely Love",
-    "specs": "MP3 16bit/48.0kHz",
     "was_numeric": false,
     "is_recovered": false
   },
@@ -8030,17 +7656,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "8240384385029558858.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Kenshi Yonezu/BOOTLEG/08. Shunrai.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Kenshi Yonezu",
-    "album": "BOOTLEG",
-    "title": "Shunrai",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": true,
-    "is_recovered": true
-  },
-  {
     "original_path": "Ride On Time - Acapella Intro Version.m4a",
     "target_path": "03_Lossy_MP3_AAC/Ride On Time/Singles/Ride On Time - Acapella Intro Version.m4a",
     "tier": "03_Lossy_MP3_AAC",
@@ -8212,17 +7827,6 @@
     "artist": "Ariana Grande",
     "album": "God Is A Woman",
     "title": "God Is A Woman",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "01. orion.mp3",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2017] orion/01. orion.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "orion",
-    "title": "orion",
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -10175,17 +9779,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "( lm g)  qun - Ngt (diskoversion).mp3",
-    "target_path": "03_Lossy_MP3_AAC/( lm g) qun/Singles/( lm g) qun - Ngt (diskoversion).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "( lm g) qun",
-    "album": "Singles",
-    "title": "Ngt (diskoversion)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "BTS (방탄소년단) 'Dynamite' Official MV (320  kbps).mp3",
     "target_path": "03_Lossy_MP3_AAC/Unknown Artist/Singles/BTS (방탄소년단) 'Dynamite' Official MV.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -10248,17 +9841,6 @@
     "album": "Lefty Hand Covers II",
     "title": "痛いよ",
     "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "Thấy Chưa - Ngọt - 2022.flac",
-    "target_path": "02_Lossless_CD/Ngọt/[2022] Gieo/07. Thấy Chưa.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Ngọt",
-    "album": "Gieo",
-    "title": "Thấy Chưa",
-    "specs": "FLAC 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
   },
@@ -10450,17 +10032,6 @@
     "is_recovered": true
   },
   {
-    "original_path": "04. Futari.flac",
-    "target_path": "02_Lossless_CD/Yamashita Tatsuro/[1982] For You/04. Futari.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Yamashita Tatsuro",
-    "album": "For You",
-    "title": "Futari",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "MeMeSheCover-KobasoloLeftyHandCream-4853820_hq.mp3",
     "target_path": "03_Lossy_MP3_AAC/Kobasolo, Lefty Hand Cream/Singles/Kobasolo, Lefty Hand Cream - Me Me She (Cover).mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -10514,28 +10085,6 @@
     "specs": "FLAC 24bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
-  },
-  {
-    "original_path": "01. insane dream.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Aimer/[2016] daydream/01. insane dream.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Aimer",
-    "album": "daydream",
-    "title": "insane dream",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "8120753848850263121.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Kenshi Yonezu/BOOTLEG/01. Hien.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Kenshi Yonezu",
-    "album": "BOOTLEG",
-    "title": "Hien",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": true,
-    "is_recovered": true
   },
   {
     "original_path": "03. Kanden.flac",
@@ -11099,17 +10648,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "VeVoiEmDi-TienTien-4850318 (1).mp3",
-    "target_path": "03_Lossy_MP3_AAC/Tiên Tiên/Singles/Tiên Tiên - Về Với Em Đi.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Tiên Tiên",
-    "album": "Singles",
-    "title": "Về Với Em Đi - Tiên Tiên",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "SparkleMovieVersion-KobasoloHarutya-5260069.mp3",
     "target_path": "03_Lossy_MP3_AAC/Kobasolo, Harutya/Singles/Kobasolo, Harutya - Sparkle (Movie Version).mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -11297,17 +10835,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "06. Love Talkin' (honey it's you).flac",
-    "target_path": "02_Lossless_CD/Yamashita Tatsuro/[1982] For You/06. Love Talkin' (honey it's you).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Yamashita Tatsuro",
-    "album": "For You",
-    "title": "Love Talkin' (honey it's you)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "this is what losing someone feels like.flac",
     "target_path": "01_Hi-Res & DSD/Jvke/[2023] this is what losing someone feels like/01. this is what losing someone feels like.flac",
     "tier": "01_Hi-Res & DSD",
@@ -11337,17 +10864,6 @@
     "album": "BOOTLEG",
     "title": "ピースサイン",
     "specs": "AAC 0bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "14. ソビト.mp3",
-    "target_path": "03_Lossy_MP3_AAC/GReeeeN/[2018] うれD/14. ソビト.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "GReeeeN",
-    "album": "うれD",
-    "title": "ソビト",
-    "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
   },
@@ -11396,17 +10912,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "(Khng Hn L Mt Bn) Tnh Ca (Demo) - ddets.mp3",
-    "target_path": "03_Lossy_MP3_AAC/(Khng Hn L Mt Bn) Tnh Ca (Demo)/Singles/(Khng Hn L Mt Bn) Tnh Ca (Demo) - ddets.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "(Khng Hn L Mt Bn) Tnh Ca (Demo)",
-    "album": "Singles",
-    "title": "ddets",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "02. Aimer - Tiny Dancers.m4a",
     "target_path": "03_Lossy_MP3_AAC/Aimer/[2018] Black Bird _ Tiny Dancers _ 思い出は奇麗で/02. Tiny Dancers.m4a",
     "tier": "03_Lossy_MP3_AAC",
@@ -11414,17 +10919,6 @@
     "album": "Black Bird _ Tiny Dancers _ 思い出は奇麗で",
     "title": "Tiny Dancers",
     "specs": "AAC 0bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "#FirstLove - BolBBalgan4.mp3",
-    "target_path": "03_Lossy_MP3_AAC/BolBBalgan4/#FirstLove/#FirstLove.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "BolBBalgan4",
-    "album": "#FirstLove",
-    "title": "#FirstLove",
-    "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
   },
@@ -11627,17 +11121,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "1401263373626739566.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Naughty Boy,Sam Smith/Singles/Naughty Boy,Sam Smith - La La La.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Naughty Boy,Sam Smith",
-    "album": "Singles",
-    "title": "La La La",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": true,
-    "is_recovered": true
-  },
-  {
     "original_path": "01. Snowman.flac",
     "target_path": "01_Hi-Res & DSD/Sia/[2017] Snowman/01. Snowman.flac",
     "tier": "01_Hi-Res & DSD",
@@ -11737,17 +11220,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "07. Hey Reporter !.flac",
-    "target_path": "02_Lossless_CD/Yamashita Tatsuro/[1982] For You/07. Hey Reporter !.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Yamashita Tatsuro",
-    "album": "For You",
-    "title": "Hey Reporter !",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "03. 恋.mp3",
     "target_path": "03_Lossy_MP3_AAC/GReeeeN/[2018] うれD/03. 恋.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -11798,17 +11270,6 @@
     "artist": "The Chainsmokers",
     "album": "Memories…Do Not Open",
     "title": "Paris",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": true,
-    "is_recovered": true
-  },
-  {
-    "original_path": "3322211268076302777.mp3",
-    "target_path": "03_Lossy_MP3_AAC/The Chainsmokers/[2018] Sick Boy (Single)/01. Sick Boy.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "The Chainsmokers",
-    "album": "Sick Boy (Single)",
-    "title": "Sick Boy",
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": true,
     "is_recovered": true
@@ -11889,17 +11350,6 @@
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": true,
     "is_recovered": true
-  },
-  {
-    "original_path": "01 LOSER.mp3",
-    "target_path": "03_Lossy_MP3_AAC/米津玄師/[2016] LOSER _ ナンバーナイン/01. LOSER.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "米津玄師",
-    "album": "LOSER _ ナンバーナイン",
-    "title": "LOSER",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
   },
   {
     "original_path": "11. Falling Alone.mp3",
@@ -12650,17 +12100,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "13. Stars in the rain.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Aimer/[2016] daydream/13. Stars in the rain.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Aimer",
-    "album": "daydream",
-    "title": "Stars in the rain",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "08. Can't Get Used to Losing You.flac",
     "target_path": "02_Lossless_CD/Andy Williams/[2020] Music to Watch Girls By_ The Best of Andy Williams/08. Can't Get Used to Losing You.flac",
     "tier": "02_Lossless_CD",
@@ -13052,50 +12491,6 @@
     "artist": "Phuong Dung",
     "album": "Dĩa Hát Continental Số 37",
     "title": "Ngày Xưa Em Nói",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "Dĩa Hát Continental Số 12 a/2. Mộng Chiều Xuân.flac",
-    "target_path": "02_Lossless_CD/Thanh Ha/[1966] Dĩa Hát Continental Số 12/02. Mộng Chiều Xuân.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Thanh Ha",
-    "album": "Dĩa Hát Continental Số 12",
-    "title": "Mộng Chiều Xuân",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "Dĩa Hát Continental Số 12 a/1. Cuối Đường Đợi Mong.flac",
-    "target_path": "02_Lossless_CD/Thanh Nga/[1966] Dĩa Hát Continental Số 12/01. Cuối Đường Đợi Mong.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Thanh Nga",
-    "album": "Dĩa Hát Continental Số 12",
-    "title": "Cuối Đường Đợi Mong",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "Dĩa Hát Continental Số 12 a/4. Cô Nữ Sinh Đồng Khánh.flac",
-    "target_path": "02_Lossless_CD/Thanh Ha/[1966] Dĩa Hát Continental Số 12/04. Cô Nữ Sinh Đồng Khánh.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Thanh Ha",
-    "album": "Dĩa Hát Continental Số 12",
-    "title": "Cô Nữ Sinh Đồng Khánh",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "Dĩa Hát Continental Số 12 a/3. Trăng Sáng Vườn Chè.flac",
-    "target_path": "02_Lossless_CD/Anh Tuyet/[1966] Dĩa Hát Continental Số 12/03. Trăng Sáng Vườn Chè.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Anh Tuyet",
-    "album": "Dĩa Hát Continental Số 12",
-    "title": "Trăng Sáng Vườn Chè",
     "specs": "FLAC 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -13684,589 +13079,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "ĐEN/Đen - Show Của Đen/09 - Đi Theo Bóng Mặt Trời (Live At.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/09. Đi Theo Bóng Mặt Trời (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Đi Theo Bóng Mặt Trời (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/05 - Đố em biết anh đang nghĩ gì (Li.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/05. Đố em biết anh đang nghĩ gì (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Đố em biết anh đang nghĩ gì (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/06 - Mơ (Live At Show Của Đen).flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/06. Mơ (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Mơ (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/04 - Trời Ơi Con Chưa Muốn Chết (Liv.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/04. Trời Ơi Con Chưa Muốn Chết (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Trời Ơi Con Chưa Muốn Chết (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/01 - Mười Năm (Live At Show Của Đen).flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/01. Mười Năm (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Mười Năm (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/14 - Cảm Ơn (Live At Show Của Đen).flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/14. Cảm Ơn (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Cảm Ơn (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/02 - Lộn Xộn 2 (Live At Show Của Đen.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/02. Lộn Xộn 2 (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Lộn Xộn 2 (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/07 - Cho Toi Lang Thang (Live At Sho.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/07. Cho Toi Lang Thang (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Cho Toi Lang Thang (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/03 - Nhiều Năm Nữa (Live At Show Của.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/03. Nhiều Năm Nữa (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Nhiều Năm Nữa (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/10 - Bài Này Chill Phết (Live At Sho.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/10. Bài Này Chill Phết (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Bài Này Chill Phết (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/08 - Anh Đếch Cần Gì Nhiều Ngoài Em.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/08. Anh Đếch Cần Gì Nhiều Ngoài Em (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Anh Đếch Cần Gì Nhiều Ngoài Em (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/11 - hai triệu năm (Live At Show Của.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/11. hai triệu năm (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "hai triệu năm (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/13 - Ta Cứ Đi Cùng Nhau (Live At Sho.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/13. Ta Cứ Đi Cùng Nhau (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Ta Cứ Đi Cùng Nhau (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Show Của Đen/12 - Đưa Nhau Đi Trốn (Live At Show.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] Show Của Đen/12. Đưa Nhau Đi Trốn (Live At Show Của Đen).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "Show Của Đen",
-    "title": "Đưa Nhau Đi Trốn (Live At Show Của Đen)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Đi Theo Bóng Mặt Trời.flac",
-    "target_path": "02_Lossless_CD/Đen/[2017] ĐEN Collection/01. Đi Theo Bóng Mặt Trời.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Đi Theo Bóng Mặt Trời",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Nấu ăn cho em.flac",
-    "target_path": "01_Hi-Res & DSD/Đen/[2023] ĐEN Collection/01. Nấu ăn cho em.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Nấu ăn cho em",
-    "specs": "FLAC 24bit/48.0kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Hai Triệu Năm.flac",
-    "target_path": "02_Lossless_CD/Đen/[2019] ĐEN Collection/01. Hai Triệu Năm.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Hai Triệu Năm",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Mười Năm (Lộn Xộn 3).flac",
-    "target_path": "02_Lossless_CD/Đen/[2019] ĐEN Collection/01. Mười Năm (Lộn Xộn 3).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Mười Năm (Lộn Xộn 3)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Anh Đếch Cần Gì Nhiều Ngoài Em.flac",
-    "target_path": "02_Lossless_CD/Đen/[2018] ĐEN Collection/01. Anh Đếch Cần Gì Nhiều Ngoài Em.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Anh Đếch Cần Gì Nhiều Ngoài Em",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Lối Nhỏ.flac",
-    "target_path": "02_Lossless_CD/Đen/[2019] ĐEN Collection/01. Lối Nhỏ.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Lối Nhỏ",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Ði Trong Mùa Hè.flac",
-    "target_path": "01_Hi-Res & DSD/Đen/[2022] ĐEN Collection/01. Ði Trong Mùa Hè.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Ði Trong Mùa Hè",
-    "specs": "FLAC 24bit/48.0kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Bài Này Chill Phết.flac",
-    "target_path": "02_Lossless_CD/Đen/[2019] ĐEN Collection/01. Bài Này Chill Phết.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Bài Này Chill Phết",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Loving You Sunny.flac",
-    "target_path": "02_Lossless_CD/Kimmese - DEN/[2017] ĐEN Collection/01. Loving You Sunny.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Kimmese - DEN",
-    "album": "ĐEN Collection",
-    "title": "Loving You Sunny",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Ai muốn nghe không.flac",
-    "target_path": "01_Hi-Res & DSD/Đen/[2022] ĐEN Collection/01. Ai muốn nghe không.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Ai muốn nghe không",
-    "specs": "FLAC 24bit/48.0kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Mang Tiền Về Cho Mẹ.flac",
-    "target_path": "01_Hi-Res & DSD/Đen/[2022] ĐEN Collection/01. Mang Tiền Về Cho Mẹ.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Mang Tiền Về Cho Mẹ",
-    "specs": "FLAC 24bit/48.0kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Luôn yêu đời.flac",
-    "target_path": "01_Hi-Res & DSD/Đen/[2023] ĐEN Collection/01. Luôn yêu đời.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Luôn yêu đời",
-    "specs": "FLAC 24bit/48.0kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Cảm ơn.flac",
-    "target_path": "02_Lossless_CD/Đen/[2019] ĐEN Collection/01. Cảm ơn.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Cảm ơn",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Rapcoustic 5.flac",
-    "target_path": "02_Lossless_CD/Đen/[2019] ĐEN Collection/01. Rapcoustic 5.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Rapcoustic 5",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Đi Về Nhà.flac",
-    "target_path": "02_Lossless_CD/Đen/[2020] ĐEN Collection/01. Đi Về Nhà.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Đi Về Nhà",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Cô gái bàn bên.flac",
-    "target_path": "02_Lossless_CD/Đen/[2016] ĐEN Collection/02. Cô gái bàn bên.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Cô gái bàn bên",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - một triệu like.flac",
-    "target_path": "02_Lossless_CD/Đen/[2020] ĐEN Collection/01. một triệu like.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "một triệu like",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Đố em biết anh đang nghĩ gì.flac",
-    "target_path": "02_Lossless_CD/Đen/[2018] ĐEN Collection/01. Đố em biết anh đang nghĩ gì.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Đố em biết anh đang nghĩ gì",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Diễn viên tồi.flac",
-    "target_path": "02_Lossless_CD/Đen/[2022] ĐEN Collection/01. Diễn viên tồi.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Diễn viên tồi",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Trời hôm nay nhiều mây cực!.flac",
-    "target_path": "02_Lossless_CD/Đen/[2020] ĐEN Collection/01. Trời hôm nay nhiều mây cực!.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Trời hôm nay nhiều mây cực!",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Ngày Khác Lạ.flac",
-    "target_path": "02_Lossless_CD/Đen/[2018] ĐEN Collection/01. Ngày Khác Lạ.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Ngày Khác Lạ",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Mười Năm (Lộn Xộn 3) (From _Rừ.flac",
-    "target_path": "01_Hi-Res & DSD/Đen/[2021] ĐEN Collection/01. Mười Năm (Lộn Xộn 3) (From _Rừng Thế Mạng_).flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Mười Năm (Lộn Xộn 3) (From _Rừng Thế Mạng_)",
-    "specs": "FLAC 24bit/48.0kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Dưới Hiên Nhà.flac",
-    "target_path": "01_Hi-Res & DSD/Đen/[2016] ĐEN Collection/01. Dưới Hiên Nhà.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Dưới Hiên Nhà",
-    "specs": "FLAC 24bit/48.0kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Ghé Thăm.flac",
-    "target_path": "02_Lossless_CD/Đen/[2016] ĐEN Collection/04. Ghé Thăm.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Ghé Thăm",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - Collection/Đen - Trốn Tìm.flac",
-    "target_path": "02_Lossless_CD/Đen/[2021] ĐEN Collection/01. Trốn Tìm.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "ĐEN Collection",
-    "title": "Trốn Tìm",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - dongvui harmony [FLAC]/02. Ai muốn nghe không.flac",
-    "target_path": "02_Lossless_CD/Đen/[2022] dongvui harmony/02. Ai muốn nghe không (dongvui harmony).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "dongvui harmony",
-    "title": "Ai muốn nghe không (dongvui harmony)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - dongvui harmony [FLAC]/04. Mưa Trên Những Mái Tôn.flac",
-    "target_path": "02_Lossless_CD/Đen/[2022] dongvui harmony/04. Mưa Trên Những Mái Tôn (dongvui harmony).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "dongvui harmony",
-    "title": "Mưa Trên Những Mái Tôn (dongvui harmony)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - dongvui harmony [FLAC]/07. Bài Này Chill Phết.flac",
-    "target_path": "02_Lossless_CD/Đen/[2022] dongvui harmony/07. Bài Này Chill Phết (dongvui harmony).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "dongvui harmony",
-    "title": "Bài Này Chill Phết (dongvui harmony)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - dongvui harmony [FLAC]/05. một triệu like.flac",
-    "target_path": "02_Lossless_CD/Đen/[2022] dongvui harmony/05. một triệu like (dongvui harmony).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "dongvui harmony",
-    "title": "một triệu like (dongvui harmony)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - dongvui harmony [FLAC]/01. Anh Đếch Cần Gì Nhiều Ngoài Em.flac",
-    "target_path": "02_Lossless_CD/Đen/[2022] dongvui harmony/01. Anh Đếch Cần Gì Nhiều Ngoài Em (dongvui harmony).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "dongvui harmony",
-    "title": "Anh Đếch Cần Gì Nhiều Ngoài Em (dongvui harmony)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - dongvui harmony [FLAC]/08. Mang Tiền Về Cho Mẹ.flac",
-    "target_path": "02_Lossless_CD/Đen/[2022] dongvui harmony/08. Mang Tiền Về Cho Mẹ (dongvui harmony).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "dongvui harmony",
-    "title": "Mang Tiền Về Cho Mẹ (dongvui harmony)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - dongvui harmony [FLAC]/03. Trốn Tìm.flac",
-    "target_path": "02_Lossless_CD/Đen/[2022] dongvui harmony/03. Trốn Tìm (dongvui harmony).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "dongvui harmony",
-    "title": "Trốn Tìm (dongvui harmony)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - dongvui harmony [FLAC]/06. Mơ.flac",
-    "target_path": "02_Lossless_CD/Đen/[2022] dongvui harmony/06. Mơ (dongvui harmony).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "dongvui harmony",
-    "title": "Mơ (dongvui harmony)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - KOBUKOVU (2019) [FLAC]/05 - Giọt Sương Trên Mí Mắt (feat. Binz _ Lynk Lee).flac",
-    "target_path": "02_Lossless_CD/Đen/[2016] KOBUKOVU/05. Giọt Sương Trên Mí Mắt (feat. Binz & Lynk Lee).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "KOBUKOVU",
-    "title": "Giọt Sương Trên Mí Mắt (feat. Binz & Lynk Lee)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - KOBUKOVU (2019) [FLAC]/01 - Mơ (feat. Hậu Vi).flac",
-    "target_path": "02_Lossless_CD/Đen/[2016] KOBUKOVU/01. Mơ (feat. Hậu Vi).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "KOBUKOVU",
-    "title": "Mơ (feat. Hậu Vi)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - KOBUKOVU (2019) [FLAC]/06 - Ghé Thăm (feat. JGKiD, Kimmese _ Linh Cáo).flac",
-    "target_path": "02_Lossless_CD/Đen/[2016] KOBUKOVU/06. Ghé Thăm (feat. JGKiD, Kimmese & Linh Cáo).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "KOBUKOVU",
-    "title": "Ghé Thăm (feat. JGKiD, Kimmese & Linh Cáo)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - KOBUKOVU (2019) [FLAC]/02 - Cô Gái Bàn Bên (feat. Lynk Lee).flac",
-    "target_path": "02_Lossless_CD/Đen/[2016] KOBUKOVU/02. Cô Gái Bàn Bên (feat. Lynk Lee).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "KOBUKOVU",
-    "title": "Cô Gái Bàn Bên (feat. Lynk Lee)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - KOBUKOVU (2019) [FLAC]/03 - Đen - Cho Em Một Ngày (feat. Kimmese).flac",
-    "target_path": "02_Lossless_CD/Đen/[2016] KOBUKOVU/03. Đen - Cho Em Một Ngày (feat. Kimmese).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "KOBUKOVU",
-    "title": "Đen - Cho Em Một Ngày (feat. Kimmese)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ĐEN/Đen - KOBUKOVU (2019) [FLAC]/04 - Mưa Trên Những Mái Tôn (feat. Kaang).flac",
-    "target_path": "02_Lossless_CD/Đen/[2016] KOBUKOVU/04. Mưa Trên Những Mái Tôn (feat. Kaang).flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Đen",
-    "album": "KOBUKOVU",
-    "title": "Mưa Trên Những Mái Tôn (feat. Kaang)",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "CASIOPEA - Mint Jams (1982)/Time Limit.flac",
     "target_path": "02_Lossless_CD/CASIOPEA/[1982] Mint Jams/04. Time Limit.flac",
     "tier": "02_Lossless_CD",
@@ -14658,17 +13470,6 @@
     "artist": "Tatsuro Yamashita",
     "album": "COME ALONG II",
     "title": "LOVELAND, ISLAND",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "Tatsuro Yamashita - COME ALONG II (1984)/SPARKLE.flac",
-    "target_path": "02_Lossless_CD/Tatsuro Yamashita/[1984] COME ALONG II/07. SPARKLE.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Tatsuro Yamashita",
-    "album": "COME ALONG II",
-    "title": "SPARKLE",
     "specs": "FLAC 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -16555,28 +15356,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/10. Be Who You Are (Real Magic)/Be Who You Are (Real Magic) (feat. JID, NewJeans & Camilo).mp3",
-    "target_path": "03_Lossy_MP3_AAC/Jon Batiste_JID_NewJeans_Camilo/[2023] Be Who You Are (Real Magic)/Be Who You Are (Real Magic) (feat. JID, NewJeans & Camilo).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Jon Batiste_JID_NewJeans_Camilo",
-    "album": "Be Who You Are (Real Magic)",
-    "title": "Be Who You Are (Real Magic) (feat. JID, NewJeans & Camilo)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/6. GODS/GODS.mp3",
-    "target_path": "03_Lossy_MP3_AAC/League of Legends_NewJeans/[2023] GODS/GODS.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "League of Legends_NewJeans",
-    "album": "GODS",
-    "title": "GODS",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "NewJeans/NewJeans Full Discography (mp3)/11. ByJeans/4. Haerin/ceilings - HAERIN Cover.MP3",
     "target_path": "03_Lossy_MP3_AAC/ceilings/Singles/ceilings - HAERIN Cover.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -16594,17 +15373,6 @@
     "artist": "Love Lee",
     "album": "Singles",
     "title": "HAERIN Cover",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/11. ByJeans/1. Minji/Falling Behind - MINJI Cover.mp3",
-    "target_path": "03_Lossy_MP3_AAC/Falling Behind/Singles/Falling Behind - MINJI Cover.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "Falling Behind",
-    "album": "Singles",
-    "title": "MINJI Cover",
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -16830,28 +15598,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/7. How Sweet/How Sweet.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2024] How Sweet/How Sweet.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "How Sweet",
-    "title": "How Sweet",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/7. How Sweet/Bubble Gum.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2024] How Sweet/Bubble Gum.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "How Sweet",
-    "title": "Bubble Gum",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "NewJeans/NewJeans Full Discography (mp3)/7. How Sweet/Bubble Gum (Instrumental).mp3",
     "target_path": "03_Lossy_MP3_AAC/NewJeans/[2024] How Sweet/Bubble Gum (Instrumental).mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -16885,17 +15631,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/5. OSTs/Our Night is more beautiful than your Day.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NewJeans X MY DEMON/Our Night is more beautiful than your Day.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NewJeans X MY DEMON",
-    "title": "Our Night is more beautiful than your Day",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "NewJeans/NewJeans Full Discography (mp3)/5. OSTs/Beautiful Restriction.mp3",
     "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] A Time Called You (Original Soundtrack from the Netflix Series)/Beautiful Restriction.mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -16924,28 +15659,6 @@
     "artist": "NewJeans",
     "album": "Supernatural",
     "title": "Right Now (Instrumental)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/8. Supernatural/Supernatural.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2024] Supernatural/Supernatural.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "Supernatural",
-    "title": "Supernatural",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/8. Supernatural/Right Now.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2024] Supernatural/Right Now.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "Supernatural",
-    "title": "Right Now",
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -17017,39 +15730,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/2. NewJeans _OMG_/Ditto.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NewJeans 'OMG'/Ditto.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NewJeans 'OMG'",
-    "title": "Ditto",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/2. NewJeans _OMG_/OMG.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NewJeans 'OMG'/OMG.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NewJeans 'OMG'",
-    "title": "OMG",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/9. NJWMX/Hurt (250 Remix).mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NJWMX/Hurt (250 Remix).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NJWMX",
-    "title": "Hurt (250 Remix)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "NewJeans/NewJeans Full Discography (mp3)/9. NJWMX/Hurt (250 Remix) (Instrumental).mp3",
     "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NJWMX/Hurt (250 Remix) (Instrumental).mp3",
     "tier": "03_Lossy_MP3_AAC",
@@ -17083,56 +15763,12 @@
     "is_recovered": false
   },
   {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/9. NJWMX/OMG (FRNK Remix).mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NJWMX/OMG (FRNK Remix).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NJWMX",
-    "title": "OMG (FRNK Remix)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/9. NJWMX/Cookie (FRNK Remix).mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NJWMX/Cookie (FRNK Remix).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NJWMX",
-    "title": "Cookie (FRNK Remix)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/9. NJWMX/Hype Boy (250 Remix).mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NJWMX/Hype Boy (250 Remix).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NJWMX",
-    "title": "Hype Boy (250 Remix)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "NewJeans/NewJeans Full Discography (mp3)/9. NJWMX/Cookie (FRNK Remix) (Instrumental).mp3",
     "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NJWMX/Cookie (FRNK Remix) (Instrumental).mp3",
     "tier": "03_Lossy_MP3_AAC",
     "artist": "NewJeans",
     "album": "NJWMX",
     "title": "Cookie (FRNK Remix) (Instrumental)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/9. NJWMX/Ditto (250 Remix).mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NJWMX/Ditto (250 Remix).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NJWMX",
-    "title": "Ditto (250 Remix)",
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -17155,83 +15791,6 @@
     "artist": "NewJeans",
     "album": "NJWMX",
     "title": "Attention (250 Remix) (Instrumental)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/9. NJWMX/Attention (250 Remix).mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] NJWMX/Attention (250 Remix).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NJWMX",
-    "title": "Attention (250 Remix)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/3. Zero/Zero (J.I.D Remix).mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans_JID/[2023] Zero (J.I.D Remix)/Zero (J.I.D Remix).mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans_JID",
-    "album": "Zero (J.I.D Remix)",
-    "title": "Zero (J.I.D Remix)",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/3. Zero/Zero.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2023] Zero/Zero.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "Zero",
-    "title": "Zero",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/1. NewJeans 1st EP _NewJeans_/Hype Boy.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2022] NewJeans 1st EP 'New Jeans'/Hype Boy.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NewJeans 1st EP 'New Jeans'",
-    "title": "Hype Boy",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/1. NewJeans 1st EP _NewJeans_/Cookie.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2022] NewJeans 1st EP 'New Jeans'/Cookie.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NewJeans 1st EP 'New Jeans'",
-    "title": "Cookie",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/1. NewJeans 1st EP _NewJeans_/Attention.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2022] NewJeans 1st EP 'New Jeans'/Attention.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NewJeans 1st EP 'New Jeans'",
-    "title": "Attention",
-    "specs": "MP3 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "NewJeans/NewJeans Full Discography (mp3)/1. NewJeans 1st EP _NewJeans_/Hurt.mp3",
-    "target_path": "03_Lossy_MP3_AAC/NewJeans/[2022] NewJeans 1st EP 'New Jeans'/Hurt.mp3",
-    "tier": "03_Lossy_MP3_AAC",
-    "artist": "NewJeans",
-    "album": "NewJeans 1st EP 'New Jeans'",
-    "title": "Hurt",
     "specs": "MP3 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -17545,17 +16104,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "ngọt/Của Thắng/Cái Đầu Tiên (2023)/02. Trước Khi Em Tồn Tại.flac",
-    "target_path": "01_Hi-Res & DSD/Thắng/[2023] Cái Đầu Tiên/02. Trước Khi Em Tồn Tại.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Thắng",
-    "album": "Cái Đầu Tiên",
-    "title": "Trước Khi Em Tồn Tại",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "ngọt/Của Thắng/Cái Đầu Tiên (2023)/03. Limo.flac",
     "target_path": "01_Hi-Res & DSD/Thắng/[2023] Cái Đầu Tiên/03. Limo.flac",
     "tier": "01_Hi-Res & DSD",
@@ -17584,17 +16132,6 @@
     "artist": "Thắng",
     "album": "Cái Đầu Tiên",
     "title": "Phải Lòng",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ngọt/Của Thắng/Cái Đầu Tiên (2023)/08. Xin Lỗi.flac",
-    "target_path": "01_Hi-Res & DSD/Thắng/[2023] Cái Đầu Tiên/08. Xin Lỗi.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Thắng",
-    "album": "Cái Đầu Tiên",
-    "title": "Xin Lỗi",
     "specs": "FLAC 24bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -17677,61 +16214,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "ngọt/Của Thắng/Gieo (2022)/09. Đêm Hôm Qua.flac",
-    "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/09. Đêm Hôm Qua.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngot",
-    "album": "Gieo",
-    "title": "Đêm Hôm Qua",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ngọt/Của Thắng/Gieo (2022)/10. Gieo.flac",
-    "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/10. Gieo.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngot",
-    "album": "Gieo",
-    "title": "Gieo",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ngọt/Của Thắng/Gieo (2022)/08. Đá tan.flac",
-    "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/08. Đá tan.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngot",
-    "album": "Gieo",
-    "title": "Đá tan",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ngọt/Của Thắng/Gieo (2022)/06. Chào Buổi Sáng.flac",
-    "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/06. Chào Buổi Sáng.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngot",
-    "album": "Gieo",
-    "title": "Chào Buổi Sáng",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ngọt/Của Thắng/Gieo (2022)/02. Mấy Khi.flac",
-    "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/02. Mấy Khi.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngot",
-    "album": "Gieo",
-    "title": "Mấy Khi",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "ngọt/Của Thắng/Gieo (2022)/01. Bạn thỏ tivi nhỏ.flac",
     "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/01. Bạn thỏ tivi nhỏ.flac",
     "tier": "01_Hi-Res & DSD",
@@ -17743,56 +16225,12 @@
     "is_recovered": false
   },
   {
-    "original_path": "ngọt/Của Thắng/Gieo (2022)/05. Em Trong Đầu.flac",
-    "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/05. Em Trong Đầu.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngot",
-    "album": "Gieo",
-    "title": "Em Trong Đầu",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ngọt/Của Thắng/Gieo (2022)/07. Thấy Chưa.flac",
-    "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/07. Thấy Chưa.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngot",
-    "album": "Gieo",
-    "title": "Thấy Chưa",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ngọt/Của Thắng/Gieo (2022)/04. Điểm Đến Cuối Cùng.flac",
-    "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/04. Điểm Đến Cuối Cùng.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngot",
-    "album": "Gieo",
-    "title": "Điểm Đến Cuối Cùng",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "ngọt/Của Thắng/Gieo (2022)/11. Mất Tích.flac",
     "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/11. Mất Tích.flac",
     "tier": "01_Hi-Res & DSD",
     "artist": "Ngot",
     "album": "Gieo",
     "title": "Mất Tích",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ngọt/Của Thắng/Gieo (2022)/03. Em Trang Trí.flac",
-    "target_path": "01_Hi-Res & DSD/Ngot/[2022] Gieo/03. Em Trang Trí.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngot",
-    "album": "Gieo",
-    "title": "Em Trang Trí",
     "specs": "FLAC 24bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -18172,17 +16610,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "ngọt/Album/4 - Gieo (2022)/01. Bạn thỏ tivi nhỏ.flac",
-    "target_path": "01_Hi-Res & DSD/Ngọt/[2022] Gieo/01. Bạn thỏ tivi nhỏ.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngọt",
-    "album": "Gieo",
-    "title": "Bạn thỏ tivi nhỏ",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "ngọt/Album/4 - Gieo (2022)/05. Em Trong Đầu.flac",
     "target_path": "01_Hi-Res & DSD/Ngọt/[2022] Gieo/05. Em Trong Đầu.flac",
     "tier": "01_Hi-Res & DSD",
@@ -18211,17 +16638,6 @@
     "artist": "Ngọt",
     "album": "Gieo",
     "title": "Điểm Đến Cuối Cùng",
-    "specs": "FLAC 24bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "ngọt/Album/4 - Gieo (2022)/11. Mất Tích.flac",
-    "target_path": "01_Hi-Res & DSD/Ngọt/[2022] Gieo/11. Mất Tích.flac",
-    "tier": "01_Hi-Res & DSD",
-    "artist": "Ngọt",
-    "album": "Gieo",
-    "title": "Mất Tích",
     "specs": "FLAC 24bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false
@@ -18447,17 +16863,6 @@
     "is_recovered": false
   },
   {
-    "original_path": "ngọt/Extended album/Cñgđc (2019)/02. Tìm Người Nhà.flac",
-    "target_path": "02_Lossless_CD/Ngọt/[2020] Tìm Người Nhà/01. Tìm Người Nhà.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Ngọt",
-    "album": "Tìm Người Nhà",
-    "title": "Tìm Người Nhà",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
     "original_path": "ngọt/Extended album/Cñgđc (2019)/03. Bartender.flac",
     "target_path": "02_Lossless_CD/Ngọt/[2019] Cñgđc/02. Bartender.flac",
     "tier": "02_Lossless_CD",
@@ -18585,17 +16990,6 @@
     "artist": "Unknown Artist",
     "album": "Singles",
     "title": "Jody",
-    "specs": "FLAC 16bit/44.1kHz",
-    "was_numeric": false,
-    "is_recovered": false
-  },
-  {
-    "original_path": "[1984.06.20] Big Wave (Lossless)/5. Your Eyes.flac",
-    "target_path": "02_Lossless_CD/Unknown Artist/Singles/Your Eyes.flac",
-    "tier": "02_Lossless_CD",
-    "artist": "Unknown Artist",
-    "album": "Singles",
-    "title": "Your Eyes",
     "specs": "FLAC 16bit/44.1kHz",
     "was_numeric": false,
     "is_recovered": false

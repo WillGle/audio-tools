@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="style.css?v=3.2">
     <style>
         .stat-card.clickable {
             cursor: pointer;
@@ -162,14 +162,14 @@
                 </div>
 
                 <div class="filter-pills" id="filter-pills">
-                    <button class="filter-pill active" data-filter="all">Tất cả (1.701)</button>
+                    <button class="filter-pill active" data-filter="all">Tất cả (<span id="stat-total-pill">1.555</span>)</button>
                     <button class="filter-pill pill-dot-emerald" data-filter="true_hires">True Hi-Res</button>
                     <button class="filter-pill pill-dot-rose" data-filter="fake_hires">Fake Hi-Res</button>
                     <button class="filter-pill pill-dot-amber" data-filter="studio_master">Studio Master</button>
                     <button class="filter-pill pill-dot-indigo" data-filter="cd_lossless">CD Lossless</button>
                     <button class="filter-pill pill-dot-slate" data-filter="lossy">Lossy MP3</button>
                     <button class="filter-pill pill-dot-rose" data-filter="duplicate_meta" id="pill-filter-dupe-meta" title="Lọc các bài hát bị trùng lặp metadata trong kho nhạc">
-                        ⚠️ Trùng Metadata (<span id="stat-dupe-meta-pill">64</span>)
+                        ⚠️ Trùng Metadata (<span id="stat-dupe-meta-pill">0</span>)
                     </button>
                 </div>
 
@@ -677,8 +677,8 @@
             <div class="explorer-toolbar mb-4">
                 <div class="filter-pills" id="dupe-filter-pills" style="gap: 0.85rem;">
                     <button class="filter-pill active" data-dupetype="byte">Trùng Byte 100% (<span id="dupe-count-byte">0</span>)</button>
-                    <button class="filter-pill" data-dupetype="meta">Trùng Metadata (<span id="dupe-count-meta">37</span>)</button>
-                    <button class="filter-pill" data-dupetype="name">Trùng Tên Tệp (<span id="dupe-count-name">15</span>)</button>
+                    <button class="filter-pill" data-dupetype="meta">Trùng Metadata (<span id="dupe-count-meta">0</span>)</button>
+                    <button class="filter-pill" data-dupetype="name">Trùng Tên Tệp (<span id="dupe-count-name">0</span>)</button>
                 </div>
                 
                 <div class="btn-group" style="margin-left: auto; gap: 0.85rem; flex-wrap: wrap;">
@@ -913,6 +913,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=3.1"></script>
+    <script src="app.js?v=3.2"></script>
 </body>
 </html>

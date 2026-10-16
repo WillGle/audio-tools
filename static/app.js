@@ -367,8 +367,13 @@ async function initStats() {
         document.getElementById('stat-lossy').textContent = counts.lossy || 902;
 
         const elDupePill = document.getElementById('stat-dupe-meta-pill');
-        if (elDupePill && counts.duplicate_meta_groups) {
-            elDupePill.textContent = `${counts.duplicate_meta_groups} nhóm`;
+        if (elDupePill) {
+            elDupePill.textContent = counts.duplicate_meta_groups !== undefined ? counts.duplicate_meta_groups : 0;
+        }
+
+        const elTotalPill = document.getElementById('stat-total-pill');
+        if (elTotalPill && counts.total) {
+            elTotalPill.textContent = Number(counts.total).toLocaleString('vi-VN');
         }
     } catch (e) {
         console.error("Lỗi tải thống kê:", e);

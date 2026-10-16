@@ -80,8 +80,18 @@ def get_library_stats():
         except Exception:
             pass
 
+    plan_file = TOOLS_DIR / 'organize_plan.json'
+    total_count = 1555
+    if plan_file.exists():
+        try:
+            with open(plan_file, encoding='utf-8') as f:
+                p_items = json.load(f)
+                total_count = len(p_items)
+        except Exception:
+            pass
+
     verdict_counts = {
-        'total': 1701,
+        'total': total_count,
         'true_hires': 43,
         'true_dsd': 14,
         'studio_master': 186,
