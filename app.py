@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 # Add current folder to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from core.analyzer import analyze_audio_file, generate_spectrogram_image, get_audio_specs
+from core.analyzer import analyze_audio_file, generate_spectrogram_image
 from core.paths import vault_path
 from core.tagger import apply_quality_tag
 from core.navidrome import test_navidrome_connection, trigger_navidrome_scan, get_navidrome_scan_status
@@ -51,10 +51,16 @@ async def add_no_cache_headers(request: Request, call_next):
 
 TOOLS_DIR = Path(__file__).resolve().parent
 ROOT_DIR = Path(os.environ.get('HIRES_VAULT_DIR', '/mnt/vault/GleVault/Hires')).resolve()
-CACHE_DIR = TOOLS_DIR / 'cache'
+CACHE_DIR = Path(os.environ.get('AUDIO_TOOLS_CACHE_DIR', str(TOOLS_DIR / 'cache')))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 SPECTROGRAM_CACHE = CACHE_DIR / 'spectrograms'
 SPECTROGRAM_CACHE.mkdir(parents=True, exist_ok=True)
+
+from core.audio_scoring.service import AnalysisService
+from core.audio_scoring.api import scoring_router
+from core.audio_scoring.legacy import dashboard_fields, cached_record_current
+scoring_service = AnalysisService(ROOT_DIR, CACHE_DIR / 'audio_scoring.sqlite')
+app.include_router(scoring_router(scoring_service))
 
 # Cache file kết quả kiểm định
 VERDICTS_CACHE_FILE = CACHE_DIR / 'hires_verdicts.json'
@@ -87,10 +93,10 @@ class TagRequest(BaseModel):
     navidrome_config: Optional[NavidromeConfig] = None
 
 VERDICT_FILTERS = {
-    'true_hires': 'TRUE_HIRES', 'true_dsd': 'TRUE_DSD', 'dsd': 'TRUE_DSD',
-    'studio_master': 'STUDIO_MASTER_24BIT', 'cd_lossless': 'CD_LOSSLESS',
-    'fake_hires': 'FAKE_HIRES_UPSAMPLED', 'fake_lossless': 'FAKE_LOSSLESS',
-    'lossy': 'LOSSY', 'suspicious': 'SUSPICIOUS_HIRES', 'unverified': 'UNKNOWN'
+    'true_hires': 'FORMAT_HIRES', 'true_dsd': 'DSD_SOURCE_UNVERIFIED', 'dsd': 'DSD_SOURCE_UNVERIFIED',
+    'studio_master': 'REVIEW', 'cd_lossless': 'CD_LOSSLESS',
+    'fake_hires': 'INTEGRITY_FAIL', 'fake_lossless': 'FAKE_LOSSLESS',
+    'lossy': 'LOSSY', 'suspicious': 'REVIEW', 'unverified': 'UNKNOWN'
 }
 
 
@@ -100,7 +106,7 @@ def save_verdict(result):
         if VERDICTS_CACHE_FILE.exists():
             records = json.loads(VERDICTS_CACHE_FILE.read_text(encoding='utf-8'))
         records = [item for item in records if item.get('filepath') != result['filepath']]
-        records.append(result)
+        records.append({k: v for k, v in result.items() if k != 'authenticity'})
         temp = VERDICTS_CACHE_FILE.with_suffix('.tmp')
         temp.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding='utf-8')
         temp.replace(VERDICTS_CACHE_FILE)
@@ -113,8 +119,12 @@ def cached_by_path(cache_file, path_key):
         return {}
     result = {}
     for record in records:
+        if cache_file == VERDICTS_CACHE_FILE and not record.get('scoring_version'):
+            continue
         try:
             path = vault_path(ROOT_DIR, record[path_key])
+            if cache_file == VERDICTS_CACHE_FILE and not cached_record_current(record, path):
+                continue
         except (KeyError, ValueError, OSError):
             continue
         result[str(path)] = record
@@ -145,7 +155,11 @@ def library_items():
             verdict = by_path.get(str(resolved), {}).get('verdict', 'UNKNOWN')
             source = 'audit' if verdict != 'UNKNOWN' else 'unknown'
             if verdict == 'UNKNOWN' and meta['metadata_available']:
-                if meta['tier'] == '02_Lossless_CD':
+                if 'dsd' in meta['codec'].lower() or path.suffix.lower() in ('.dsf', '.dff'):
+                    verdict, source = 'DSD_SOURCE_UNVERIFIED', 'metadata'
+                elif meta['sr'] > 48000 and meta['codec'].lower() not in ('mp3', 'aac', 'opus', 'vorbis'):
+                    verdict, source = 'FORMAT_HIRES', 'metadata'
+                elif meta['tier'] == '02_Lossless_CD':
                     verdict, source = 'CD_LOSSLESS', 'metadata'
                 elif meta['codec'].lower() in ('mp3', 'aac', 'vorbis', 'opus', 'wmav1', 'wmav2', 'wmapro', 'ac3', 'eac3'):
                     verdict, source = 'LOSSY', 'metadata'
@@ -324,7 +338,8 @@ def get_tracks(
 def analyze_track(req: AnalyzeRequest):
     p = audio_path(req.filepath)
         
-    res = analyze_audio_file(str(p))
+    res = dashboard_fields(scoring_service.single(str(p)))['spectrum']
+    res['filepath'] = str(p)
     save_verdict(res)
     return res
 
@@ -332,7 +347,8 @@ def analyze_track(req: AnalyzeRequest):
 def get_spectrogram(filepath: str):
     p = audio_path(filepath)
         
-    cache_name = f"spec_{hash(str(p.resolve())) & 0xFFFFFFFF:x}.png"
+    from core.audio_scoring.tools import file_hash
+    cache_name = f"spec_v2_{file_hash(p)}.png"
     out_png = SPECTROGRAM_CACHE / cache_name
     
     if not out_png.exists():
@@ -599,7 +615,7 @@ def audiophile_audit(req: AudiophileAuditRequest):
     p = audio_path(req.filepath)
 
     try:
-        res = run_full_audiophile_audit(str(p))
+        res = run_full_audiophile_audit(str(p), scoring=scoring_service.single(str(p)))
         if res.get('spectrum'):
             save_verdict(res['spectrum'])
         return res
@@ -627,7 +643,7 @@ def audiophile_apply_tags(req: AudiophileTagRequest):
 
     audit = req.audit_data
     if not audit:
-        audit = run_full_audiophile_audit(str(p))
+        audit = run_full_audiophile_audit(str(p), scoring=scoring_service.single(str(p)))
 
     ok, msg = apply_audiophile_tags(str(p), audit)
 
@@ -712,7 +728,7 @@ def batch_audiophile_tag(req: BatchTagRequest):
     for fp in req.filepaths:
         try:
             p = audio_path(fp)
-            audit = run_full_audiophile_audit(str(p))
+            audit = run_full_audiophile_audit(str(p), scoring=scoring_service.single(str(p)))
             ok, msg = apply_audiophile_tags(str(p), audit)
             if ok:
                 success_count += 1
