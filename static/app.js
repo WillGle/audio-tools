@@ -2312,13 +2312,10 @@ function initOrganize() {
     const status = document.getElementById('metadata-organize-status');
     const apply = document.getElementById('metadata-organize-apply');
     const filter = document.getElementById('metadata-organize-filter');
-    const more = document.getElementById('metadata-organize-more');
-    const previous = document.getElementById('metadata-organize-prev');
     const filenameFormat = document.getElementById('metadata-organize-format');
     const search = document.getElementById('metadata-organize-search');
     const changeFilter = document.getElementById('metadata-organize-change');
-    let plan = null, page = 0;
-    const perPage = 50;
+    let plan = null;
     const labels = {READY: 'Sẵn sàng', REVIEW: 'Cần kiểm tra', CONFLICT: 'Trùng đích', UNCHANGED: 'Đã đúng vị trí'};
     const buttons = ['metadata-organize-preview', 'metadata-organize-apply', 'metadata-organize-undo'];
     const setBusy = busy => {
@@ -2346,7 +2343,8 @@ function initOrganize() {
             return !query || [item.original_path, item.dest_path, item.title, item.artist, item.album]
                 .some(value => (value || '').toLocaleLowerCase().includes(query));
         });
-        items.slice(page * perPage, (page + 1) * perPage).forEach(item => {
+        const fragment = document.createDocumentFragment();
+        items.forEach(item => {
             const row = document.createElement('tr');
             row.className = 'organize-item'; row.dataset.status = item.status;
             const add = (tag, className, value, parent) => {
@@ -2362,7 +2360,7 @@ function initOrganize() {
             let prefix = 0, suffix = 0;
             while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) prefix++;
             while (suffix < before.length - prefix && suffix < after.length - prefix && before[before.length - 1 - suffix] === after[after.length - 1 - suffix]) suffix++;
-            [['Tên hiện tại', before, 'old'], ['Tên đề xuất', after, 'new']].forEach(([label, chars, side]) => {
+            [['Tên hiện tại', before, oldFolder, 'old'], ['Tên đề xuất', after, newFolder, 'new']].forEach(([label, chars, folder, side]) => {
                 const group = add('td', 'organize-path', '', row);
                 group.dataset.label = label;
                 group.dataset.side = side;
@@ -2373,6 +2371,8 @@ function initOrganize() {
                     if (chars.length - suffix > prefix) add('mark', '', chars.slice(prefix, chars.length - suffix).join(''), name);
                     name.append(document.createTextNode(chars.slice(chars.length - suffix).join('')));
                 } else name.textContent = chars.join('');
+                const directory = side === 'new' && !item.dest_path ? 'Chưa có đề xuất' : folder === '.' ? 'Gốc kho nhạc' : folder;
+                add('p', 'organize-directory', `Thư mục${side === 'new' && moved ? ' mới' : ''}: ${directory}`, group);
             });
             const info = add('td', 'organize-info', '', row);
             info.dataset.label = 'Trạng thái / Chi tiết';
@@ -2380,24 +2380,20 @@ function initOrganize() {
             const details = add('details', 'organize-details', '', info);
             add('summary', '', 'Chi tiết', details);
             add('span', 'organize-change-kind', renamed ? `Đổi tên${moved ? ' + chuyển thư mục' : ''}` : moved ? 'Chỉ chuyển thư mục' : item.dest_path ? 'Giữ nguyên' : 'Chưa có đề xuất', details);
-            [['Nghệ sĩ', item.artist || 'Chưa có tag'], ['Album', item.album || 'Chưa có tag'],
-                ['Thư mục cũ', oldFolder === '.' ? 'Gốc kho nhạc' : oldFolder],
-                ['Thư mục mới', item.dest_path ? newFolder : 'Chưa có đề xuất']].forEach(([label, value]) => {
+            [['Nghệ sĩ', item.artist || 'Chưa có tag'], ['Album', item.album || 'Chưa có tag']].forEach(([label, value]) => {
                 add('p', 'organize-directory', `${label}: ${value}`, details);
             });
             if (item.status !== 'READY' || item.reason.includes('Thiếu album')) add('p', 'organize-reason', item.reason, details);
-            rows.append(row);
+            fragment.append(row);
         });
+        rows.append(fragment);
+        rows.closest('.organize-table-scroll').scrollTop = 0;
         if (!items.length) {
             const empty = rows.insertRow().insertCell(); empty.colSpan = 3;
             empty.textContent = 'Không có bài khớp bộ lọc hoặc từ khóa.';
         }
-        previous.disabled = page === 0;
-        more.disabled = (page + 1) * perPage >= items.length;
-        document.getElementById('metadata-organize-page').textContent = items.length
-            ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, items.length)} / ${items.length} bài khớp bộ lọc`
-            : '0 bài khớp bộ lọc';
-        apply.textContent = `Áp dụng ${plan?.counts.READY || 0} bài sẵn sàng (tất cả các trang)`;
+        document.getElementById('metadata-organize-count').textContent = `${items.length} / ${plan?.total || 0} bài khớp bộ lọc`;
+        apply.textContent = `Áp dụng ${plan?.counts.READY || 0} bài sẵn sàng (toàn bộ danh sách)`;
     };
     form.addEventListener('submit', async event => {
         event.preventDefault(); plan = null; setBusy(true);
@@ -2405,7 +2401,7 @@ function initOrganize() {
         status.textContent = 'Đang đọc metadata trong thư mục và các thư mục con…';
         try {
             plan = await request('preview', {folder: document.getElementById('metadata-organize-folder').value.trim(), filename_format: filenameFormat.value});
-            page = 0; filter.value = 'all'; search.value = ''; changeFilter.value = 'all'; render();
+            filter.value = 'all'; search.value = ''; changeFilter.value = 'all'; render();
             const c = plan.counts;
             status.textContent = `${plan.total} bài · ${c.READY} sẵn sàng · ${c.REVIEW} cần kiểm tra · ${c.CONFLICT} trùng đích · ${c.UNCHANGED} đã đúng vị trí. Chưa thay đổi tệp.`;
             document.getElementById('metadata-organize-results').hidden = false;
@@ -2419,15 +2415,9 @@ function initOrganize() {
     };
     document.getElementById('metadata-organize-folder').addEventListener('input', invalidatePreview);
     filenameFormat.addEventListener('input', invalidatePreview);
-    filter.addEventListener('change', () => { page = 0; render(); });
-    search.addEventListener('input', () => { page = 0; render(); });
-    changeFilter.addEventListener('change', () => { page = 0; render(); });
-    const turnPage = step => {
-        page += step; render();
-        document.getElementById('metadata-organize-results').scrollIntoView({block: 'start'});
-    };
-    more.addEventListener('click', () => turnPage(1));
-    previous.addEventListener('click', () => turnPage(-1));
+    filter.addEventListener('change', render);
+    search.addEventListener('input', render);
+    changeFilter.addEventListener('change', render);
     const changeFiles = async undo => {
         if (!undo && !plan?.counts.READY) return;
         const preview = plan;

@@ -147,6 +147,14 @@ and path checks also passed. At 1440, 1024, 768 and 390px there was no document 
 table horizontal overflow; no JavaScript errors occurred. This validates preview
 interaction at that size, not batch-move throughput or a full-library soak test.
 
+After removing pagination, the 1,006-file Chromium check was repeated: all rows
+were present and the last row was reachable by scrolling inside the bounded
+table. Old/new folders were visible below the corresponding filenames with
+details closed. Search and combined filters, empty results, scroll reset after
+filtering, apply/rollback and path protections passed again, with no JavaScript
+errors or horizontal overflow at the checked desktop/mobile widths. Metadata
+details remain expandable; the all-READY apply count remains independent of filters.
+
 Shared layout checks covered all six tabs, the track modal, supplementary
 diagnostics and duplicate-name groups at 1440, 1024, 768 and 390px, plus mobile
 playback/batch actions and a long confirmation message (30 views). With generated

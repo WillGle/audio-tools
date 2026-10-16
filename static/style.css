@@ -2334,7 +2334,7 @@ body {
 .organize-details summary { cursor: pointer; color: var(--text-primary); }
 .scoring-controls .organize-pattern-field { flex: 1 1 320px; }
 .scoring-controls .organize-search-field { flex: 1 1 240px; }
-.organize-pagination { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1rem; font-size: .85rem; flex-wrap: wrap; }
+#metadata-organize-count { font-size: .85rem; }
 #metadata-organize-results { scroll-margin-top: 130px; }
 #metadata-organize-folder { width: min(100%, 360px); }
 @media (max-width: 600px) {

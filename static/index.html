@@ -118,15 +118,9 @@
                         <label>Thay đổi <select id="metadata-organize-change"><option value="all">Tất cả thay đổi</option><option value="rename">Có đổi tên</option><option value="move">Chỉ chuyển thư mục</option></select></label>
                         <button type="button" class="btn btn-primary" id="metadata-organize-apply" disabled>Áp dụng đổi tên &amp; di chuyển</button>
                     </div>
-                    <p class="table-hint">Phần tô màu là ký tự thay đổi. Mở Chi tiết để xem metadata và thư mục. Áp dụng cho tất cả bài sẵn sàng, kể cả ngoài bộ lọc.</p>
-                    <div class="organize-table-scroll" tabindex="0" role="region" aria-label="So sánh tên file"><table class="organize-table"><thead><tr><th scope="col">Tên hiện tại</th><th scope="col">Tên đề xuất</th><th scope="col">Trạng thái / Chi tiết</th></tr></thead><tbody id="metadata-organize-rows"></tbody></table></div>
-                    <nav class="organize-pagination" aria-label="Trang xem trước">
-                        <span id="metadata-organize-page" role="status"></span>
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-secondary btn-sm" id="metadata-organize-prev" disabled>← Trước</button>
-                            <button type="button" class="btn btn-secondary btn-sm" id="metadata-organize-more" disabled>Tiếp →</button>
-                        </div>
-                    </nav>
+                    <p class="table-hint">Phần tô màu là ký tự thay đổi. Thư mục nằm dưới tên file; mở Chi tiết để xem metadata. Áp dụng cho tất cả bài sẵn sàng, kể cả ngoài bộ lọc.</p>
+                    <div class="organize-table-scroll" tabindex="0" role="region" aria-label="So sánh tên file"><table class="organize-table"><thead><tr><th scope="col">Tên / thư mục hiện tại</th><th scope="col">Tên / thư mục đề xuất</th><th scope="col">Trạng thái / Chi tiết</th></tr></thead><tbody id="metadata-organize-rows"></tbody></table></div>
+                    <p id="metadata-organize-count" role="status"></p>
                 </div>
                 <details class="scoring-detail"><summary>Hoàn tác sắp xếp</summary>
                     <p>Khôi phục vị trí trước các lần sắp xếp metadata đã áp dụng. Không xóa thư mục rỗng hoặc ghi đè file.</p>

@@ -70,10 +70,11 @@ chữ số; tag thiếu để trống. Đĩa từ 2 trở lên tự thêm `D02 -
 Đổi mẫu cần xem trước lại. Tên cũ/mới được tách khỏi thư mục và tô phần khác biệt;
 nhãn riêng cho biết chỉ đổi tên, chuyển thư mục hay giữ nguyên.
 Lọc nhóm sẵn sàng, thiếu metadata, trùng đích hoặc đã đúng vị trí để kiểm tra.
-Danh sách dạng bảng so sánh tên cũ/mới, 50 bài/trang với tiêu đề cột cố định khi cuộn.
+Danh sách dạng bảng so sánh tên cũ/mới và thư mục tương ứng ngay bên dưới,
+cuộn đến hết kết quả trong khung với tiêu đề cột cố định, không phân trang.
 Tìm theo tên cũ/mới, nghệ sĩ, album hoặc thư mục; lọc bài có đổi tên hoặc chỉ
-chuyển thư mục. Mở **Chi tiết** để xem metadata và đường dẫn đầy đủ. Nút áp dụng xử lý mọi bài sẵn sàng trong bản xem trước,
-kể cả các trang khác và các bài ngoài nhóm đang lọc.
+chuyển thư mục. Mở **Chi tiết** để xem metadata. Nút áp dụng xử lý mọi bài sẵn sàng trong bản xem trước,
+kể cả các bài ngoài nhóm đang lọc.
 
 **Áp dụng đổi tên & di chuyển** yêu cầu xác nhận bản xem trước. Chỉ các bài sẵn
 sàng được chuyển; không ghi đè, sửa tag hoặc mã hóa lại audio. Thiếu tên/nghệ sĩ
