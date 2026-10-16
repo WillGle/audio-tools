@@ -1,9 +1,15 @@
-import os
+import ast
+import base64
+from io import BytesIO
 import json
+import re
 import time
 import sqlite3
 from pathlib import Path
-from typing import Dict, Any, Tuple, List, Optional
+from typing import Dict, Any, Tuple, List
+from mediafile import MediaFile, MediaField, StorageStyle, MP3DescStorageStyle, MP4StorageStyle
+from mutagen.id3 import ID3, COMM, TXXX
+from mutagen.mp4 import MP4FreeForm
 
 def get_backup_db() -> sqlite3.Connection:
     cache_dir = Path(__file__).resolve().parent.parent / 'cache'
@@ -22,76 +28,81 @@ def get_backup_db() -> sqlite3.Connection:
     conn.commit()
     return conn
 
+# Giữ tên tag riêng hiện có; MediaFile chọn cách lưu phù hợp từng định dạng.
+for field, tag in [('dynamic_range', 'DYNAMIC_RANGE'), ('dr', 'DR'),
+                   ('hires_verified', 'HIRES_VERIFIED'), ('hires_status', 'HIRES_STATUS')]:
+    MediaFile.add_field(field, MediaField(
+        MP3DescStorageStyle(tag),
+        MP4StorageStyle(f'----:com.apple.iTunes:{tag}'),
+        StorageStyle(tag)
+    ))
+
+TAG_NAMES = {'COMMENT', 'DESCRIPTION', 'DYNAMIC_RANGE', 'DR', 'HIRES_VERIFIED',
+             'HIRES_STATUS', 'REPLAYGAIN_TRACK_GAIN', 'REPLAYGAIN_TRACK_PEAK',
+             'R128_TRACK_GAIN', 'ITUNNORM'}
+SUPPORTED_TAG_EXTENSIONS = {'.flac', '.mp3', '.m4a', '.dsf'}
+
+def _managed_tag(key):
+    if key.startswith('TXXX:'):
+        return key[5:].upper() in TAG_NAMES - {'COMMENT', 'DESCRIPTION', 'ITUNNORM'}
+    return (key == '\xa9cmt' or key.startswith('COMM:')
+            or key.split(':')[-1].upper() in TAG_NAMES)
+
+def _legacy_managed_tag(key, ext):
+    name = key.split(':')[-1]
+    if ext == '.flac':
+        return key.upper() in TAG_NAMES - {'DESCRIPTION', 'HIRES_STATUS', 'ITUNNORM'}
+    if ext == '.m4a':
+        return key == '\xa9cmt' or name in {'DYNAMIC_RANGE', 'REPLAYGAIN_TRACK_GAIN', 'REPLAYGAIN_TRACK_PEAK'}
+    return key.startswith('COMM:') or (key.startswith('TXXX:') and name in {
+        'HIRES_STATUS', 'DYNAMIC_RANGE', 'REPLAYGAIN_TRACK_GAIN', 'REPLAYGAIN_TRACK_PEAK', 'R128_TRACK_GAIN'
+    })
+
 def backup_original_tags(p: Path) -> None:
     """Sao lưu metadata ban đầu của tệp trước khi ghi bất kỳ tag mới nào (để có thể hoàn tác)."""
     conn = get_backup_db()
-    c = conn.cursor()
-    
-    # Kiểm tra xem đã có bản sao lưu trước đó chưa (luôn giữ lại bản sao lưu nguyên bản đầu tiên)
-    key = str(p.resolve())
-    c.execute("SELECT 1 FROM tag_backups WHERE filepath = ?", (key,))
-    if c.fetchone():
-        conn.close()
-        return
-
-    ext = p.suffix.lower()
-    raw_data: Dict[str, Any] = {}
-
     try:
-        if ext == '.flac':
-            from mutagen.flac import FLAC
-            audio = FLAC(p)
-            for k in ['COMMENT', 'HIRES_VERIFIED', 'DYNAMIC_RANGE', 'DR', 'REPLAYGAIN_TRACK_GAIN', 'REPLAYGAIN_TRACK_PEAK', 'R128_TRACK_GAIN']:
-                if k in audio:
-                    raw_data[k] = list(audio[k])
-
-        elif ext == '.mp3':
-            from mutagen.id3 import ID3
-            try:
-                audio = ID3(p)
-                comm_list = []
-                for comm in audio.getall('COMM'):
-                    comm_list.append({'desc': comm.desc, 'text': list(comm.text)})
-                if comm_list:
-                    raw_data['COMM'] = comm_list
-                for txxx in audio.getall('TXXX'):
-                    if txxx.desc in ('HIRES_STATUS', 'DYNAMIC_RANGE', 'REPLAYGAIN_TRACK_GAIN', 'REPLAYGAIN_TRACK_PEAK', 'R128_TRACK_GAIN'):
-                        raw_data[f'TXXX:{txxx.desc}'] = list(txxx.text)
-            except Exception:
-                pass
-
-        elif ext == '.m4a':
-            from mutagen.mp4 import MP4
-            try:
-                audio = MP4(p)
-                if '\xa9cmt' in audio:
-                    raw_data['\xa9cmt'] = audio['\xa9cmt']
-                for k in audio.keys():
-                    if 'DYNAMIC_RANGE' in k or 'REPLAYGAIN' in k:
-                        val = audio[k]
-                        raw_data[k] = val.decode('utf-8', errors='ignore') if isinstance(val, bytes) else str(val)
-            except Exception:
-                pass
-
-        elif ext == '.dsf':
-            from mutagen.dsf import DSF
-            try:
-                audio = DSF(p)
-                if hasattr(audio, 'tags') and audio.tags:
-                    if 'COMM' in audio.tags:
-                        raw_data['COMM'] = str(audio.tags['COMM'])
-                    if 'DYNAMIC_RANGE' in audio.tags:
-                        raw_data['DYNAMIC_RANGE'] = str(audio.tags['DYNAMIC_RANGE'])
-            except Exception:
-                pass
-
-        c.execute(
-            "INSERT OR IGNORE INTO tag_backups (filepath, timestamp, ext, original_data) VALUES (?, ?, ?, ?)",
-            (key, time.time(), ext, json.dumps(raw_data, ensure_ascii=False))
-        )
+        key = str(p.resolve())
+        # Luôn giữ lại bản sao lưu nguyên bản đầu tiên.
+        row = conn.execute("SELECT original_data FROM tag_backups WHERE filepath = ?", (key,)).fetchone()
+        if row:
+            data = json.loads(row[0])
+            if data.get('snapshot_version') == 2:
+                return
+        audio = MediaFile(p)
+        tags = audio.mgfile.tags
+        if row:
+            # Nâng bản sao lưu cũ trong bộ nhớ, giữ cả các tag mà mã cũ chưa chạm tới.
+            for name in list(tags.keys()):
+                if _legacy_managed_tag(name, p.suffix.lower()):
+                    del tags[name]
+            _restore_legacy_tags(audio, data, p.suffix.lower())
+        if isinstance(tags, ID3):
+            original = ID3()
+            for name in tags:
+                if _managed_tag(name):
+                    original.add(tags[name])
+            buf = BytesIO()
+            original.save(buf)
+            raw_data = {'id3': base64.b64encode(buf.getvalue()).decode('ascii')}
+        else:
+            raw_data = {'tags': {
+                name: [({'bytes': base64.b64encode(v).decode('ascii'),
+                         'format': int(v.dataformat)} if isinstance(v, MP4FreeForm) else v)
+                       for v in tags[name]]
+                for name in tags.keys() if _managed_tag(name)
+            }}
+        raw_data['snapshot_version'] = 2
+        encoded = json.dumps(raw_data, ensure_ascii=False)
+        if row:
+            conn.execute("UPDATE tag_backups SET original_data = ? WHERE filepath = ? AND original_data = ?",
+                         (encoded, key, row[0]))
+        else:
+            conn.execute(
+                "INSERT OR IGNORE INTO tag_backups (filepath, timestamp, ext, original_data) VALUES (?, ?, ?, ?)",
+                (key, time.time(), p.suffix.lower(), encoded)
+            )
         conn.commit()
-    except Exception as e:
-        print(f"Lỗi khi sao lưu metadata {p}: {e}")
     finally:
         conn.close()
 
@@ -120,209 +131,125 @@ def get_audiophile_comment(audit_data: Dict[str, Any]) -> str:
 def apply_audiophile_tags(filepath: str, audit_data: Dict[str, Any]) -> Tuple[bool, str]:
     """
     Ghi metadata Audiophile đầy đủ:
-    - Tự động sao lưu metadata gốc trước khi ghi (cho phép hoàn tác 100%)
+    - Tự động sao lưu metadata gốc trước khi ghi
     - Dynamic Range (DYNAMIC_RANGE / DR)
     - ReplayGain 2.0 (REPLAYGAIN_TRACK_GAIN, REPLAYGAIN_TRACK_PEAK)
-    - EBU R128 (R128_TRACK_GAIN)
+    - EBU R128 (R128_TRACK_GAIN, số nguyên Q7.8)
     - Quality Comment & Status
     """
     p = Path(filepath)
     if not p.is_file():
         return False, f"File không tồn tại: {filepath}"
+    if p.suffix.lower() not in SUPPORTED_TAG_EXTENSIONS:
+        return False, f"Định dạng chưa hỗ trợ gắn tag: {p.suffix.lower()}"
 
-    # 1. Tự động sao lưu metadata gốc trước khi thay đổi
-    backup_original_tags(p)
-
-    ext = p.suffix.lower()
-    tag_comment = get_audiophile_comment(audit_data)
-    
-    dr = audit_data.get('dynamic_range', {})
-    dr_score = dr.get('dr_score', 0)
-    dr_str = f"DR{dr_score}" if dr_score > 0 else ""
-
+    dr_score = audit_data.get('dynamic_range', {}).get('dr_score', 0)
     loudness = audit_data.get('loudness', {})
     rg_gain = loudness.get('replaygain_track_gain', '')
-    rg_peak = str(loudness.get('replaygain_track_peak', ''))
-    r128_gain = loudness.get('r128_track_gain', '')
-
-    tier = audit_data.get('vault_tier', {})
-    is_hires = tier.get('tier_id') == '01_hires_dsd'
+    tag_comment = get_audiophile_comment(audit_data)
+    is_hires = audit_data.get('vault_tier', {}).get('tier_id') == '01_hires_dsd'
 
     try:
-        if ext == '.flac':
-            from mutagen.flac import FLAC
-            audio = FLAC(p)
-            audio['COMMENT'] = tag_comment
-            audio['HIRES_VERIFIED'] = 'TRUE' if is_hires else 'FALSE'
-            if dr_str:
-                audio['DYNAMIC_RANGE'] = dr_str
-                audio['DR'] = str(dr_score)
-            if rg_gain:
-                audio['REPLAYGAIN_TRACK_GAIN'] = rg_gain
-                audio['REPLAYGAIN_TRACK_PEAK'] = rg_peak
-                audio['R128_TRACK_GAIN'] = r128_gain
-            audio.save()
-            return True, f"Đã ghi Audiophile Tags FLAC: {dr_str} | Gain: {rg_gain}"
-
-        elif ext == '.mp3':
-            from mutagen.id3 import ID3, COMM, TXXX
-            try:
-                audio = ID3(p)
-            except Exception:
-                from mutagen.mp3 import MP3
-                mp3 = MP3(p)
-                mp3.add_tags()
-                audio = mp3.tags
-
-            audio.setall('COMM', [COMM(encoding=3, lang='eng', desc='', text=tag_comment)])
-            audio.setall('TXXX:HIRES_STATUS', [TXXX(encoding=3, desc='HIRES_STATUS', text=tag_comment)])
-            if dr_str:
-                audio.setall('TXXX:DYNAMIC_RANGE', [TXXX(encoding=3, desc='DYNAMIC_RANGE', text=dr_str)])
-            if rg_gain:
-                audio.setall('TXXX:REPLAYGAIN_TRACK_GAIN', [TXXX(encoding=3, desc='REPLAYGAIN_TRACK_GAIN', text=rg_gain)])
-                audio.setall('TXXX:REPLAYGAIN_TRACK_PEAK', [TXXX(encoding=3, desc='REPLAYGAIN_TRACK_PEAK', text=rg_peak)])
-                audio.setall('TXXX:R128_TRACK_GAIN', [TXXX(encoding=3, desc='R128_TRACK_GAIN', text=r128_gain)])
-            audio.save()
-            return True, f"Đã ghi Audiophile Tags MP3: {dr_str} | Gain: {rg_gain}"
-
-        elif ext == '.m4a':
-            from mutagen.mp4 import MP4
-            audio = MP4(p)
-            audio['\xa9cmt'] = [tag_comment]
-            if dr_str:
-                audio['----:com.apple.iTunes:DYNAMIC_RANGE'] = dr_str.encode('utf-8')
-            if rg_gain:
-                audio['----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN'] = rg_gain.encode('utf-8')
-                audio['----:com.apple.iTunes:REPLAYGAIN_TRACK_PEAK'] = rg_peak.encode('utf-8')
-            audio.save()
-            return True, f"Đã ghi Audiophile Tags M4A: {dr_str} | Gain: {rg_gain}"
-
-        elif ext == '.dsf':
-            from mutagen.dsf import DSF
-            audio = DSF(p)
-            if hasattr(audio, 'tags') and audio.tags:
-                audio.tags['COMM'] = tag_comment
-                if dr_str:
-                    audio.tags['DYNAMIC_RANGE'] = dr_str
-                audio.save()
-                return True, f"Đã ghi Audiophile Tags DSF: {dr_str}"
-            return False, "Định dạng tag DSF không hỗ trợ ghi thêm trường mở rộng"
-
-        else:
-            return False, f"Định dạng chưa hỗ trợ gắn tag: {ext}"
-
+        audio = MediaFile(p)
+        # Nếu sao lưu thất bại, không ghi đè metadata gốc.
+        backup_original_tags(p)
+        audio.comments = tag_comment
+        audio.hires_verified = 'TRUE' if is_hires else 'FALSE'
+        if p.suffix.lower() in ('.mp3', '.dsf'):
+            audio.hires_status = tag_comment
+        if dr_score > 0:
+            audio.dynamic_range = f"DR{dr_score}"
+            audio.dr = str(dr_score)
+        if rg_gain:
+            audio.rg_track_gain = float(rg_gain.removesuffix(' dB'))
+            audio.rg_track_peak = float(loudness['replaygain_track_peak'])
+            r128_gain = loudness.get('r128_track_gain')
+            if r128_gain:
+                audio.r128_track_gain = float(r128_gain.removesuffix(' dB'))
+        audio.save()
+        return True, f"Đã ghi Audiophile Tags {p.suffix[1:].upper()}: DR{dr_score} | Gain: {rg_gain}"
     except Exception as e:
         return False, str(e)
+
+def _restore_legacy_tags(audio, data, ext):
+    # Các bản sao lưu cũ vẫn dùng được sau khi chuyển sang MediaFile.
+    tags = audio.mgfile.tags
+    if isinstance(tags, ID3):
+        comments = data.get('COMM', [])
+        if isinstance(comments, str):
+            comments = [{'text': [comments]}]
+        for item in comments:
+            tags.add(COMM(encoding=3, lang='eng', desc=item.get('desc', ''), text=item.get('text', [])))
+        for name, values in data.items():
+            if name.startswith('TXXX:'):
+                tags.add(TXXX(encoding=3, desc=name[5:], text=values))
+        if ext == '.dsf' and data.get('DYNAMIC_RANGE'):
+            audio.dynamic_range = data['DYNAMIC_RANGE']
+    else:
+        for name, values in data.items():
+            if ext == '.m4a' and name.startswith('----:'):
+                # Mã cũ lưu repr của giá trị MP4; không đoán nếu không đọc được.
+                if isinstance(values, str):
+                    literal = re.sub(r'<AtomDataType\.\w+: (\d+)>', r'\1', values)
+                    tree = ast.parse(literal, mode='eval').body
+                    if isinstance(tree, ast.List):
+                        values = []
+                        for item in tree.elts:
+                            if isinstance(item, ast.Call) and isinstance(item.func, ast.Name) and item.func.id == 'MP4FreeForm' and not item.keywords:
+                                values.append(MP4FreeForm(*(ast.literal_eval(arg) for arg in item.args)))
+                            else:
+                                values.append(ast.literal_eval(item))
+                    else:
+                        values = ast.literal_eval(tree)
+                if isinstance(values, bytes):
+                    values = [values]
+            tags[name] = values
 
 def revert_audiophile_tags(filepath: str) -> Tuple[bool, str]:
     """
     Hoàn tác (Undo) và khôi phục metadata ban đầu của tệp:
-    - Khôi phục COMMENT/tag gốc từ cơ sở dữ liệu sao lưu
-    - Hoặc gỡ sạch toàn bộ tag Audiophile nếu không có sao lưu
+    - Khôi phục các tag đã ghi từ cơ sở dữ liệu sao lưu
+    - Hoặc gỡ tag Audiophile nếu không có sao lưu
     """
     p = Path(filepath)
     if not p.is_file():
         return False, f"File không tồn tại: {filepath}"
+    if p.suffix.lower() not in SUPPORTED_TAG_EXTENSIONS:
+        return False, f"Định dạng chưa hỗ trợ gắn tag: {p.suffix.lower()}"
 
-    ext = p.suffix.lower()
     key = str(p.resolve())
-    
-    # 1. Tìm bản sao lưu
     conn = get_backup_db()
-    c = conn.cursor()
-    c.execute("SELECT original_data FROM tag_backups WHERE filepath = ?", (key,))
-    row = c.fetchone()
-    
-    backup_data = {}
-    has_backup = False
-    if row and row[0]:
-        try:
-            backup_data = json.loads(row[0])
-            has_backup = True
-        except Exception:
-            pass
-
     try:
-        if ext == '.flac':
-            from mutagen.flac import FLAC
-            audio = FLAC(p)
-            for k in ['DYNAMIC_RANGE', 'DR', 'REPLAYGAIN_TRACK_GAIN', 'REPLAYGAIN_TRACK_PEAK', 'R128_TRACK_GAIN', 'HIRES_VERIFIED']:
-                if k in audio:
-                    del audio[k]
-            
-            orig_comm = backup_data.get('COMMENT')
-            if orig_comm is not None:
-                if orig_comm:
-                    audio['COMMENT'] = orig_comm
-                elif 'COMMENT' in audio:
-                    del audio['COMMENT']
-            elif 'COMMENT' in audio:
-                # Xóa comment nếu có chứa tag của tool
-                comm_str = str(audio['COMMENT'][0]) if audio['COMMENT'] else ''
-                if '[' in comm_str and ']' in comm_str:
-                    del audio['COMMENT']
-            audio.save()
+        row = conn.execute("SELECT original_data FROM tag_backups WHERE filepath = ?", (key,)).fetchone()
+        data = json.loads(row[0]) if row else {}
+        audio = MediaFile(p)
+        tags = audio.mgfile.tags
+        for name in list(tags.keys()):
+            managed = _legacy_managed_tag(name, p.suffix.lower()) if row and 'snapshot_version' not in data else _managed_tag(name)
+            if managed:
+                if not row and (name == '\xa9cmt' or name.startswith('COMM:') or name.upper() in {'COMMENT', 'DESCRIPTION'}):
+                    if not audio.comments.startswith('['):
+                        continue
+                del tags[name]
+        if data.get('snapshot_version') == 2:
+            if 'id3' in data:
+                original = ID3(BytesIO(base64.b64decode(data['id3'])))
+                for frame in original.values():
+                    tags.add(frame)
+            else:
+                for name, values in data['tags'].items():
+                    tags[name] = [MP4FreeForm(base64.b64decode(v['bytes']), dataformat=v['format'])
+                                  if isinstance(v, dict) else v for v in values]
+        elif row:
+            _restore_legacy_tags(audio, data, p.suffix.lower())
+        audio.save()
 
-        elif ext == '.mp3':
-            from mutagen.id3 import ID3, COMM
-            try:
-                audio = ID3(p)
-                for k in ['TXXX:HIRES_STATUS', 'TXXX:DYNAMIC_RANGE', 'TXXX:REPLAYGAIN_TRACK_GAIN', 'TXXX:REPLAYGAIN_TRACK_PEAK', 'TXXX:R128_TRACK_GAIN']:
-                    if k in audio:
-                        del audio[k]
-
-                orig_comm = backup_data.get('COMM')
-                if orig_comm is not None:
-                    audio.delall('COMM')
-                    for item in orig_comm:
-                        audio.add(COMM(encoding=3, lang='eng', desc=item.get('desc', ''), text=item.get('text', [])))
-                else:
-                    audio.delall('COMM')
-                audio.save()
-            except Exception:
-                pass
-
-        elif ext == '.m4a':
-            from mutagen.mp4 import MP4
-            audio = MP4(p)
-            keys_to_del = [k for k in audio.keys() if 'DYNAMIC_RANGE' in k or 'REPLAYGAIN' in k]
-            for k in keys_to_del:
-                del audio[k]
-
-            if '\xa9cmt' in backup_data:
-                orig_cmt = backup_data['\xa9cmt']
-                if orig_cmt:
-                    audio['\xa9cmt'] = orig_cmt
-                elif '\xa9cmt' in audio:
-                    del audio['\xa9cmt']
-            elif '\xa9cmt' in audio:
-                del audio['\xa9cmt']
-            audio.save()
-
-        elif ext == '.dsf':
-            from mutagen.dsf import DSF
-            audio = DSF(p)
-            if hasattr(audio, 'tags') and audio.tags:
-                if 'DYNAMIC_RANGE' in audio.tags:
-                    del audio.tags['DYNAMIC_RANGE']
-                if 'COMM' in backup_data:
-                    orig_comm = backup_data['COMM']
-                    if orig_comm:
-                        audio.tags['COMM'] = orig_comm
-                    elif 'COMM' in audio.tags:
-                        del audio.tags['COMM']
-                elif 'COMM' in audio.tags:
-                    del audio.tags['COMM']
-                audio.save()
-
-        # Xóa bản sao lưu sau khi đã khôi phục thành công
-        if has_backup:
-            c.execute("DELETE FROM tag_backups WHERE filepath = ?", (key,))
+        # Chỉ xóa bản sao lưu sau khi đã khôi phục thành công.
+        if row:
+            conn.execute("DELETE FROM tag_backups WHERE filepath = ?", (key,))
             conn.commit()
-
-        msg = "Đã hoàn tác và khôi phục metadata gốc của tệp thành công!" if has_backup else "Đã gỡ bỏ toàn bộ tag Audiophile khỏi tệp thành công!"
+        msg = "Đã hoàn tác và khôi phục metadata gốc của tệp thành công!" if row else "Đã gỡ bỏ toàn bộ tag Audiophile khỏi tệp thành công!"
         return True, msg
-
     except Exception as e:
         return False, f"Lỗi hoàn tác tag: {str(e)}"
     finally:

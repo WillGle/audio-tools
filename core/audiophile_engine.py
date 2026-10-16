@@ -1,4 +1,6 @@
-import os
+import csv
+from io import StringIO
+import math
 import re
 import json
 import subprocess
@@ -64,15 +66,11 @@ def measure_dynamic_range(filepath: str, duration_limit: float = 1800.0) -> Dict
         peak_db = round(float(peak_calc), 2)
         rms_db = round(float(rms_calc), 2)
         channel_drs = [dr_score, dr_score]
-    except Exception:
-        # Fallback tính nhanh nếu dr14meter gặp lỗi
-        peak = float(np.max(np.abs(samples)))
-        rms = float(np.sqrt(np.mean(samples ** 2)))
-        peak_db = round(20.0 * np.log10(max(peak, 1e-9)), 2)
-        rms_db = round(20.0 * np.log10(max(rms, 1e-9)), 2)
-        dr_score = max(1, min(20, int(round(peak_db - rms_db))))
-        dr_float = float(dr_score)
-        channel_drs = [dr_score, dr_score]
+    except Exception as e:
+        return {
+            'dr_score': 0, 'dr_float': 0.0, 'dr_badge': 'DR? (Không đo được)',
+            'badge_color': '#94a3b8', 'verdict_text': f'dr14meter: {e}'
+        }
 
     if dr_score >= 12:
         badge = f"DR{dr_score} (Wide Dynamic Range)"
@@ -446,28 +444,19 @@ def measure_replaygain_ebu_r128(filepath: str) -> Dict[str, Any]:
         '-f', 'null',
         '-'
     ]
-    res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=True)
     out = res.stderr
 
-    integrated_lufs = -18.0
-    lra = 0.0
-    true_peak_db = 0.0
-
-    if 'Summary:' in out:
-        summary = out.split('Summary:')[-1]
-        i_match = re.search(r'I:\s+([-\d.]+)\s+LUFS', summary)
-        lra_match = re.search(r'LRA:\s+([-\d.]+)\s+LU', summary)
-        peak_match = re.search(r'Peak:\s+([-\d.]+)\s+dBFS', summary)
-        if i_match:
-            integrated_lufs = float(i_match.group(1))
-        if lra_match:
-            lra = float(lra_match.group(1))
-        if peak_match:
-            true_peak_db = float(peak_match.group(1))
-    else:
-        i_match = re.search(r'I:\s+([-\d.]+)\s+LUFS', out)
-        if i_match:
-            integrated_lufs = float(i_match.group(1))
+    # FFmpeg tiếp tục cung cấp LRA và các chỉ số EBU R128 cho báo cáo.
+    summary = out.split('Summary:')[-1]
+    i_match = re.search(r'I:\s+([-\d.]+)\s+LUFS', summary)
+    lra_match = re.search(r'LRA:\s+([-\d.]+)\s+LU', summary)
+    peak_match = re.search(r'Peak:\s+([-\d.]+)\s+dBFS', summary)
+    if not all((i_match, lra_match, peak_match)):
+        raise ValueError('FFmpeg không trả đủ dữ liệu loudness; không tạo ReplayGain giả định')
+    integrated_lufs = float(i_match.group(1))
+    lra = float(lra_match.group(1))
+    true_peak_db = float(peak_match.group(1))
 
     # Chuẩn ReplayGain 2.0: Target -18.0 LUFS
     track_gain_rg2 = round(-18.00 - integrated_lufs, 2)
@@ -476,7 +465,26 @@ def measure_replaygain_ebu_r128(filepath: str) -> Dict[str, Any]:
     # Peak dạng tỷ lệ (ratio 0.0 -> 1.0+)
     track_peak_ratio = round(float(10.0 ** (true_peak_db / 20.0)), 6)
 
+    # Giữ phép đo DSD bằng FFmpeg: rsgain 3.6 chưa hỗ trợ DSF, DFF.
+    backend = 'ffmpeg' if p.suffix.lower() in ('.dsf', '.dff') else 'rsgain'
+    if backend == 'rsgain':
+        try:
+            scan = subprocess.run(
+                ['rsgain', 'custom', '-s', 's', '-l', '-18', '-t', '-O', '-q', str(p.resolve())],
+                capture_output=True, text=True, timeout=60, check=True
+            )
+        except FileNotFoundError as e:
+            raise RuntimeError('Cần cài rsgain >= 3.6 và đặt trong PATH để đo ReplayGain') from e
+        rows = list(csv.DictReader(StringIO(scan.stdout), delimiter='\t'))
+        if len(rows) != 1 or None in rows[0]:
+            raise ValueError('rsgain không trả kết quả cho đúng một tệp')
+        track_gain_rg2 = float(rows[0]['Gain (dB)'])
+        track_peak_ratio = float(rows[0]['Peak'])
+        if not all(math.isfinite(v) for v in (track_gain_rg2, track_peak_ratio)):
+            raise ValueError('rsgain trả giá trị ReplayGain không hợp lệ')
+
     return {
+        'replaygain_backend': backend,
         'integrated_lufs': float(integrated_lufs),
         'loudness_range_lra': float(lra),
         'true_peak_db': float(true_peak_db),

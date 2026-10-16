@@ -23,13 +23,27 @@ uv run python3 app.py
 Các gói phụ thuộc chính:
 - `fastapi` & `uvicorn[standard]`: REST API & Web Server
 - `mutagen`: Trích xuất và ghi Metadata (FLAC, MP3 ID3, M4A, DSF)
-- `numpy` & `scipy`: Xử lý tín hiệu số DSP (FFT, Crest factor, Entropy)
+- [`MediaFile`](https://github.com/beetbox/mediafile): Thống nhất ghi tag giữa các định dạng; Mutagen giữ dữ liệu tag gốc cho hoàn tác.
+- `numpy`: Xử lý tín hiệu số DSP (FFT, Entropy)
+- [`dr14meter`](https://github.com/pe7ro/dr14meter): Tính Dynamic Range; khi đo lỗi, trả trạng thái không đo được thay vì dùng peak−RMS thay thế.
 - `pydantic`: Kiểm thực dữ liệu API
 
 ### 2. Tiện ích hệ thống (System Dependencies)
 Cần có sẵn các công cụ dòng lệnh:
 - **`ffmpeg` / `ffprobe`**: Dùng để giải mã luồng audio, đo EBU R128 LUFS và render Spectrogram.
 - **`flac`**: Dùng để đối chiếu Audio MD5 và kiểm tra frame CRC (`flac -t`).
+- **[`rsgain` >= 3.6](https://github.com/complexlogic/rsgain)**: Đo ReplayGain 2.0 và True Peak ở chế độ chỉ đọc; MediaFile ghi các giá trị này khi chọn gắn tag. FFmpeg vẫn đo LUFS/LRA và xử lý DSF/DFF để tương thích với rsgain 3.6 chưa hỗ trợ DSD.
+- **`fpcalc` (Chromaprint)**: Tạo fingerprint âm học. Đây là tiện ích hệ thống, không phải gói Python `chromaprint`.
+
+Trên NixOS, có thể chạy với các tiện ích trong môi trường tạm:
+
+```bash
+nix-shell -p ffmpeg flac chromaprint rsgain --run './start.sh'
+```
+
+Các công cụ phải có trong `PATH` của tiến trình chạy ứng dụng. Thiếu rsgain hoặc đo lỗi sẽ báo lỗi, không ghi ReplayGain mặc định. Tag `R128_TRACK_GAIN` được lưu dưới dạng số nguyên Q7.8 qua MediaFile.
+
+Sao lưu mới giữ nguyên các tag bị thay đổi, gồm nhiều giá trị, ngôn ngữ ID3 và dữ liệu MP4. Sao lưu cũ vẫn đọc được, nhưng chỉ khôi phục thông tin đã lưu trước đây (ví dụ, bản cũ không lưu ngôn ngữ của comment ID3).
 
 ---
 

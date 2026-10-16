@@ -4,9 +4,9 @@ import json
 import shutil
 from pathlib import Path
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 # Add current folder to sys.path
@@ -506,7 +506,7 @@ def archive_byte_duplicates(payload: Optional[ArchiveDupesRequest] = None):
 from core.audiophile_engine import run_full_audiophile_audit, audit_album_gapless_and_dr
 from core.tagger import apply_audiophile_tags, revert_audiophile_tags, rollback_all_audiophile_tags
 from core.vault_tiering import scan_and_generate_tiering_plan, execute_tiering, rollback_vault_tiering
-from core.fingerprint import compare_audio_files, get_audio_fingerprint, lookup_acoustid_metadata
+from core.fingerprint import compare_audio_files, get_audio_fingerprint
 
 class CompareFingerprintRequest(BaseModel):
     file1: str
