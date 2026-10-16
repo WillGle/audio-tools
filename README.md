@@ -57,13 +57,35 @@ Truy cập giao diện Web tại: **`http://localhost:5050`**. Mặc định ch�
 
 ---
 
+## Duyệt và sắp xếp kho nhạc local
+
+Ở tab **Kho nhạc & sắp xếp**, nhập thư mục tải mới (tương đối trong kho,
+ví dụ `Downloads`), hoặc để trống để quét toàn bộ. Bấm **Đọc metadata & xem trước**.
+Ứng dụng đọc tag trong cả thư mục con và đề xuất
+`Nghệ sĩ / Album / Số bài - Tên bài.ext`, ưu tiên album artist để gom album.
+Lọc nhóm sẵn sàng, thiếu metadata, trùng đích hoặc đã đúng vị trí để kiểm tra.
+
+**Áp dụng đổi tên & di chuyển** yêu cầu xác nhận bản xem trước. Chỉ các bài sẵn
+sàng được chuyển; không ghi đè, sửa tag hoặc mã hóa lại audio. Thiếu tên/nghệ sĩ
+thì giữ nguyên, không suy đoán từ tên ngẫu nhiên; thiếu album dùng `Chưa rõ album`.
+Mở **Hoàn tác sắp xếp** để khôi phục vị trí các lần sắp xếp metadata đã áp dụng.
+Nhật ký `.metadata_organize_rollback.json` tách riêng khỏi phân cấp chất lượng.
+Không xóa thư mục rỗng, không di chuyển ảnh bìa/CUE hay các tệp phụ.
+Nếu file thay đổi sau khi xem trước, cần tạo lại bản xem trước.
+
+Tìm theo tên bài, nghệ sĩ, album hoặc đường dẫn trong bảng Kho nhạc; dùng bộ lọc
+cột và sắp xếp theo nghệ sĩ/album để duyệt mà không cần di chuyển file.
+
 ## Audio Authenticity & Integrity
 
-Mở tab **Kiểm Định 7 Chuẩn**. Phần đầu là điểm authenticity, confidence,
-coverage, cảnh báo toàn vẹn, kỳ vọng so với header và phép đo. Chọn bài ở ô Lab,
-chọn các bài ở bảng Kho Nhạc, hoặc nhập thư mục trong kho để quét đệ quy.
-Các card cũ và thao tác playback, ReplayGain, gapless, fingerprint và phân tầng
-vẫn có, tách khỏi điểm. Ghi tag và quản lý file vẫn là thao tác riêng do bạn chọn.
+Mở tab **Kiểm tra âm thanh**, chọn phạm vi (một bài, các bài đã chọn hoặc thư mục),
+chọn chế độ rồi bấm **Bắt đầu kiểm tra**. Có thể tìm bài bằng tên và chọn bằng
+phím mũi tên/Enter, hoặc chọn nhiều bài ở Kho Nhạc rồi bấm nút kiểm tra.
+Kết quả hiển thị điểm authenticity, confidence, coverage, cảnh báo toàn vẹn và
+đối chiếu khai báo với phép đo. Chọn **Chi tiết** trong bảng để xem từng bài;
+mở thẻ chẩn đoán để đọc bằng chứng và số liệu. Có thể hủy hoặc xem lại lượt quét.
+Các kiểm tra playback, ReplayGain, gapless, fingerprint và phân tầng nằm trong
+phần chẩn đoán bổ sung, tách khỏi điểm. Ghi tag và quản lý file vẫn là thao tác riêng.
 
 - FAST: sàng lọc 20 giây đầu, luôn sơ bộ và không hiện điểm số chính thức.
 - BALANCED: mặc định; giải mã toàn file, kiểm tra FLAC và đo nhiều cửa sổ.

@@ -40,31 +40,44 @@ def run(root, output):
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(base, wait_until='networkidle')
                 page.locator('#btn-tab-audiophile').click()
-                page.evaluate("document.getElementById('lab-selected-path').value='padded_24.flac'")
+                assert page.locator('#scoring-single').is_disabled()
+                assert page.locator('#scoring-result').is_hidden()
+                search = page.locator('#lab-combobox-input')
+                search.fill('padded_24')
+                page.locator('.combobox-item').first.wait_for()
+                search.press('ArrowDown'); search.press('Enter')
+                assert page.locator('#lab-selected-path').input_value() == 'padded_24.flac'
                 page.locator('#scoring-single').click()
-                page.wait_for_function("document.getElementById('scoring-progress').textContent.startsWith('COMPLETED')", timeout=60000)
-                page.wait_for_function("document.getElementById('auth-score').textContent !== 'N/A'")
-                assert '78.2/100' in page.locator('#auth-score').inner_text()
+                page.wait_for_function("document.getElementById('scoring-progress').dataset.status === 'COMPLETED'", timeout=60000)
+                page.wait_for_function("document.getElementById('auth-score').textContent === '78.2/100'")
                 assert 'BIT_DEPTH_PADDING_DETECTED' in page.locator('#auth-details').text_content()
+                assert page.locator('#auth-details pre').count() == 0  # raw JSON is lazy and expandable
+                page.locator('#auth-details > details').first.locator('summary').first.click()
+                assert page.locator('#auth-details > details').first.get_attribute('data-status') == 'SUSPECT'
                 page.locator('summary', has_text='Phổ theo cửa sổ và từng kênh').click()
+                page.evaluate('window.scrollTo(0,0)')
                 page.screenshot(path=str(output/'scoring-desktop.png'), full_page=True)
-                # Actual legacy audit contract, including gracefully missing optional rsgain/fpcalc.
-                audit = page.request.post(base+'/api/audiophile/audit', data={'filepath':'valid_cd.flac'})
-                assert audit.ok, audit.text()
-                payload = audit.json()
-                assert all(key in payload for key in ['dynamic_range','integrity','bit_depth','dsd','loudness','gapless','vault_tier','authenticity'])
-                page.evaluate('(data) => renderAudiophileAuditResults(data)', payload)
-                assert page.locator('#auth-score').inner_text() == '100/100'
+                # Editing search clears stale selection; supplementary audit uses the selected file.
+                search.fill('valid_cd')
+                assert page.locator('#scoring-single').is_disabled()
+                page.locator('.combobox-item', has_text='valid_cd.flac').click()
+                page.locator('#additional-diagnostics > summary').click()
+                page.locator('#btn-run-audiophile-audit').click()
+                page.wait_for_function("document.getElementById('auth-score').textContent === '100/100'", timeout=60000)
+                assert 'valid_cd.flac' in page.locator('#additional-current').inner_text()
+                assert page.locator('#btn-audiophile-tag-now').is_visible()
+                page.locator('#additional-diagnostics > summary').click()
                 assert page.request.get(base+'/api/spectrogram?filepath=valid_cd.flac').ok
                 assert page.request.get(base+'/api/stream?filepath=valid_cd.flac').ok
                 assert page.request.get(base+'/api/tracks').json()['total'] > 0
                 # Recursive job, progressive rows, exports and comparison selection.
                 previous_export = page.locator('#scoring-export-json').get_attribute('href')
-                page.locator('#scoring-folder-start').click()
+                page.locator('#scoring-target').select_option('folder')
+                page.locator('#scoring-single').click()
                 page.wait_for_function("previous => document.getElementById('scoring-export-json').getAttribute('href') !== previous", arg=previous_export)
                 job_id = page.locator('#scoring-export-json').get_attribute('href').split('/')[4]
-                page.wait_for_function("async id => (await (await fetch('/api/scoring/jobs/' + id)).json()).status === 'COMPLETED'", arg=job_id, timeout=90000)
-                page.wait_for_function("document.getElementById('scoring-progress').textContent.startsWith('COMPLETED')", timeout=90000)
+                page.wait_for_function("async id => (await (await fetch('/api/scoring/jobs/' + id)).json()).status === 'COMPLETED'", arg=job_id, timeout=90000, polling=500)
+                page.wait_for_function("document.getElementById('scoring-progress').dataset.status === 'COMPLETED'", timeout=90000)
                 total = page.request.get(base+'/api/scoring/jobs/'+job_id).json()['total']
                 page.wait_for_function("total => document.querySelectorAll('#scoring-results tr').length === total", arg=total)
                 export = page.request.get(base+page.locator('#scoring-export-json').get_attribute('href'))
@@ -77,12 +90,39 @@ def run(root, output):
                         break
                 assert 'LỖI TOÀN VẸN' in page.locator('#auth-warnings').inner_text()
                 assert page.locator('#auth-warnings').get_attribute('class') == 'critical'
+                assert page.locator('#btn-audiophile-tag-now').is_hidden()
+                # A bad folder reports an actionable error and leaves retry available.
+                page.locator('#scoring-folder').fill('../outside')
+                page.locator('#scoring-single').click()
+                page.locator('#scoring-error').wait_for(state='visible')
+                assert page.locator('#scoring-single').is_enabled()
+                page.locator('#scoring-folder').fill('')
                 page.set_viewport_size({'width':390, 'height':844})
+                page.evaluate('window.scrollTo(0,0)')
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'mobile page overflows'
                 page.screenshot(path=str(output/'scoring-mobile.png'), full_page=True)
+                # Cancel a new mode, restore completed history, then scan library selections.
+                page.locator('#scoring-mode').select_option('DEEP')
+                page.locator('#scoring-single').click()
+                page.locator('#scoring-cancel').wait_for(state='visible')
+                page.locator('#scoring-cancel').click()
+                page.wait_for_function("document.getElementById('scoring-progress').dataset.status === 'CANCELLED'", timeout=30000)
+                assert page.locator('#scoring-single').is_enabled()
+                page.locator('#scoring-history').select_option(job_id)
+                page.wait_for_function("document.getElementById('scoring-progress').dataset.status === 'COMPLETED' && document.querySelectorAll('#scoring-results tr').length === 25")
+                page.set_viewport_size({'width':1440, 'height':1100})
+                page.locator('#btn-tab-library').click()
+                for name in ['padded_24.flac', 'valid_cd.flac']:
+                    page.locator(f'.track-row-checkbox[data-path="{name}"]').check()
+                page.locator('#btn-batch-score').click()
+                assert page.locator('#scoring-selected-count').inner_text() == '2'
+                page.wait_for_function("document.getElementById('scoring-progress').dataset.status === 'COMPLETED' && document.querySelectorAll('#scoring-results tr').length === 2", timeout=60000)
                 assert not errors, errors
                 (output/'browser-results.json').write_text(json.dumps({'page_errors': errors,
                     'batch_rows':len(rows), 'checks':['single padding','legacy audit','recursive batch','comparison',
-                    'critical warning with N/A','JSON export','spectrogram','stream','track list','mobile rendering']}, indent=2))
+                    'critical warning with N/A','JSON export','spectrogram','stream','track list','mobile no overflow',
+                    'keyboard search','stale selection cleared','supplementary audit','lazy raw measurements','folder error retry',
+                    'cancel scan','restore history','library selection scan']}, indent=2))
                 browser.close()
         finally:
             server.terminate()

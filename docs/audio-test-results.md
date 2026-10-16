@@ -101,13 +101,26 @@ was performed; disk speed, channels, rates and optional tools affect performance
 
 The real Chromium smoke run uses Playwright 1.58.0 and system Chromium 149,
 a disposable uvicorn server, cache and generated vault. It exercises single-file
-padding analysis, legacy audit, recursive scanning, comparison selection,
+padding analysis, supplementary audit, recursive scanning, comparison selection,
 critical warning with N/A, JSON export, FFmpeg spectrogram, streaming, live track
-listing and rendering at a 390px viewport. See
+listing, keyboard search, clearing stale selections, expandable measurements,
+invalid-folder retry, cancellation, history restoration and scanning selected
+library tracks. The 390px viewport check asserts no document-level horizontal
+overflow. See
 [`examples/browser-results.json`](examples/browser-results.json) for actual counts
-and JavaScript errors. Mobile rendering is a smoke check, not a responsive-layout
-or accessibility certification; the pre-existing header can overflow narrow
-viewports. Screenshots are produced in the chosen temporary output directory.
+and JavaScript errors. Mobile rendering is a smoke check, not a full responsive-layout
+or accessibility certification. Screenshots are produced in the chosen temporary
+output directory.
+
+Metadata organization was also checked in Chromium against four disposable FLACs:
+one tagged file under three nested folders, one missing its title, and two sharing
+a destination. The preview produced 1 READY, 1 REVIEW and 2 CONFLICT rows. Applying
+and rolling back the single READY file preserved its complete bytes, including
+tags. Thirteen checks covered preview, grouping, Unicode paths, move/rollback,
+separate rollback journals, stale plans, changed sources, traversal/symlink escape
+rejection and a 390px viewport with no document overflow; no JavaScript errors.
+These checks cover the FLAC workflow, not metadata compatibility for every codec
+or simultaneous changes made by another application during a move.
 
 ## Re-run
 

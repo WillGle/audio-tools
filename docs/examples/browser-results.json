@@ -11,6 +11,14 @@
     "spectrogram",
     "stream",
     "track list",
-    "mobile rendering"
+    "mobile no overflow",
+    "keyboard search",
+    "stale selection cleared",
+    "supplementary audit",
+    "lazy raw measurements",
+    "folder error retry",
+    "cancel scan",
+    "restore history",
+    "library selection scan"
   ]
 }
