@@ -55,66 +55,24 @@ def measure_dynamic_range(filepath: str, duration_limit: float = 1800.0) -> Dict
     samples = np.frombuffer(raw, dtype=np.float32).reshape(-1, 2)
     sr = 44100
     
-    # 1. Chuẩn chính thức từ thư viện dr14meter (Pleasurize Music Foundation)
-    used_official_dr = False
+    # Chuẩn chính thức từ thư viện dr14meter (Pleasurize Music Foundation)
     try:
         import dr14meter.compute_dr14 as cd
         dr_calc, peak_calc, rms_calc = cd.compute_dr14(samples, sr)
-        dr_score = int(round(float(dr_calc)))
-        dr_score = max(1, min(20, dr_score))
+        dr_score = max(1, min(20, int(round(float(dr_calc)))))
         dr_float = float(dr_score)
         peak_db = round(float(peak_calc), 2)
         rms_db = round(float(rms_calc), 2)
         channel_drs = [dr_score, dr_score]
-        used_official_dr = True
     except Exception:
-        used_official_dr = False
-
-    if not used_official_dr:
-        block_size = sr * 3  # block 3 giây theo chuẩn TT DR
-        num_blocks = len(samples) // block_size
-
-        if num_blocks == 0:
-            num_blocks = 1
-            block_size = len(samples)
-
-        channel_drs = []
-        channel_peaks = []
-        channel_rms_tops = []
-
-        for ch in range(2):
-            ch_data = samples[:, ch]
-            peak = np.max(np.abs(ch_data))
-            peak = max(peak, 1e-9)
-            ch_peak_db = 20.0 * np.log10(peak)
-            channel_peaks.append(ch_peak_db)
-
-            block_powers = []
-            for b in range(num_blocks):
-                blk = ch_data[b * block_size : (b + 1) * block_size]
-                pwr = np.mean(blk ** 2)
-                if pwr > 1e-12:
-                    block_powers.append(pwr)
-
-            if not block_powers:
-                block_powers = [1e-12]
-
-            block_powers.sort(reverse=True)
-            top20_count = max(1, int(len(block_powers) * 0.2))
-            avg_top20_power = np.mean(block_powers[:top20_count])
-            rms_top20_db = 10.0 * np.log10(avg_top20_power)
-            channel_rms_tops.append(rms_top20_db)
-
-            dr_ch = ch_peak_db - rms_top20_db
-            channel_drs.append(dr_ch)
-
-        # DR trung bình 2 kênh, làm tròn số nguyên chuẩn TT DR Meter
-        dr_float = float(np.mean(channel_drs))
-        dr_score = int(round(dr_float))
-        dr_score = max(1, min(20, dr_score))
-
-        peak_db = float(max(channel_peaks))
-        rms_db = float(np.mean(channel_rms_tops))
+        # Fallback tính nhanh nếu dr14meter gặp lỗi
+        peak = float(np.max(np.abs(samples)))
+        rms = float(np.sqrt(np.mean(samples ** 2)))
+        peak_db = round(20.0 * np.log10(max(peak, 1e-9)), 2)
+        rms_db = round(20.0 * np.log10(max(rms, 1e-9)), 2)
+        dr_score = max(1, min(20, int(round(peak_db - rms_db))))
+        dr_float = float(dr_score)
+        channel_drs = [dr_score, dr_score]
 
     if dr_score >= 12:
         badge = f"DR{dr_score} (Wide Dynamic Range)"

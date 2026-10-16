@@ -1239,6 +1239,17 @@ function renderAudiophileAuditResults(data) {
     }
     document.getElementById('bitdepth-msg-desc').textContent = bits.explanation || '';
 
+    // fakeflac Spectral Cutoff
+    const spec = data.spectrum || {};
+    const elCutoffHz = document.getElementById('pillar-cutoff-hz');
+    const elCutoffDrop = document.getElementById('pillar-cutoff-drop');
+    if (elCutoffHz) {
+        elCutoffHz.textContent = spec.cutoff_hz ? `${spec.cutoff_hz.toLocaleString()} Hz` : 'N/A';
+    }
+    if (elCutoffDrop) {
+        elCutoffDrop.textContent = spec.cutoff_drop_db !== undefined ? `-${spec.cutoff_drop_db} dB` : '--';
+    }
+
     // 4. DSD / SACD Purity
     const dsd = data.dsd || {};
     const dsdBadge = document.getElementById('pillar-dsd-badge');
@@ -1913,6 +1924,16 @@ function renderDuplicates() {
                                 ${album ? `<span class="dupe-tag-pill dupe-tag-album">${escapeHtml(album)}</span>` : ''}
                                 ${sizeMb ? `<span class="text-secondary" style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; white-space: nowrap;">${sizeMb}</span>` : ''}
                                 ${hasNum ? `<span class="dupe-tag-pill dupe-tag-number">Đuôi (${fileName.match(/\((\d+)\)/)?.[1] || 'số'})</span>` : ''}
+                                ${typeof f === 'object' && f.acoustic_match_pct !== undefined && f.acoustic_match_pct !== null && !isKept ? `
+                                    <span class="stat-tag ${f.acoustic_match_pct >= 80 ? 'tag-emerald' : 'tag-rose'}" style="font-size: 0.72rem; padding: 2px 7px;" title="Độ khớp vân tay Chromaprint với bản đề xuất giữ">
+                                        🎵 ${f.acoustic_match_pct}% Khớp
+                                    </span>
+                                ` : ''}
+                                ${!isKept ? `
+                                <button class="btn btn-xs btn-outline btn-row-compare-acoustic" title="So sánh dấu vân tay âm học Chromaprint với bản giữ" data-file1="${escapeHtml(keptFile)}" data-file2="${escapeHtml(filePath)}">
+                                    🎵 So Âm
+                                </button>
+                                ` : ''}
                                 <button class="btn btn-xs btn-outline btn-row-play" title="Phát nghe thử tệp âm thanh này" data-file="${escapeHtml(filePath)}" data-title="${escapeHtml(fileName)}" data-specs="${escapeHtml(specs || ext)}">
                                     ▶ Nghe
                                 </button>
@@ -1932,7 +1953,7 @@ function renderDuplicates() {
     // 1. Attach interactive click event on each file row
     container.querySelectorAll('.dupe-file-row').forEach(row => {
         row.addEventListener('click', (e) => {
-            if (e.target.closest('.btn-row-spectrogram') || e.target.closest('.btn-row-play')) return;
+            if (e.target.closest('.btn-row-spectrogram') || e.target.closest('.btn-row-play') || e.target.closest('.btn-row-compare-acoustic')) return;
 
             const gId = row.dataset.groupid;
             const file = row.dataset.file;
@@ -1982,6 +2003,39 @@ function renderDuplicates() {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             playTrack(btn.dataset.file, btn.dataset.title, '', btn.dataset.specs);
+        });
+    });
+
+    // 2b. Attach acoustic fingerprint comparison buttons
+    container.querySelectorAll('.btn-row-compare-acoustic').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const f1 = btn.dataset.file1;
+            const f2 = btn.dataset.file2;
+            if (!f1 || !f2) return;
+            btn.textContent = '⏳...';
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/fingerprint/compare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file1: f1, file2: f2 })
+                });
+                const data = await res.json();
+                if (data.match_pct !== undefined) {
+                    showToast(`🎵 Khớp ${data.match_pct}%: ${data.explanation}`, data.is_identical ? 'success' : 'info');
+                    btn.textContent = `🎵 ${data.match_pct}%`;
+                    btn.className = `btn btn-xs ${data.is_identical ? 'btn-emerald' : 'btn-outline-rose'} btn-row-compare-acoustic`;
+                } else {
+                    showToast(`❌ Lỗi: ${data.detail || 'Không thể so sánh'}`, 'error');
+                    btn.textContent = '🎵 So Âm';
+                }
+            } catch (err) {
+                showToast(`❌ Lỗi kết nối: ${err.message}`, 'error');
+                btn.textContent = '🎵 So Âm';
+            } finally {
+                btn.disabled = false;
+            }
         });
     });
 
@@ -2450,7 +2504,12 @@ async function openSpectrogramModal(filepath, title, specs) {
     })
     .then(r => r.json())
     .then(data => {
+        const cutoffLabel = data.cutoff_hz ? (data.cutoff_hz > 24000 ? '>24 kHz (Full Range)' : `${(data.cutoff_hz/1000).toFixed(1)} kHz (-${data.cutoff_drop_db || 0}dB)`) : 'Không rõ';
         dspGrid.innerHTML = `
+            <div class="dsp-metric">
+                <span class="dsp-metric-label">Cắt Tần (fakeflac)</span>
+                <span class="dsp-metric-value" style="color: ${data.cutoff_drop_db >= 20 ? '#f43f5e' : '#10b981'}">${cutoffLabel}</span>
+            </div>
             <div class="dsp-metric">
                 <span class="dsp-metric-label">Độ Sụt Tần 22k</span>
                 <span class="dsp-metric-value">${data.drop_at_22k !== null ? data.drop_at_22k + ' dB' : 'N/A'}</span>
@@ -2460,7 +2519,7 @@ async function openSpectrogramModal(filepath, title, specs) {
                 <span class="dsp-metric-value">${data.ultrasonic_db !== null ? data.ultrasonic_db + ' dB' : 'N/A'}</span>
             </div>
             <div class="dsp-metric">
-                <span class="dsp-metric-label">Đánh Giá</span>
+                <span class="dsp-metric-label">Đánh Giá Phổ Âm</span>
                 <span class="dsp-metric-value" style="color: ${data.badge_color || '#fff'}">${data.badge || data.verdict}</span>
             </div>
         `;
@@ -2482,6 +2541,8 @@ async function openSpectrogramModal(filepath, title, specs) {
         const integ = data.integrity || {};
         const loud = data.loudness || {};
         const tier = data.vault_tier || {};
+        const fp = data.fingerprint || {};
+        const spec = data.spectrum || {};
 
         const drHeader = document.getElementById('modal-dr-badge-header');
         if (drHeader) {
@@ -2493,6 +2554,16 @@ async function openSpectrogramModal(filepath, title, specs) {
         document.getElementById('modal-audit-md5').textContent = integ.header_md5 ? integ.header_md5.slice(0, 12) + '...' : 'N/A';
         document.getElementById('modal-audit-gain').textContent = loud.replaygain_track_gain || '--';
         document.getElementById('modal-audit-tier').textContent = tier.badge || '--';
+        
+        const elCutoff = document.getElementById('modal-audit-cutoff');
+        if (elCutoff) {
+            elCutoff.textContent = spec.cutoff_hz ? `${(spec.cutoff_hz/1000).toFixed(1)} kHz` : '--';
+        }
+        const elFp = document.getElementById('modal-audit-fp');
+        if (elFp) {
+            elFp.textContent = fp.is_available ? `Chromaprint (${fp.sample_count}s)` : 'Chưa có';
+            elFp.style.color = fp.is_available ? '#34d399' : '#94a3b8';
+        }
     })
     .catch(() => {});
 

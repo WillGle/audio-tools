@@ -210,19 +210,13 @@ def analyze_audio_file(filepath):
         avg_p = np.mean(power[m])
         return float(10 * np.log10(max(avg_p, 1e-18) / peak_audible))
 
-    db_10_15k = get_avg_db(10000, 15000)
-    db_16_18k = get_avg_db(16000, 18000)
     db_18_20k = get_avg_db(18000, 20000)
-    db_20_20_5k = get_avg_db(20000, 20500)
-    db_20_5_22k = get_avg_db(20500, 22000)
     db_20_22k = get_avg_db(20000, 22000)
     db_22_24k = get_avg_db(22050, 24000) if sr > 48000 else None
     db_24_32k = get_avg_db(24000, 32000) if sr > 48000 else None
-    
     drop_at_22k = round((db_20_22k - db_22_24k) if db_22_24k is not None else 0.0, 1)
-    drop_at_20_5k = round(db_18_20k - db_20_5_22k, 1)
 
-    # 1. Quét ngược phổ tần theo fakeflac để xác định điểm gãy tần số chính xác
+    # 1. Quét ngược phổ tần theo chuẩn fakeflac xác định điểm gãy tần số chính xác
     cutoff_hz, cutoff_drop_db = find_spectral_cutoff(power, freqs, sr)
 
     # 2. Kiểm tra Bit Depth thực tế nếu danh nghĩa là 24-bit
@@ -231,21 +225,22 @@ def analyze_audio_file(filepath):
     is_fake_24 = bit_purity_info.get('is_fake_24bit', False)
     has_24bit_bits = (not is_fake_24) if bits > 16 else False
 
-    # 3. Kiểm tra nén Lossy / MP3 giả mạo (áp dụng cho cả 16-bit và 24-bit upsampled)
-    is_mp3_320k = bool((cutoff_hz <= 20800 and cutoff_drop_db >= 25.0 and db_18_20k > -55.0) or (db_20_5_22k < -80.0 and drop_at_20_5k > 26.0 and db_18_20k > -55.0))
-    is_mp3_low = bool((cutoff_hz <= 19800 and cutoff_drop_db >= 25.0) or (db_18_20k < -65.0 and (db_10_15k - db_18_20k) > 30.0))
+    # 3. Phân loại theo tiêu chuẩn fakeflac & audiophile
+    is_mp3_320k = bool(cutoff_hz <= 20800 and cutoff_drop_db >= 20.0 and db_18_20k > -60.0)
+    is_mp3_low = bool(cutoff_hz <= 19500 and cutoff_drop_db >= 20.0)
+    is_cd_upsampled = bool(sr > 48000 and ((cutoff_hz <= 22200 and cutoff_drop_db >= 20.0) or (db_22_24k is not None and (db_24_32k < -80 or drop_at_22k > 18))))
 
     if sr > 48000:
-        if is_mp3_320k or is_mp3_low or (db_18_20k < -65 and drop_at_22k > 14):
+        if is_mp3_320k or is_mp3_low:
             verdict = 'FAKE_HIRES_UPSAMPLED'
             badge = '🔴 Fake Hi-Res (Upsize từ MP3)'
             badge_color = '#f43f5e'
             explanation = f'File bị upsample từ file nén MP3 (dải tần bị cắt cụt ở {cutoff_hz}Hz trước khi nội suy lên {sr/1000:.1f}kHz).'
-        elif (cutoff_hz <= 22200 and cutoff_drop_db >= 20.0) or (db_22_24k is not None and (db_24_32k < -80 or drop_at_22k > 18)):
+        elif is_cd_upsampled:
             verdict = 'FAKE_HIRES_UPSAMPLED'
             badge = '🔴 Fake Hi-Res (Upsize từ CD)'
             badge_color = '#f43f5e'
-            explanation = f'File gán mác {sr/1000:.1f}kHz nhưng dải tần bị chặn đứng ở 22.05kHz (sụt {drop_at_22k}dB), dải siêu âm rỗng ({db_24_32k:.1f}dB).'
+            explanation = f'File gán mác {sr/1000:.1f}kHz nhưng dải tần bị chặn đứng ở 22.05kHz (sụt {cutoff_drop_db}dB), dải siêu âm rỗng ({db_24_32k:.1f}dB).'
         elif db_24_32k is not None and db_24_32k >= -65 and drop_at_22k < 12:
             verdict = 'TRUE_HIRES'
             badge = '🟢 True Hi-Res'
