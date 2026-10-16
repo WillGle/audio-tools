@@ -20,12 +20,15 @@ def get_audio_specs(filepath):
     bits = 16
     channels = 2
     dur = 180.0
+    readable = False
 
     try:
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=8)
         data = json.loads(res.stdout)
         if 'streams' in data and len(data['streams']) > 0:
             st = data['streams'][0]
+            readable = (res.returncode == 0 and int(st.get('sample_rate', 0)) > 0
+                        and int(st.get('channels', 0)) > 0)
             codec = st.get('codec_name', codec)
             if st.get('sample_rate'):
                 sr = int(st['sample_rate'])
@@ -50,6 +53,7 @@ def get_audio_specs(filepath):
             from mutagen.flac import FLAC
             audio = FLAC(p)
             if hasattr(audio, 'info'):
+                readable = audio.info.sample_rate > 0 and audio.info.channels > 0
                 if getattr(audio.info, 'bits_per_sample', 0) > 0:
                     bits = audio.info.bits_per_sample
                 if getattr(audio.info, 'sample_rate', 0) > 0:
@@ -65,6 +69,7 @@ def get_audio_specs(filepath):
         codec = 'dsd'
 
     return {
+        'is_readable': readable,
         'codec': codec,
         'sample_rate': sr,
         'bit_depth': bits,
@@ -103,9 +108,9 @@ def analyze_audio_file(filepath):
     p = Path(filepath)
     ext = p.suffix.lower()
     
-    if ext in ('.mp3', '.m4a', '.aac', '.ogg', '.wma'):
+    if ext in ('.mp3', '.m4a', '.aac', '.ogg', '.opus', '.wma'):
         specs = get_audio_specs(filepath)
-        if specs['codec'] in ('aac', 'mp3', 'vorbis', 'opus'):
+        if specs['codec'] in ('aac', 'mp3', 'vorbis', 'opus', 'wmav1', 'wmav2', 'wmapro'):
             return {
                 'filepath': str(filepath),
                 'filename': p.name,

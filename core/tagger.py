@@ -255,7 +255,7 @@ def revert_audiophile_tags(filepath: str) -> Tuple[bool, str]:
     finally:
         conn.close()
 
-def rollback_all_audiophile_tags() -> Tuple[int, List[str]]:
+def rollback_all_audiophile_tags(root_dir=None) -> Tuple[int, List[str]]:
     """Hoàn tác toàn bộ các tệp đã được gắn tag trong hệ thống."""
     conn = get_backup_db()
     c = conn.cursor()
@@ -267,6 +267,12 @@ def rollback_all_audiophile_tags() -> Tuple[int, List[str]]:
     reverted_paths = []
 
     for (fp,) in rows:
+        if root_dir is not None:
+            from core.paths import vault_path
+            try:
+                vault_path(root_dir, fp)
+            except (ValueError, OSError):
+                continue
         ok, _ = revert_audiophile_tags(fp)
         if ok:
             success_count += 1

@@ -359,12 +359,12 @@ async function initStats() {
         const data = await res.json();
         const counts = data.counts || {};
 
-        document.getElementById('stat-true-hires').textContent = counts.true_hires || 43;
-        document.getElementById('stat-true-dsd').textContent = counts.true_dsd || 14;
-        document.getElementById('stat-studio-master').textContent = counts.studio_master || 186;
-        document.getElementById('stat-fake-hires').textContent = counts.fake_hires || 21;
-        document.getElementById('stat-cd-lossless').textContent = counts.cd_lossless || 522;
-        document.getElementById('stat-lossy').textContent = counts.lossy || 902;
+        document.getElementById('stat-true-hires').textContent = counts.true_hires ?? 0;
+        document.getElementById('stat-true-dsd').textContent = counts.true_dsd ?? 0;
+        document.getElementById('stat-studio-master').textContent = counts.studio_master ?? 0;
+        document.getElementById('stat-fake-hires').textContent = counts.fake_hires ?? 0;
+        document.getElementById('stat-cd-lossless').textContent = counts.cd_lossless ?? 0;
+        document.getElementById('stat-lossy').textContent = counts.lossy ?? 0;
 
         const elDupePill = document.getElementById('stat-dupe-meta-pill');
         if (elDupePill) {
@@ -372,8 +372,8 @@ async function initStats() {
         }
 
         const elTotalPill = document.getElementById('stat-total-pill');
-        if (elTotalPill && counts.total) {
-            elTotalPill.textContent = Number(counts.total).toLocaleString('vi-VN');
+        if (elTotalPill) {
+            elTotalPill.textContent = Number(counts.total ?? 0).toLocaleString('vi-VN');
         }
     } catch (e) {
         console.error("Lỗi tải thống kê:", e);
@@ -2357,9 +2357,17 @@ function initOrganize() {
         btn.textContent = '⏳ Đang gắn tag toàn bộ thư viện...';
         if (box) box.innerHTML = `<span class="text-muted">Đang tải danh sách bài hát và ghi metadata...</span>`;
         try {
-            const res = await fetch('/api/tracks?filter=all&offset=0&limit=500');
-            const data = await res.json();
-            const tracks = data.tracks || [];
+            const tracks = [];
+            let total = 0;
+            do {
+                const res = await fetch(`/api/tracks?filter=all&offset=${tracks.length}&limit=500`);
+                if (!res.ok) throw new Error('Không tải được danh sách bài hát');
+                const data = await res.json();
+                const page = data.tracks || [];
+                total = data.total || 0;
+                if (!page.length && tracks.length < total) throw new Error('Danh sách bài hát bị thiếu');
+                tracks.push(...page);
+            } while (tracks.length < total);
             let success = 0;
             const naviCfg = getNavidromeConfigFromStorage();
             for (let i = 0; i < tracks.length; i++) {

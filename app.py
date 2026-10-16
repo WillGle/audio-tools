@@ -12,10 +12,14 @@ from pydantic import BaseModel
 # Add current folder to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from core.analyzer import analyze_audio_file, generate_spectrogram_image, get_audio_specs
+from core.paths import vault_path
 from core.tagger import apply_quality_tag
 from core.navidrome import test_navidrome_connection, trigger_navidrome_scan, get_navidrome_scan_status
 from core.dedup import scan_duplicates, get_metadata_duplicates_map
 import time
+from threading import Lock
+
+_verdict_lock = Lock()
 
 _dupe_map_cache = None
 _dupe_map_time = 0
@@ -56,6 +60,18 @@ SPECTROGRAM_CACHE.mkdir(parents=True, exist_ok=True)
 VERDICTS_CACHE_FILE = CACHE_DIR / 'hires_verdicts.json'
 METADATA_CACHE_FILE = CACHE_DIR / 'metadata_results.json'
 
+def audio_path(value):
+    try:
+        path = vault_path(ROOT_DIR, value)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Không tìm thấy tệp âm thanh")
+    if path.suffix.lower() not in AUDIO_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Định dạng âm thanh không hỗ trợ")
+    return path
+
+
 class NavidromeConfig(BaseModel):
     server_url: Optional[str] = None
     username: Optional[str] = None
@@ -70,49 +86,71 @@ class TagRequest(BaseModel):
     tag_all: Optional[bool] = False
     navidrome_config: Optional[NavidromeConfig] = None
 
-@app.get("/api/stats")
-def get_library_stats():
-    hires_verdicts = []
+VERDICT_FILTERS = {
+    'true_hires': 'TRUE_HIRES', 'true_dsd': 'TRUE_DSD', 'dsd': 'TRUE_DSD',
+    'studio_master': 'STUDIO_MASTER_24BIT', 'cd_lossless': 'CD_LOSSLESS',
+    'fake_hires': 'FAKE_HIRES_UPSAMPLED', 'fake_lossless': 'FAKE_LOSSLESS',
+    'lossy': 'LOSSY', 'suspicious': 'SUSPICIOUS_HIRES', 'unverified': 'UNKNOWN'
+}
+
+
+def save_verdict(result):
+    with _verdict_lock:
+        records = []
+        if VERDICTS_CACHE_FILE.exists():
+            records = json.loads(VERDICTS_CACHE_FILE.read_text(encoding='utf-8'))
+        records = [item for item in records if item.get('filepath') != result['filepath']]
+        records.append(result)
+        temp = VERDICTS_CACHE_FILE.with_suffix('.tmp')
+        temp.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding='utf-8')
+        temp.replace(VERDICTS_CACHE_FILE)
+
+
+def library_items():
+    from organize_library import process_file_metadata
+    from core.dedup import IGNORE_DIRS
+    import os
+
+    verdicts = []
     if VERDICTS_CACHE_FILE.exists():
         try:
-            with open(VERDICTS_CACHE_FILE, encoding='utf-8') as f:
-                hires_verdicts = json.load(f)
-        except Exception:
+            verdicts = json.loads(VERDICTS_CACHE_FILE.read_text(encoding='utf-8'))
+        except (ValueError, OSError):
             pass
+    by_path = {item.get('filepath'): item for item in verdicts}
+    items = []
+    for directory, dirs, files in os.walk(ROOT_DIR):
+        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS and not d.startswith('.')]
+        for name in files:
+            path = Path(directory) / name
+            if path.suffix.lower() not in AUDIO_EXTENSIONS:
+                continue
+            try:
+                resolved = vault_path(ROOT_DIR, path)
+                if not resolved.is_file():
+                    continue
+            except (ValueError, OSError):
+                continue
+            meta = process_file_metadata(str(path), {}, by_path)
+            items.append({
+                'original_path': str(path.relative_to(ROOT_DIR)),
+                'tier': meta['tier'], 'title': meta['title'] or path.stem,
+                'artist': meta['artist'] or 'Unknown Artist',
+                'album': meta['album'] or 'Singles',
+                'specs': f"{meta['codec'].upper()} {meta['bits']}bit/{meta['sr']/1000:.1f}kHz",
+                'verdict': by_path.get(str(path), {}).get('verdict', 'UNKNOWN')
+            })
+    return sorted(items, key=lambda item: item['original_path'])
 
-    plan_file = TOOLS_DIR / 'organize_plan.json'
-    total_count = 1555
-    if plan_file.exists():
-        try:
-            with open(plan_file, encoding='utf-8') as f:
-                p_items = json.load(f)
-                total_count = len(p_items)
-        except Exception:
-            pass
 
-    verdict_counts = {
-        'total': total_count,
-        'true_hires': 43,
-        'true_dsd': 14,
-        'studio_master': 186,
-        'cd_lossless': 522,
-        'fake_hires': 21,
-        'fake_lossless': 2,
-        'lossy': 902,
-        'suspicious': 11
-    }
-    
-    if hires_verdicts:
-        counts = {}
-        for item in hires_verdicts:
-            v = item.get('verdict', 'UNKNOWN')
-            counts[v] = counts.get(v, 0) + 1
-        verdict_counts['true_hires'] = counts.get('TRUE_HIRES', 43)
-        verdict_counts['true_dsd'] = counts.get('TRUE_DSD', 14)
-        verdict_counts['studio_master'] = counts.get('STUDIO_MASTER_24BIT', 186)
-        verdict_counts['fake_hires'] = counts.get('FAKE_HIRES_UPSAMPLED', 21)
-        verdict_counts['suspicious'] = counts.get('SUSPICIOUS_HIRES', 11)
-
+@app.get("/api/stats")
+def get_library_stats():
+    items = library_items()
+    verdict_counts = {'total': len(items)}
+    for key, verdict in VERDICT_FILTERS.items():
+        if key == 'dsd':
+            continue
+        verdict_counts[key] = sum(item['verdict'] == verdict for item in items)
     try:
         dupe_map, dupe_groups = get_cached_dupe_map()
         verdict_counts['duplicate_meta'] = len(dupe_map)
@@ -120,12 +158,8 @@ def get_library_stats():
     except Exception:
         verdict_counts['duplicate_meta'] = 0
         verdict_counts['duplicate_meta_groups'] = 0
+    return {'root_directory': str(ROOT_DIR), 'counts': verdict_counts, 'status': 'Ready'}
 
-    return {
-        'root_directory': str(ROOT_DIR),
-        'counts': verdict_counts,
-        'status': 'Ready'
-    }
 
 @app.get("/api/tracks")
 def get_tracks(
@@ -138,18 +172,10 @@ def get_tracks(
     col_verdict: Optional[str] = None,
     sort_by: Optional[str] = None,
     sort_dir: Optional[str] = 'asc',
-    limit: int = 50,
-    offset: int = 0
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0)
 ):
-    # Đọc danh sách kế hoạch đã quét
-    plan_file = TOOLS_DIR / 'organize_plan.json'
-    items = []
-    if plan_file.exists():
-        try:
-            with open(plan_file, encoding='utf-8') as f:
-                items = json.load(f)
-        except Exception:
-            pass
+    items = library_items()
 
     try:
         dupe_map, _ = get_cached_dupe_map()
@@ -170,19 +196,8 @@ def get_tracks(
         if filter == 'duplicate_meta':
             if not is_dupe:
                 continue
-        elif filter == 'fake_hires' and 'Upsampled_Fake_HiRes' not in tier:
+        elif filter in VERDICT_FILTERS and it['verdict'] != VERDICT_FILTERS[filter]:
             continue
-        elif filter == 'true_hires' and (tier != '01_Hi-Res & DSD' or 'Upsampled' in tier):
-            continue
-        elif filter == 'dsd' and 'DSD' not in specs and not orig_p.endswith(('.dsf', '.dff')):
-            continue
-        elif filter == 'cd_lossless' and tier != '02_Lossless_CD':
-            continue
-        elif filter == 'lossy' and tier != '03_Lossy_MP3_AAC':
-            continue
-        elif filter == 'studio_master':
-            if tier != '01_Hi-Res & DSD' or '24bit' not in specs:
-                continue
             
         # 2. Global search check
         if search:
@@ -241,24 +256,8 @@ def get_tracks(
             if verd == 'duplicate_meta':
                 if not is_dupe:
                     continue
-            elif verd == 'fake_hires':
-                if 'Upsampled_Fake_HiRes' not in tier:
-                    continue
-            elif verd == 'true_hires':
-                if tier != '01_Hi-Res & DSD' or 'Upsampled' in tier:
-                    continue
-            elif verd == 'true_dsd':
-                if 'DSD' not in specs and not orig_p.endswith(('.dsf', '.dff')):
-                    continue
-            elif verd == 'studio_master':
-                if '24bit' not in specs or 'Upsampled' in tier:
-                    continue
-            elif verd == 'cd_lossless':
-                if tier != '02_Lossless_CD':
-                    continue
-            elif verd == 'lossy':
-                if tier != '03_Lossy_MP3_AAC':
-                    continue
+            elif verd in VERDICT_FILTERS and it['verdict'] != VERDICT_FILTERS[verd]:
+                continue
 
         item_copy = dict(it)
         if is_dupe:
@@ -306,22 +305,15 @@ def get_tracks(
 
 @app.post("/api/analyze")
 def analyze_track(req: AnalyzeRequest):
-    p = ROOT_DIR / req.filepath
-    if not p.is_file():
-        p = Path(req.filepath)
-    if not p.is_file():
-        raise HTTPException(status_code=404, detail="Không tìm thấy tệp âm thanh")
+    p = audio_path(req.filepath)
         
     res = analyze_audio_file(str(p))
+    save_verdict(res)
     return res
 
 @app.get("/api/spectrogram")
 def get_spectrogram(filepath: str):
-    p = ROOT_DIR / filepath
-    if not p.is_file():
-        p = Path(filepath)
-    if not p.is_file():
-        raise HTTPException(status_code=404, detail="Không tìm thấy tệp")
+    p = audio_path(filepath)
         
     cache_name = f"spec_{hash(str(p.resolve())) & 0xFFFFFFFF:x}.png"
     out_png = SPECTROGRAM_CACHE / cache_name
@@ -335,11 +327,7 @@ def get_spectrogram(filepath: str):
 
 @app.get("/api/stream")
 def stream_audio(filepath: str):
-    p = ROOT_DIR / filepath
-    if not p.is_file():
-        p = Path(filepath)
-    if not p.is_file():
-        raise HTTPException(status_code=404, detail="Không tìm thấy tệp âm thanh")
+    p = audio_path(filepath)
 
     ext = p.suffix.lower()
 
@@ -404,11 +392,7 @@ def scan_status(server_url: str, username: str, password: str):
 def tag_single_file(req: TagRequest):
     if not req.filepath:
         raise HTTPException(status_code=400, detail="Cần cung cấp filepath")
-    p = ROOT_DIR / req.filepath
-    if not p.is_file():
-        p = Path(req.filepath)
-    if not p.is_file():
-        raise HTTPException(status_code=404, detail="Không tìm thấy tệp")
+    p = audio_path(req.filepath)
         
     analysis = analyze_audio_file(str(p))
     ok, msg = apply_quality_tag(str(p), analysis)
@@ -430,7 +414,7 @@ def tag_single_file(req: TagRequest):
 def organize_dry_run():
     script = TOOLS_DIR / 'organize_library.py'
     import subprocess
-    cmd = [sys.executable, str(script), '--dry-run']
+    cmd = [sys.executable, str(script), '--dry-run', str(ROOT_DIR)]
     res = subprocess.run(cmd, cwd=str(ROOT_DIR), capture_output=True, text=True)
     return {
         'success': res.returncode == 0,
@@ -448,7 +432,7 @@ class ArchiveDupesRequest(BaseModel):
 
 @app.post("/api/duplicates/archive-byte-dupes")
 def archive_byte_duplicates(payload: Optional[ArchiveDupesRequest] = None):
-    archive_dir = ROOT_DIR / '_Duplicates_Archive'
+    archive_dir = vault_path(ROOT_DIR, '_Duplicates_Archive')
     archive_dir.mkdir(parents=True, exist_ok=True)
     
     files_to_move = []
@@ -464,11 +448,12 @@ def archive_byte_duplicates(payload: Optional[ArchiveDupesRequest] = None):
             
     archived_count = 0
     moved_paths = []
-    for f_rel in files_to_move:
-        src = ROOT_DIR / f_rel
+    sources = [audio_path(value) for value in files_to_move]
+    for src in sources:
+        f_rel = str(src.relative_to(ROOT_DIR.resolve()))
         if src.exists() and src.is_file():
             # Giữ nguyên cấu trúc thư mục tương đối bên trong _Duplicates_Archive
-            dst = archive_dir / f_rel
+            dst = vault_path(archive_dir, f_rel)
             dst.parent.mkdir(parents=True, exist_ok=True)
             if dst.exists():
                 counter = 1
@@ -505,7 +490,7 @@ def archive_byte_duplicates(payload: Optional[ArchiveDupesRequest] = None):
 # ==============================================================================
 from core.audiophile_engine import run_full_audiophile_audit, audit_album_gapless_and_dr
 from core.tagger import apply_audiophile_tags, revert_audiophile_tags, rollback_all_audiophile_tags
-from core.vault_tiering import scan_and_generate_tiering_plan, execute_tiering, rollback_vault_tiering
+from core.vault_tiering import AUDIO_EXTENSIONS, scan_and_generate_tiering_plan, execute_tiering, rollback_vault_tiering
 from core.fingerprint import compare_audio_files, get_audio_fingerprint
 
 class CompareFingerprintRequest(BaseModel):
@@ -514,13 +499,8 @@ class CompareFingerprintRequest(BaseModel):
 
 @app.post("/api/fingerprint/compare")
 def compare_fingerprints_endpoint(req: CompareFingerprintRequest):
-    p1 = ROOT_DIR / req.file1
-    if not p1.is_file(): p1 = Path(req.file1)
-    p2 = ROOT_DIR / req.file2
-    if not p2.is_file(): p2 = Path(req.file2)
-
-    if not p1.is_file() or not p2.is_file():
-        raise HTTPException(status_code=404, detail="Một hoặc cả hai tệp âm thanh không tồn tại")
+    p1 = audio_path(req.file1)
+    p2 = audio_path(req.file2)
 
     match_pct = compare_audio_files(str(p1), str(p2))
     is_identical = match_pct >= 80.0
@@ -559,10 +539,7 @@ def compare_fingerprints_endpoint(req: CompareFingerprintRequest):
 
 @app.get("/api/fingerprint/info")
 def get_fingerprint_info(filepath: str):
-    p = ROOT_DIR / filepath
-    if not p.is_file(): p = Path(filepath)
-    if not p.is_file():
-        raise HTTPException(status_code=404, detail="Không tìm thấy tệp")
+    p = audio_path(filepath)
 
     fp_res = get_audio_fingerprint(str(p))
     return {
@@ -602,14 +579,12 @@ class TieringExecuteRequest(BaseModel):
 
 @app.post("/api/audiophile/audit")
 def audiophile_audit(req: AudiophileAuditRequest):
-    p = ROOT_DIR / req.filepath
-    if not p.is_file():
-        p = Path(req.filepath)
-    if not p.is_file():
-        raise HTTPException(status_code=404, detail="Không tìm thấy tệp âm thanh")
+    p = audio_path(req.filepath)
 
     try:
         res = run_full_audiophile_audit(str(p))
+        if res.get('spectrum'):
+            save_verdict(res['spectrum'])
         return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi phân tích Audiophile: {str(e)}")
@@ -618,11 +593,7 @@ def audiophile_audit(req: AudiophileAuditRequest):
 def audiophile_album_audit(req: AudiophileAlbumAuditRequest):
     full_paths = []
     for fp in req.track_paths:
-        p = ROOT_DIR / fp
-        if not p.is_file():
-            p = Path(fp)
-        if p.is_file():
-            full_paths.append(str(p))
+        full_paths.append(str(audio_path(fp)))
 
     if not full_paths:
         raise HTTPException(status_code=400, detail="Không tìm thấy tệp âm thanh hợp lệ trong danh sách")
@@ -635,11 +606,7 @@ def audiophile_album_audit(req: AudiophileAlbumAuditRequest):
 
 @app.post("/api/audiophile/tag")
 def audiophile_apply_tags(req: AudiophileTagRequest):
-    p = ROOT_DIR / req.filepath
-    if not p.is_file():
-        p = Path(req.filepath)
-    if not p.is_file():
-        raise HTTPException(status_code=404, detail="Không tìm thấy tệp âm thanh")
+    p = audio_path(req.filepath)
 
     audit = req.audit_data
     if not audit:
@@ -661,11 +628,7 @@ def audiophile_apply_tags(req: AudiophileTagRequest):
 
 @app.post("/api/audiophile/tag/rollback")
 def audiophile_rollback_tags(req: TagRollbackRequest):
-    p = ROOT_DIR / req.filepath
-    if not p.is_file():
-        p = Path(req.filepath)
-    if not p.is_file():
-        raise HTTPException(status_code=404, detail="Không tìm thấy tệp âm thanh")
+    p = audio_path(req.filepath)
 
     ok, msg = revert_audiophile_tags(str(p))
 
@@ -683,7 +646,7 @@ def audiophile_rollback_tags(req: TagRollbackRequest):
 @app.post("/api/audiophile/tag/rollback-all")
 def audiophile_rollback_all_tags(req: Optional[TagRollbackAllRequest] = None):
     try:
-        count, paths = rollback_all_audiophile_tags()
+        count, paths = rollback_all_audiophile_tags(ROOT_DIR)
         scan_res = None
         if count > 0 and req and req.navidrome_config and req.navidrome_config.server_url:
             cfg = req.navidrome_config
@@ -702,13 +665,8 @@ def batch_tag_files(req: BatchTagRequest):
     results = []
     success_count = 0
     for fp in req.filepaths:
-        p = ROOT_DIR / fp
-        if not p.is_file():
-            p = Path(fp)
-        if not p.is_file():
-            results.append({"filepath": fp, "success": False, "message": "Tệp không tồn tại"})
-            continue
         try:
+            p = audio_path(fp)
             analysis = analyze_audio_file(str(p))
             ok, msg = apply_quality_tag(str(p), analysis)
             if ok:
@@ -735,13 +693,8 @@ def batch_audiophile_tag(req: BatchTagRequest):
     results = []
     success_count = 0
     for fp in req.filepaths:
-        p = ROOT_DIR / fp
-        if not p.is_file():
-            p = Path(fp)
-        if not p.is_file():
-            results.append({"filepath": fp, "success": False, "message": "Tệp không tồn tại"})
-            continue
         try:
+            p = audio_path(fp)
             audit = run_full_audiophile_audit(str(p))
             ok, msg = apply_audiophile_tags(str(p), audit)
             if ok:
@@ -800,5 +753,7 @@ if STATIC_DIR.exists():
 
 if __name__ == '__main__':
     import uvicorn
-    print(f"Khởi động Hi-Res Vault Companion Web App tại http://0.0.0.0:5050")
-    uvicorn.run("app:app", host="0.0.0.0", port=5050, reload=True)
+    host = os.environ.get('HOST', '127.0.0.1')
+    port = int(os.environ.get('PORT', '5050'))
+    print(f"Khởi động Hi-Res Vault Companion Web App tại http://{host}:{port}")
+    uvicorn.run("app:app", host=host, port=port)

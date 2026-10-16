@@ -10,6 +10,7 @@ Và cấu trúc: <Tier>/<Artist>/[<Year> - ]<Album>/<Track> - <Title>.<ext>
 Hỗ trợ:
   --dry-run (mặc định): Mô phỏng, xuất bảng kế hoạch, không di chuyển file
   --execute: Thực thi di chuyển và lưu log rollback để có thể khôi phục
+  --rollback: Khôi phục vị trí file từ nhật ký di chuyển
 """
 
 import sys
@@ -20,7 +21,7 @@ import shutil
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
-AUDIO_EXTENSIONS = {'.flac', '.wav', '.dsf', '.dff', '.m4a', '.mp3', '.ape'}
+AUDIO_EXTENSIONS = {'.flac', '.wav', '.dsf', '.dff', '.m4a', '.mp3', '.ape', '.aac', '.ogg', '.opus', '.wma', '.aif', '.aiff'}
 
 def clean_str(s):
     if not s:
@@ -99,6 +100,7 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
             if p_str not in pre_scanned_specs and hasattr(m, 'info'):
                 sr = getattr(m.info, 'sample_rate', sr)
                 bits = getattr(m.info, 'bits_per_sample', bits)
+                codec = getattr(m.info, 'codec', codec)
     except Exception:
         pass
         
@@ -138,7 +140,7 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
         tier = '01_Hi-Res & DSD'
     elif bits > 16 or sr > 48000:
         tier = '01_Hi-Res & DSD'
-    elif ext in ('.flac', '.wav', '.ape'):
+    elif ext in ('.flac', '.wav', '.ape', '.aif', '.aiff') or codec.lower() in ('alac', 'wmalossless'):
         tier = '02_Lossless_CD'
     else:
         tier = '03_Lossy_MP3_AAC'
@@ -212,6 +214,8 @@ def main():
     for arg in sys.argv[1:]:
         if arg in ('--execute', '-e'):
             mode = '--execute'
+        elif arg == '--rollback':
+            mode = '--rollback'
         elif arg in ('--dry-run', '-d'):
             mode = '--dry-run'
         elif not arg.startswith('-'):
@@ -226,6 +230,12 @@ def main():
     else:
         root = Path.cwd().resolve()
         
+    if mode == '--rollback':
+        from core.vault_tiering import rollback_vault_tiering
+        result = rollback_vault_tiering(root)
+        print(result['message'])
+        return 0 if result['success'] else 1
+
     print(f"========================================================================")
     print(f"   CHƯƠNG TRÌNH PHÂN LOẠI & CHUẨN HÓA KHO NHẠC THEO METADATA")
     print(f"   Thư mục làm việc: {root}")
@@ -234,7 +244,7 @@ def main():
 
     # Đọc cache specs
     pre_scanned_specs = {}
-    spec_cache = Path('/home/will/.gemini/antigravity-ide/brain/89d7a216-f2b1-4844-ae8e-760816fb49f3/scratch/metadata_results.json')
+    spec_cache = script_dir / 'cache' / 'metadata_results.json'
     if spec_cache.exists():
         with open(spec_cache, encoding='utf-8') as f:
             for item in json.load(f):
@@ -242,7 +252,7 @@ def main():
 
     # Đọc kết quả kiểm định Hi-Res
     hires_verdicts = {}
-    verdict_file = Path('/home/will/.gemini/antigravity-ide/brain/89d7a216-f2b1-4844-ae8e-760816fb49f3/scratch/hires_verdicts.json')
+    verdict_file = script_dir / 'cache' / 'hires_verdicts.json'
     if verdict_file.exists():
         with open(verdict_file, encoding='utf-8') as f:
             for item in json.load(f):
@@ -250,7 +260,7 @@ def main():
 
     ignore_dirs = {
         '.git', '.agents', '.gemini', 'brain', 'scratch',
-        'tools', 'scripts', 'app', 'bin',
+        'tools', 'scripts', 'app', 'bin', 'cache', '_Duplicates_Archive', '_Vault_3_Tier_Symlinks',
         '01_Hi-Res & DSD', '02_Lossless_CD', '03_Lossy_MP3_AAC'
     }
     all_audio = []
@@ -259,13 +269,15 @@ def main():
         for fn in filenames:
             ext = os.path.splitext(fn)[1].lower()
             if ext in AUDIO_EXTENSIONS:
-                all_audio.append(Path(dirpath) / fn)
+                candidate = Path(dirpath) / fn
+                if candidate.resolve().is_relative_to(root):
+                    all_audio.append(candidate)
 
     print(f"Tìm thấy {len(all_audio)} file âm thanh cần phân loại.")
     
     def process_item(p):
         rel_orig = p.relative_to(root)
-        meta = process_file_metadata(str(rel_orig), pre_scanned_specs, hires_verdicts)
+        meta = process_file_metadata(str(p), pre_scanned_specs, hires_verdicts)
         tier = meta['tier']
         dest_path = build_destination_path(root, tier, meta, p)
         rel_dest = dest_path.relative_to(root)
@@ -296,7 +308,7 @@ def main():
             numeric_recovered += 1
 
     # Lưu kế hoạch vào thư mục tools
-    tools_dir = root / 'tools'
+    tools_dir = script_dir
     tools_dir.mkdir(parents=True, exist_ok=True)
     plan_out = tools_dir / 'organize_plan.json'
     with open(plan_out, 'w', encoding='utf-8') as f:
@@ -308,7 +320,7 @@ def main():
     print(f"  ✨ Số file số vô danh được giải mã tên thành công: {numeric_recovered}")
     print(f"  📝 Đã lưu kế hoạch chi tiết tại: {plan_out}")
 
-    preview_md = Path('/home/will/.gemini/antigravity-ide/brain/89d7a216-f2b1-4844-ae8e-760816fb49f3/organize_preview.md')
+    preview_md = tools_dir / 'organize_preview.md'
     with open(preview_md, 'w', encoding='utf-8') as f:
         f.write("# BẢNG XEM TRƯỚC KẾ HOẠCH PHÂN LOẠI & ĐỔI TÊN KHO NHẠC\n\n")
         f.write(f"- **Tổng số tệp âm thanh**: {len(all_audio)}\n")
@@ -333,33 +345,16 @@ def main():
     print(f"  📄 Đã cập nhật tài liệu xem trước tại: {preview_md}")
 
     if mode == '--execute':
-        print("\n🚀 Đang tiến hành di chuyển và sắp xếp file...")
-        rollback_log = []
-        for item in plan:
-            src = root / item['original_path']
-            dst = root / item['target_path']
-            if not src.exists():
-                continue
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            
-            final_dst = dst
-            counter = 1
-            while final_dst.exists() and final_dst.resolve() != src.resolve():
-                final_dst = dst.parent / f"{dst.stem} ({counter}){dst.suffix}"
-                counter += 1
-                
-            shutil.move(src, final_dst)
-            rollback_log.append({
-                'from': str(final_dst.relative_to(root)),
-                'to': item['original_path']
-            })
-            
-        rollback_file = tools_dir / 'organize_rollback.json'
-        with open(rollback_file, 'w', encoding='utf-8') as f:
-            json.dump(rollback_log, f, ensure_ascii=False, indent=2)
-            
-        print(f"✅ Đã hoàn tất di chuyển {len(rollback_log)} file!")
-        print(f"🔄 Nhật ký hoàn tác đã được lưu tại: {rollback_file}")
+        from core.vault_tiering import execute_tiering
+        result = execute_tiering(root, [
+            {'original_path': item['original_path'], 'dest_path': item['target_path']}
+            for item in plan if item['original_path'] != item['target_path']
+        ], mode='move')
+        print(result['message'])
+        for error in result['errors']:
+            print(error, file=sys.stderr)
+        return 0 if result['success'] else 1
+    return 0
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

@@ -317,11 +317,12 @@ def check_dsd_purity(filepath: str) -> Dict[str, Any]:
         layout = stream.get('channel_layout', 'stereo')
         dur = float(stream.get('duration', 180.0))
     except Exception:
-        codec = ext[1:]
-        sr = 2822400
-        channels = 2
-        layout = 'stereo'
-        dur = 180.0
+        return {
+            'is_dsd': False, 'purity': 'UNKNOWN', 'codec': ext[1:].upper(),
+            'channels': 0, 'channel_type': 'Unknown', 'channel_badge': '',
+            'badge': '⚪ DSD chưa xác thực', 'badge_color': '#94a3b8',
+            'explanation': 'Không đọc được thông tin âm thanh; không thể xác thực DSD.'
+        }
 
     is_dsd = ('dsd' in codec.lower() or ext in ('.dsf', '.dff'))
 
@@ -342,7 +343,7 @@ def check_dsd_purity(filepath: str) -> Dict[str, Any]:
         }
 
     # Phân tích phổ dải siêu âm 30kHz - 80kHz qua PCM 176.4kHz
-    start_sec = max(5.0, dur * 0.25)
+    start_sec = min(5.0, max(0.0, dur * 0.25))
     read_len = min(12.0, max(5.0, dur - start_sec))
 
     cmd_decode = [
@@ -357,21 +358,21 @@ def check_dsd_purity(filepath: str) -> Dict[str, Any]:
     res_dec = subprocess.run(cmd_decode, capture_output=True)
     samples = np.frombuffer(res_dec.stdout, dtype=np.float32)
 
-    if len(samples) < 176400:
+    if res_dec.returncode != 0 or len(samples) < 176400:
         return {
             'is_dsd': True,
             'codec': codec.upper(),
             'channels': channels,
             'channel_type': channel_type,
             'channel_badge': channel_badge,
-            'purity': 'TRUE_DSD',
-            'badge': f'🟢 Native DSD ({channel_type})',
+            'purity': 'UNKNOWN',
+            'badge': f'⚪ DSD chưa xác thực ({channel_type})',
             'badge_color': '#06b6d4',
-            'explanation': 'Tệp DSD 1-bit Native Super Audio.'
+            'explanation': 'Không đủ mẫu giải mã để đánh giá nguồn DSD.'
         }
 
     nfft = 8192
-    spec = np.abs(np.fft.rfft(samples[:nfft * 15].reshape(-1, nfft) * np.hanning(nfft)))
+    spec = np.abs(np.fft.rfft(samples[:min(len(samples) // nfft, 15) * nfft].reshape(-1, nfft) * np.hanning(nfft)))
     avg_power = np.mean(spec ** 2, axis=0)
     freqs = np.fft.rfftfreq(nfft, 1.0 / 176400)
 
@@ -715,7 +716,9 @@ def classify_vault_tier(filepath: str, integrity: Dict, bit_purity: Dict, dsd_pu
             }
 
     # 5. Kiểm tra file nén Lossy
-    if ext in ('.mp3', '.m4a', '.aac', '.ogg', '.wma'):
+    from core.analyzer import get_audio_specs
+    codec = get_audio_specs(filepath)['codec'].lower()
+    if codec in ('mp3', 'aac', 'vorbis', 'opus', 'wmav1', 'wmav2', 'wmapro'):
         return {
             'tier_id': '03_quarantine',
             'tier_name': '03_Quarantine (Fake Hi-Res, MP3, File Lỗi)',
@@ -724,8 +727,15 @@ def classify_vault_tier(filepath: str, integrity: Dict, bit_purity: Dict, dsd_pu
             'badge_color': '#94a3b8'
         }
 
+    if ext in ('.dsf', '.dff') and dsd_purity.get('purity') == 'UNKNOWN':
+        return {
+            'tier_id': '03_quarantine', 'tier_name': '03_Quarantine',
+            'sub_category': 'Unverified_DSD', 'badge': '⚪ DSD chưa xác thực',
+            'badge_color': '#94a3b8'
+        }
+
     # 6. DSD thật
-    if dsd_purity.get('is_dsd', False):
+    if dsd_purity.get('is_dsd', False) and dsd_purity.get('purity') == 'TRUE_DSD':
         return {
             'tier_id': '01_hires_dsd',
             'tier_name': '01_DSD & Hi-Res (>24/96k)',

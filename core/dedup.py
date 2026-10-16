@@ -9,7 +9,7 @@ import mutagen
 from core.fingerprint import compare_audio_files
 
 AUDIO_EXTENSIONS = {'.flac', '.wav', '.dsf', '.dff', '.m4a', '.mp3', '.ape', '.ogg', '.opus', '.wma'}
-IGNORE_DIRS = {'.git', '.agents', '.gemini', 'brain', 'scratch', 'tools', 'cache', '_Duplicates_Archive'}
+IGNORE_DIRS = {'_Vault_3_Tier_Symlinks', '.git', '.agents', '.gemini', 'brain', 'scratch', 'tools', 'cache', '_Duplicates_Archive'}
 
 def get_cache_db(root_dir=None):
     cache_path = Path(__file__).resolve().parent.parent / 'cache' / 'scan_cache.sqlite'
@@ -197,6 +197,8 @@ def scan_duplicates(root_dir, force_refresh=False):
             if ext in AUDIO_EXTENSIONS:
                 p = os.path.join(dirpath, fn)
                 try:
+                    if not Path(p).resolve().is_relative_to(root):
+                        continue
                     st = os.stat(p)
                     rel = os.path.relpath(p, root)
                     files.append((rel, p, st.st_size, st.st_mtime, ext))
@@ -229,7 +231,7 @@ def scan_duplicates(root_dir, force_refresh=False):
             to_insert.append(tuple(new_row))
 
     if to_insert:
-        c.executemany("INSERT OR REPLACE INTO file_cache VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", to_insert)
+        c.executemany("INSERT OR REPLACE INTO file_cache (path, mtime, size, header_hash, full_md5, artist, title, album, duration, ext) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", to_insert)
         conn.commit()
 
     # Clean up deleted files from cache

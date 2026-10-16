@@ -2,10 +2,13 @@ import os
 import sys
 import json
 import shutil
+from threading import Lock
+from core.paths import vault_path
+from core.analyzer import get_audio_specs
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-AUDIO_EXTENSIONS = {'.flac', '.wav', '.dsf', '.dff', '.m4a', '.mp3', '.ape', '.ogg', '.wma', '.aac'}
+AUDIO_EXTENSIONS = {'.flac', '.wav', '.dsf', '.dff', '.m4a', '.mp3', '.ape', '.ogg', '.wma', '.aac', '.opus', '.aif', '.aiff'}
 
 TIER_NAMES = {
     'tier_1': '01_DSD & Hi-Res (>24/96k)',
@@ -19,7 +22,7 @@ def clean_name(s: str) -> str:
         return 'Unknown'
     s = re.sub(r'[/\\:*?"<>|]', '_', str(s))
     s = re.sub(r'\s+', ' ', s)
-    return s.strip()
+    return s.strip() if s.strip() not in {'.', '..'} else 'Unknown'
 
 def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str, Any]:
     """
@@ -60,6 +63,8 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
         for file in files:
             p = Path(root) / file
             if p.suffix.lower() in AUDIO_EXTENSIONS:
+                if not p.resolve().is_relative_to(vault_dir):
+                    continue
                 rel = str(p.relative_to(vault_dir))
                 all_files.append((p, rel))
 
@@ -78,10 +83,16 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
         artist = meta.get('artist') or clean_name(full_path.parent.name)
         album = meta.get('album') or clean_name(full_path.parent.name)
         title = meta.get('title') or clean_name(full_path.stem)
-        specs = meta.get('specs') or ''
+        audio = get_audio_specs(str(full_path))
+        codec = audio.get('codec', '').lower()
+        specs = f"{codec.upper()} {audio['bit_depth']}bit/{audio['sample_rate']/1000:.1f}kHz"
 
         # 1. Tiêu chí vào Tier 3: Quarantine (Fake Hi-Res, MP3, Fake 24-bit, File Lỗi)
-        if ext in ('.mp3', '.m4a', '.aac', '.ogg', '.wma'):
+        if not audio.get('is_readable'):
+            target_tier = 'tier_3'
+            reason = 'Không đọc được thông tin âm thanh'
+            sub_folder = 'Unverified'
+        elif codec in ('mp3', 'aac', 'vorbis', 'opus', 'wmav1', 'wmav2', 'wmapro'):
             target_tier = 'tier_3'
             reason = f'Nhạc nén tổn hao Lossy ({ext[1:].upper()})'
             sub_folder = 'Lossy_Audio'
@@ -95,19 +106,19 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
             sub_folder = 'Fake_Or_Upsampled'
 
         # 2. Tiêu chí vào Tier 1: DSD & Hi-Res (>24/96k)
-        elif ext in ('.dsf', '.dff') or 'DSD' in specs or verdict == 'TRUE_DSD':
+        elif 'dsd' in codec or verdict == 'TRUE_DSD':
             target_tier = 'tier_1'
-            reason = 'Native DSD / SACD Super Audio'
+            reason = 'Định dạng DSD; nguồn master chưa xác thực'
             sub_folder = 'DSD_SACD'
-        elif '24bit/96' in specs or '24bit/192' in specs or '24bit/88' in specs or '24bit/176' in specs or verdict == 'TRUE_HIRES':
+        elif audio['sample_rate'] >= 88200 or verdict == 'TRUE_HIRES':
             target_tier = 'tier_1'
-            reason = 'True Hi-Res Audio (24-bit / 96k+)'
+            reason = 'PCM sample rate cao; xem audit để xác thực chất lượng'
             sub_folder = 'PCM_HiRes_96k_Plus'
 
         # 3. Tiêu chí vào Tier 2: Lossless CD (16/44.1k hoặc Studio Master 24/44.1-48k)
-        elif ext in ('.flac', '.wav', '.ape'):
+        elif codec in ('flac', 'alac', 'ape', 'wmalossless') or codec.startswith('pcm_'):
             target_tier = 'tier_2'
-            reason = 'Bit-Perfect Lossless CD / Studio Master'
+            reason = 'Định dạng lossless; chưa kiểm tra bit-perfect'
             sub_folder = 'CD_Lossless'
         else:
             target_tier = 'tier_3'
@@ -165,110 +176,104 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
         'items': tier_1_items + tier_2_items + tier_3_items
     }
 
-def execute_tiering(
-    vault_dir: Path,
-    plan_items: List[Dict[str, Any]],
-    mode: str = 'symlink'
-) -> Dict[str, Any]:
-    """
-    Thực thi xuất cấu trúc 3 cấp:
-    - mode = 'symlink': Tạo liên kết mềm trong thư mục '_Vault_3_Tier_Symlinks' (Không di chuyển file gốc, cực kỳ an toàn!)
-    - mode = 'move': Di chuyển file vào 3 cấp, tự động lưu .vault_tiering_rollback.json để rollback.
-    """
+_tiering_lock = Lock()
+
+
+def _write_rollback(path, records):
+    temp = path.with_suffix('.tmp')
+    with open(temp, 'w', encoding='utf-8') as f:
+        json.dump(records, f, indent=2, ensure_ascii=False)
+        f.flush()
+        os.fsync(f.fileno())
+    temp.replace(path)
+
+
+def execute_tiering(vault_dir, plan_items, mode='symlink'):
+    with _tiering_lock:
+        return _execute_tiering(vault_dir, plan_items, mode)
+
+
+def _execute_tiering(vault_dir, plan_items, mode):
+    if mode not in ('symlink', 'move'):
+        raise ValueError('Chế độ phải là symlink hoặc move')
     vault_dir = Path(vault_dir).resolve()
-    target_base = vault_dir if mode == 'move' else vault_dir / '_Vault_3_Tier_Symlinks'
-    target_base.mkdir(parents=True, exist_ok=True)
-
-    rollback_records = []
+    target_base = vault_dir if mode == 'move' else vault_path(vault_dir, '_Vault_3_Tier_Symlinks')
+    rollback_file = vault_path(vault_dir, '.vault_tiering_rollback.json')
+    records = json.loads(rollback_file.read_text()) if rollback_file.exists() else []
+    if not isinstance(records, list):
+        raise ValueError('Tệp rollback không hợp lệ')
     success_count = 0
-    error_count = 0
     errors = []
-
     for item in plan_items:
-        src = vault_dir / item['original_path']
-        if not src.exists():
-            continue
-
-        dst = target_base / item['dest_path']
-        dst.parent.mkdir(parents=True, exist_ok=True)
-
         try:
+            src = vault_path(vault_dir, item['original_path'])
+            dst = vault_path(target_base, item['dest_path'])
+            if not src.is_file() or src.suffix.lower() not in AUDIO_EXTENSIONS:
+                raise ValueError('Không tìm thấy tệp âm thanh')
+            if mode == 'move' and (vault_dir / item['original_path']).is_symlink():
+                raise ValueError('Không di chuyển symlink nguồn; hãy chọn tệp gốc')
+            if dst.suffix.lower() != src.suffix.lower():
+                raise ValueError('Đích phải giữ định dạng âm thanh của nguồn')
+            if dst == src:
+                raise ValueError('Nguồn và đích trùng nhau')
+            if dst.exists() or dst.is_symlink():
+                raise FileExistsError(f'Đích đã tồn tại: {dst}')
+            dst.parent.mkdir(parents=True, exist_ok=True)
             if mode == 'symlink':
-                if dst.exists() or dst.is_symlink():
-                    dst.unlink()
-                # Sử dụng đường dẫn tương đối hoặc tuyệt đối cho symlink
-                dst.symlink_to(src.resolve())
-                success_count += 1
-            elif mode == 'move':
-                if dst.exists() and dst != src:
-                    # Tránh ghi đè
-                    stem = dst.stem
-                    counter = 1
-                    while dst.exists():
-                        dst = dst.parent / f"{stem}_{counter}{dst.suffix}"
-                        counter += 1
+                dst.symlink_to(src)
+            else:
+                # Ghi ý định trước khi di chuyển để không mất lịch sử khi bị ngắt.
+                records.append({'original': str(src), 'moved_to': str(dst)})
+                _write_rollback(rollback_file, records)
                 shutil.move(src, dst)
-                rollback_records.append({
-                    'original': str(src),
-                    'moved_to': str(dst)
-                })
-                success_count += 1
-        except Exception as e:
-            error_count += 1
-            errors.append(f"{src.name}: {str(e)}")
-
-    if mode == 'move' and rollback_records:
-        rollback_file = vault_dir / '.vault_tiering_rollback.json'
-        with open(rollback_file, 'w', encoding='utf-8') as f:
-            json.dump(rollback_records, f, indent=2, ensure_ascii=False)
-
+            success_count += 1
+        except Exception as exc:
+            errors.append(f"{item.get('original_path', '?')}: {exc}")
     return {
-        'success': True,
-        'mode': mode,
-        'success_count': success_count,
-        'error_count': error_count,
-        'target_base': str(target_base),
-        'message': f"Đã xuất thành công {success_count} tệp theo chuẩn 3 Cấp Vault ({'Symlink an toàn' if mode == 'symlink' else 'Di chuyển trực tiếp'})!"
+        'success': not errors, 'mode': mode,
+        'success_count': success_count, 'error_count': len(errors),
+        'errors': errors, 'target_base': str(target_base),
+        'message': f'Đã xử lý {success_count} tệp; {len(errors)} lỗi.'
     }
 
-def rollback_vault_tiering(vault_dir: Path) -> Dict[str, Any]:
-    """
-    Khôi phục lại toàn bộ vị trí file nếu đã thực thi mode 'move'.
-    """
+
+def rollback_vault_tiering(vault_dir):
+    with _tiering_lock:
+        return _rollback_vault_tiering(vault_dir)
+
+
+def _rollback_vault_tiering(vault_dir):
     vault_dir = Path(vault_dir).resolve()
-    rollback_file = vault_dir / '.vault_tiering_rollback.json'
+    rollback_file = vault_path(vault_dir, '.vault_tiering_rollback.json')
     if not rollback_file.exists():
         return {'success': False, 'message': 'Không tìm thấy tệp rollback .vault_tiering_rollback.json'}
-
-    try:
-        with open(rollback_file, encoding='utf-8') as f:
-            records = json.load(f)
-    except Exception as e:
-        return {'success': False, 'message': f'Lỗi đọc tệp rollback: {e}'}
-
+    records = json.loads(rollback_file.read_text())
+    if not isinstance(records, list):
+        raise ValueError('Tệp rollback không hợp lệ')
     restored = 0
     errors = []
-    for r in records:
-        src = Path(r['moved_to'])
-        dst = Path(r['original'])
-        if src.exists():
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                shutil.move(src, dst)
-                restored += 1
-            except Exception as e:
-                errors.append(f"{src} -> {dst}: {e}")
-
-    # Xóa file rollback sau khi hoàn tất
-    if restored > 0:
+    remaining = []
+    for record in reversed(records):
         try:
-            rollback_file.unlink()
-        except Exception:
-            pass
-
+            src = vault_path(vault_dir, record['moved_to'])
+            dst = vault_path(vault_dir, record['original'])
+            if not src.exists() and dst.is_file():
+                continue  # Ý định đã lưu nhưng thao tác move chưa chạy.
+            if not src.is_file():
+                raise FileNotFoundError(f'Không tìm thấy {src}')
+            if dst.exists() or dst.is_symlink():
+                raise FileExistsError(f'Đích đã tồn tại: {dst}')
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(src, dst)
+            restored += 1
+        except Exception as exc:
+            remaining.append(record)
+            errors.append(str(exc))
+    if remaining:
+        _write_rollback(rollback_file, list(reversed(remaining)))
+    else:
+        rollback_file.unlink()
     return {
-        'success': True,
-        'restored_count': restored,
-        'errors': errors,
-        'message': f"Đã khôi phục hoàn chỉnh {restored} tệp về vị trí thư mục nguyên bản!"
+        'success': not errors, 'restored_count': restored, 'errors': errors,
+        'message': f'Đã khôi phục {restored} tệp; còn {len(remaining)} tệp chưa khôi phục.'
     }
