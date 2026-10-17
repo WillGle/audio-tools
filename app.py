@@ -13,6 +13,7 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from core.analyzer import analyze_audio_file, generate_spectrogram_image
 from core.paths import vault_path
+from core.navidrome_config import read_config, resolve_config, public_config, write_config
 from core.tagger import apply_quality_tag
 from core.dedup import scan_duplicates, get_metadata_duplicates_map
 from core.navidrome import (
@@ -141,7 +142,7 @@ def cached_by_path(cache_file, path_key):
     return result
 
 
-def library_items():
+def _read_library_items():
     from organize_library import process_file_metadata
     from core.dedup import IGNORE_DIRS
     import os
@@ -184,6 +185,42 @@ def library_items():
     return sorted(items, key=lambda item: item['original_path'])
 
 
+_library_lock = Lock()
+_library_snapshot = None
+_library_snapshot_key = None
+_library_snapshot_time = 0
+
+
+def invalidate_library():
+    global _library_snapshot, _dupe_map_cache
+    with _library_lock:
+        _library_snapshot = None
+        _dupe_map_cache = None
+
+
+def library_items():
+    global _library_snapshot, _library_snapshot_key, _library_snapshot_time
+    def stamp(path):
+        try:
+            stat = path.stat()
+            return (stat.st_mtime_ns, stat.st_size)
+        except OSError:
+            return None
+    key = (str(ROOT_DIR), stamp(ROOT_DIR), stamp(VERDICTS_CACHE_FILE), stamp(METADATA_CACHE_FILE))
+    with _library_lock:
+        if _library_snapshot is None or key != _library_snapshot_key or time.monotonic() - _library_snapshot_time > 15:
+            _library_snapshot = _read_library_items()
+            _library_snapshot_key = key
+            _library_snapshot_time = time.monotonic()
+        return _library_snapshot
+
+
+@app.post('/api/library/refresh')
+def refresh_library():
+    invalidate_library()
+    return {'success': True}
+
+
 @app.get("/api/stats")
 def get_library_stats():
     items = library_items()
@@ -200,6 +237,60 @@ def get_library_stats():
         verdict_counts['duplicate_meta'] = 0
         verdict_counts['duplicate_meta_groups'] = 0
     return {'root_directory': str(ROOT_DIR), 'counts': verdict_counts, 'status': 'Ready'}
+
+
+@app.get('/api/quality-result')
+def quality_result(filepath: str):
+    path = audio_path(filepath)
+    result = scoring_service.saved_result(str(path.relative_to(ROOT_DIR)))
+    if not result:
+        raise HTTPException(409, 'Kết quả chưa có hoặc đã cũ. Hãy kiểm tra lại tệp.')
+    return result
+
+
+@app.get('/api/quality-dashboard')
+def quality_dashboard(category: str = 'all', offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200)):
+    from core.audio_scoring import engine_signature
+    from core.audio_scoring.tools import is_lossless
+
+    categories = ('hires', 'upsample', 'low_quality', 'standard', 'review', 'unchecked')
+    if category not in ('all', *categories):
+        raise HTTPException(400, 'Nhóm kết quả không hợp lệ')
+    results = scoring_service.dashboard_results()
+    counts = dict.fromkeys(categories, 0)
+    rows = []
+    signature = engine_signature()
+    for item in library_items():
+        path = item['original_path']
+        result = results.get(path)
+        if result:
+            try:
+                stat = vault_path(ROOT_DIR, path).stat()
+                current = result.get('file_stat') == {'size_bytes': stat.st_size, 'mtime_ns': stat.st_mtime_ns, 'ctime_ns': stat.st_ctime_ns}
+            except (ValueError, OSError):
+                current = False
+            if not current or result.get('engine_signature') != signature or result.get('rule_version') != scoring_service.config['version']:
+                result = None
+        group = 'unchecked'
+        if result:
+            rules = result['rules']
+            specs = result['claims']['container_assertions']
+            if result['critical_failure'] or rules['signal_defects']['status'] == 'SUSPECT' or any(rules[key]['status'] == 'FAIL' for key in rules):
+                group = 'low_quality'
+            elif rules['sample_rate']['measurements'].get('resampling_evidence'):
+                group = 'upsample'
+            elif specs.get('codec') and not is_lossless(specs['codec']) and specs['codec'] in {'mp3', 'aac', 'opus', 'vorbis', 'wmav1', 'wmav2', 'wmapro', 'ac3', 'eac3'}:
+                group = 'low_quality'
+            elif result['preliminary'] or any(rule['status'] in ('REVIEW', 'SUSPECT') for rule in rules.values()):
+                group = 'review'
+            else:
+                group = 'hires' if is_lossless(specs.get('codec', '')) and specs.get('sample_rate', 0) > 48000 and specs.get('bit_depth', 0) > 16 else 'standard'
+        counts[group] += 1
+        if category in ('all', group):
+            rows.append({**item, 'category': group, 'score': result['score'] if result else None})
+    total = sum(counts.values())
+    return {'total': total, 'counts': counts, 'matched': len(rows), 'offset': offset,
+            'files': rows[offset:offset + limit]}
 
 
 @app.get("/api/tracks")
@@ -416,20 +507,67 @@ def stream_audio(filepath: str):
         headers={"Accept-Ranges": "bytes"}
     )
 
-@app.post("/api/navidrome/test")
-def test_navidrome(cfg: NavidromeConfig):
-    res = test_navidrome_connection(cfg.server_url, cfg.username, cfg.password)
-    return res
+def connection_config(cfg=None):
+    return resolve_config(CACHE_DIR, cfg.model_dump() if cfg else None)
 
-@app.post("/api/navidrome/scan")
-def trigger_scan(cfg: NavidromeConfig):
-    res = trigger_navidrome_scan(cfg.server_url, cfg.username, cfg.password, cfg.full_scan)
-    return res
 
-@app.get("/api/navidrome/scan-status")
-def scan_status(server_url: str, username: str, password: str):
-    res = get_navidrome_scan_status(server_url, username, password)
-    return res
+def request_navidrome_scan(cfg=None, full_scan=False):
+    config = connection_config(cfg)
+    if not config.get('server_url'):
+        return None
+    try:
+        return trigger_navidrome_scan(config['server_url'], config.get('username') or '',
+                                     config.get('password') or '', full_scan)
+    except Exception:
+        return {'success': False, 'message': 'Không thể yêu cầu Navidrome cập nhật. Thay đổi cục bộ vẫn được giữ.'}
+
+
+def finish_library_change(result, changed, cfg=None):
+    # A partial batch still needs a refresh for the files that changed.
+    if changed:
+        invalidate_library()
+    result['navidrome_scan'] = request_navidrome_scan(cfg) if changed else None
+    return result
+
+
+@app.get('/api/navidrome/config')
+def navidrome_config_status():
+    return public_config(read_config(CACHE_DIR))
+
+
+@app.post('/api/navidrome/config')
+def save_navidrome_config(cfg: NavidromeConfig):
+    try:
+        return write_config(CACHE_DIR, cfg.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.delete('/api/navidrome/config')
+def disconnect_navidrome():
+    (CACHE_DIR / 'navidrome.json').unlink(missing_ok=True)
+    return public_config({})
+
+
+@app.post('/api/navidrome/test')
+def test_navidrome(cfg: Optional[NavidromeConfig] = None):
+    config = connection_config(cfg)
+    if not config.get('server_url'):
+        return {'success': False, 'message': 'Chưa cấu hình Navidrome.'}
+    return test_navidrome_connection(config['server_url'], config.get('username') or '', config.get('password') or '')
+
+
+@app.post('/api/navidrome/scan')
+def trigger_scan(cfg: Optional[NavidromeConfig] = None):
+    return request_navidrome_scan(cfg, bool(cfg and cfg.full_scan)) or {'success': False, 'message': 'Chưa cấu hình Navidrome.'}
+
+
+@app.post('/api/navidrome/scan-status')
+def scan_status():
+    config = connection_config()
+    if not config.get('server_url'):
+        return {'success': False, 'scanning': False, 'message': 'Chưa cấu hình Navidrome.'}
+    return get_navidrome_scan_status(config['server_url'], config.get('username') or '', config.get('password') or '')
 
 @app.get("/api/navidrome/smart-playlists")
 def get_smart_playlists():
@@ -439,10 +577,7 @@ def get_smart_playlists():
 def install_smart_playlists(req: Optional[SmartPlaylistsRequest] = None):
     keys = req.playlists if req else None
     res = create_smart_playlists(ROOT_DIR, keys)
-    scan_res = None
-    if res.get('success') and req and req.navidrome_config and req.navidrome_config.server_url:
-        cfg = req.navidrome_config
-        scan_res = trigger_navidrome_scan(cfg.server_url, cfg.username, cfg.password)
+    scan_res = request_navidrome_scan(req.navidrome_config if req else None) if res.get('created') else None
     res['navidrome_scan'] = scan_res
     return res
 
@@ -456,10 +591,9 @@ def tag_single_file(req: TagRequest):
     ok, msg = apply_quality_tag(str(p), analysis)
     
     # Trigger Navidrome scan nếu có config
-    scan_res = None
-    if ok and req.navidrome_config:
-        cfg = req.navidrome_config
-        scan_res = trigger_navidrome_scan(cfg.server_url, cfg.username, cfg.password)
+    if ok:
+        invalidate_library()
+    scan_res = request_navidrome_scan(req.navidrome_config) if ok else None
         
     return {
         'success': ok,
@@ -558,7 +692,7 @@ def apply_metadata_organization(req: OrganizeRequest):
         _organize_plan_file.unlink(missing_ok=True)
         global _dupe_map_cache
         _dupe_map_cache = None
-        return result
+        return finish_library_change(result, result.get('success_count', 0))
 
 
 @app.post('/api/organize/rollback')
@@ -569,7 +703,7 @@ def undo_metadata_organization():
         _organize_plan_file.unlink(missing_ok=True)
         global _dupe_map_cache
         _dupe_map_cache = None
-        return result
+        return finish_library_change(result, result.get('restored_count', 0))
 
 @app.get("/api/duplicates")
 def get_duplicates_report(refresh: bool = False):
@@ -628,11 +762,11 @@ def archive_byte_duplicates(payload: Optional[ArchiveDupesRequest] = None):
         except Exception:
             pass
 
-    return {
+    return finish_library_change({
         'success': True,
         'message': f"Đã di chuyển an toàn {archived_count} tệp trùng lặp vào thư mục '_Duplicates_Archive/' (bảo toàn cấu trúc thư mục gốc)!",
         'archived_count': archived_count
-    }
+    }, archived_count)
 
 # ==============================================================================
 # 7 AUDIOPHILE PILLARS & VAULT TIERING ENDPOINTS
@@ -707,6 +841,7 @@ class AudiophileAlbumAuditRequest(BaseModel):
     track_paths: List[str]
 
 class AudiophileTagRequest(BaseModel):
+    defer_scan: bool = False
     filepath: str
     audit_data: Optional[dict] = None
     navidrome_config: Optional[NavidromeConfig] = None
@@ -763,10 +898,9 @@ def audiophile_apply_tags(req: AudiophileTagRequest):
 
     ok, msg = apply_audiophile_tags(str(p), audit)
 
-    scan_res = None
-    if ok and req.navidrome_config and req.navidrome_config.server_url:
-        cfg = req.navidrome_config
-        scan_res = trigger_navidrome_scan(cfg.server_url, cfg.username or '', cfg.password or '')
+    if ok:
+        invalidate_library()
+    scan_res = request_navidrome_scan(req.navidrome_config) if ok and not req.defer_scan else None
 
     return {
         'success': ok,
@@ -781,10 +915,9 @@ def audiophile_rollback_tags(req: TagRollbackRequest):
 
     ok, msg = revert_audiophile_tags(str(p))
 
-    scan_res = None
-    if ok and req.navidrome_config and req.navidrome_config.server_url:
-        cfg = req.navidrome_config
-        scan_res = trigger_navidrome_scan(cfg.server_url, cfg.username or '', cfg.password or '')
+    if ok:
+        invalidate_library()
+    scan_res = request_navidrome_scan(req.navidrome_config) if ok else None
 
     return {
         'success': ok,
@@ -796,10 +929,9 @@ def audiophile_rollback_tags(req: TagRollbackRequest):
 def audiophile_rollback_all_tags(req: Optional[TagRollbackAllRequest] = None):
     try:
         count, paths = rollback_all_audiophile_tags(ROOT_DIR)
-        scan_res = None
-        if count > 0 and req and req.navidrome_config and req.navidrome_config.server_url:
-            cfg = req.navidrome_config
-            scan_res = trigger_navidrome_scan(cfg.server_url, cfg.username or '', cfg.password or '')
+        if count:
+            invalidate_library()
+        scan_res = request_navidrome_scan(req.navidrome_config if req else None) if count else None
         return {
             'success': True,
             'reverted_count': count,
@@ -824,10 +956,9 @@ def batch_tag_files(req: BatchTagRequest):
         except Exception as e:
             results.append({"filepath": fp, "success": False, "message": str(e)})
 
-    scan_res = None
-    if success_count > 0 and req.navidrome_config and req.navidrome_config.server_url:
-        cfg = req.navidrome_config
-        scan_res = trigger_navidrome_scan(cfg.server_url, cfg.username or '', cfg.password or '')
+    if success_count:
+        invalidate_library()
+    scan_res = request_navidrome_scan(req.navidrome_config) if success_count else None
 
     return {
         "success": True,
@@ -852,10 +983,9 @@ def batch_audiophile_tag(req: BatchTagRequest):
         except Exception as e:
             results.append({"filepath": fp, "success": False, "message": str(e)})
 
-    scan_res = None
-    if success_count > 0 and req.navidrome_config and req.navidrome_config.server_url:
-        cfg = req.navidrome_config
-        scan_res = trigger_navidrome_scan(cfg.server_url, cfg.username or '', cfg.password or '')
+    if success_count:
+        invalidate_library()
+    scan_res = request_navidrome_scan(req.navidrome_config) if success_count else None
 
     return {
         "success": True,
@@ -882,7 +1012,7 @@ def execute_vault_tiering(req: TieringExecuteRequest):
 
     try:
         res = execute_tiering(ROOT_DIR, plan_items, mode=req.mode)
-        return res
+        return finish_library_change(res, res.get('success_count', 0))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi thực thi Vault Tiering: {str(e)}")
 
@@ -890,7 +1020,7 @@ def execute_vault_tiering(req: TieringExecuteRequest):
 def rollback_vault_tiering_api():
     try:
         res = rollback_vault_tiering(ROOT_DIR)
-        return res
+        return finish_library_change(res, res.get('restored_count', 0))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khôi phục Vault Tiering: {str(e)}")
 

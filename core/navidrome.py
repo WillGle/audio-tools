@@ -9,8 +9,8 @@ import urllib.error
 
 SMART_PLAYLISTS_TEMPLATES = {
     "True_HiRes.nsp": {
-        "name": "💎 True Hi-Res (PCM Sample Rate Cao)",
-        "description": "Lọc các bài hát đạt chuẩn Hi-Res thực thụ đã được kiểm định tag",
+        "name": "PCM tần số cao",
+        "description": "Lọc theo tag định dạng PCM tần số cao; không xác minh nguồn master.",
         "content": {
             "all": [
                 {"comment": {"contains": "[PCM sample rate cao]"}}
@@ -20,8 +20,8 @@ SMART_PLAYLISTS_TEMPLATES = {
         }
     },
     "Studio_Master_24bit.nsp": {
-        "name": "🎙️ Studio Master 24-Bit",
-        "description": "Lọc các bài nhạc master 24-bit chất lượng phòng thu",
+        "name": "Nhãn 24-bit cũ",
+        "description": "Lọc tag [Studio Master] đã có từ phiên bản cũ; không xác nhận nguồn master.",
         "content": {
             "all": [
                 {"comment": {"contains": "[Studio Master]"}}
@@ -54,8 +54,8 @@ SMART_PLAYLISTS_TEMPLATES = {
         }
     },
     "Review_Needed.nsp": {
-        "name": "⚠️ Cần Kiểm Tra (Lỗi Phổ / Toàn Vẹn)",
-        "description": "Lọc các bài có tag cảnh báo lỗi toàn vẹn hoặc phổ âm giả lập",
+        "name": "Cần kiểm tra",
+        "description": "Lọc tag cảnh báo toàn vẹn hoặc tag cần xem lại từ phiên bản cũ.",
         "content": {
             "any": [
                 {"comment": {"contains": "[Lỗi toàn vẹn]"}},

@@ -4172,5 +4172,80 @@
     "badge_color": "#f59e0b",
     "explanation": "Không thể xác minh nguồn master chỉ từ file này. Điểm là chỉ số bằng chứng, không phải xác suất file thật.",
     "filepath": "/mnt/vault/GleVault/Hires/RPT MCK/HVL/Cảm Ơn.flac"
+  },
+  {
+    "scoring_version": "1.0.0",
+    "file_stat": {
+      "size_bytes": 90835362,
+      "mtime_ns": 1785350950000000000,
+      "ctime_ns": 1792167947503228941
+    },
+    "engine_signature": "a93dbacb871d4d88d8541c2164f93112dc1c6af498f62603fe48c9107cdab0d5",
+    "rule_version": "1.0.0",
+    "file_sha256": "10d0b1872acfc83a4d4e1507cd549f3ddbabd7d36b9afe0c4a1e5b50a343775c",
+    "filename": "Liệm.flac",
+    "codec": "FLAC",
+    "sample_rate": 96000,
+    "bit_depth": 24,
+    "cutoff_hz": null,
+    "cutoff_drop_db": null,
+    "drop_at_22k": null,
+    "ultrasonic_db": null,
+    "has_24bit_bits": null,
+    "verdict": "FORMAT_HIRES",
+    "badge": "Chưa đủ bằng chứng để chấm điểm",
+    "badge_color": "#f59e0b",
+    "explanation": "Không thể xác minh nguồn master chỉ từ file này. Điểm là chỉ số bằng chứng, không phải xác suất file thật.",
+    "filepath": "/mnt/vault/GleVault/Hires/RPT MCK/HVL/Liệm.flac"
+  },
+  {
+    "scoring_version": "1.0.0",
+    "file_stat": {
+      "size_bytes": 51592565,
+      "mtime_ns": 1785350938000000000,
+      "ctime_ns": 1792167947472227646
+    },
+    "engine_signature": "a93dbacb871d4d88d8541c2164f93112dc1c6af498f62603fe48c9107cdab0d5",
+    "rule_version": "1.0.0",
+    "file_sha256": "81d8c8c3c23f67212b0592692d132be9b739ae0a9d4314484a4b55ab1c8e568b",
+    "filename": "Là Gì Của Nhau.flac",
+    "codec": "FLAC",
+    "sample_rate": 96000,
+    "bit_depth": 24,
+    "cutoff_hz": 45000,
+    "cutoff_drop_db": 37.98,
+    "drop_at_22k": null,
+    "ultrasonic_db": null,
+    "has_24bit_bits": null,
+    "verdict": "FORMAT_HIRES",
+    "badge": "Chưa đủ bằng chứng để chấm điểm · Có phép kiểm tra cần xem xét",
+    "badge_color": "#f59e0b",
+    "explanation": "Không thể xác minh nguồn master chỉ từ file này. Điểm là chỉ số bằng chứng, không phải xác suất file thật.",
+    "filepath": "/mnt/vault/GleVault/Hires/RPT MCK/HVL/Là Gì Của Nhau.flac"
+  },
+  {
+    "scoring_version": "1.0.0",
+    "file_stat": {
+      "size_bytes": 2284973660,
+      "mtime_ns": 1783882599301802883,
+      "ctime_ns": 1785447359481348021
+    },
+    "engine_signature": "a93dbacb871d4d88d8541c2164f93112dc1c6af498f62603fe48c9107cdab0d5",
+    "rule_version": "1.0.0",
+    "file_sha256": "b7ef7c2d65228b89b6afe11e0b62dfff5c30c6c90ec1dbaeccd68153662fda8c",
+    "filename": "01 - Shine on you crazy Diamond (Parts 1 - 5)-011.dsf",
+    "codec": "DSD_LSBF_PLANAR",
+    "sample_rate": 1411200,
+    "bit_depth": 8,
+    "cutoff_hz": null,
+    "cutoff_drop_db": null,
+    "drop_at_22k": null,
+    "ultrasonic_db": null,
+    "has_24bit_bits": null,
+    "verdict": "UNKNOWN",
+    "badge": "Chưa đủ bằng chứng để chấm điểm",
+    "badge_color": "#f59e0b",
+    "explanation": "Không thể xác minh nguồn master chỉ từ file này. Điểm là chỉ số bằng chứng, không phải xác suất file thật.",
+    "filepath": "/mnt/vault/GleVault/Hires/01 - Shine on you crazy Diamond (Parts 1 - 5)-011.dsf"
   }
 ]

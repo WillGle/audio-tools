@@ -1,5 +1,6 @@
 # Hi-Res Vault Companion UI Redesign
 
+Historical cosmetic-only scope; superseded for the approved overhaul by [Navidrome companion design](../specs/2026-10-17-navidrome-companion.md).
 ## Goal
 
 Give every visible screen in the Hi-Res Vault Companion a consistent, readable, and responsive visual system while preserving current workflows, data behavior, element IDs, and safety boundaries.

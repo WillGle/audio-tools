@@ -39,7 +39,7 @@ def run(root, output):
                 errors = []
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(base, wait_until='networkidle')
-                page.locator('#btn-tab-audiophile').click()
+                assert page.locator('#tab-audiophile').is_visible()
                 assert page.locator('#scoring-single').is_disabled()
                 assert page.locator('#scoring-result').is_hidden()
                 search = page.locator('#lab-combobox-input')
@@ -105,6 +105,7 @@ def run(root, output):
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'mobile page overflows'
                 page.screenshot(path=str(output/'scoring-mobile.png'), full_page=True)
                 # Cancel a new mode, restore completed history, then scan library selections.
+                page.locator('#scoring-advanced > summary').click()
                 page.locator('#scoring-mode').select_option('DEEP')
                 page.locator('#scoring-single').click()
                 page.locator('#scoring-cancel').wait_for(state='visible')

@@ -39,3 +39,7 @@ cache/metadata_organize_plan.json
 # Rollback and plan temporary files
 .vault_tiering_rollback.json
 .organize_rollback.json
+
+# Private Navidrome credentials
+cache/navidrome.json
+cache/.navidrome-*

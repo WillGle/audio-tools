@@ -1,5 +1,6 @@
 # All UI Redesign Implementation Plan
 
+Historical cosmetic-only scope; superseded for the approved overhaul by [Navidrome companion design](../specs/2026-10-17-navidrome-companion.md).
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Apply one consistent, responsive visual system to every existing Hi-Res Vault Companion screen without changing behavior.

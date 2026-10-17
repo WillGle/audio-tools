@@ -1,5 +1,5 @@
 // State
-let currentTab = 'tab-library';
+let currentTab = 'tab-audiophile';
 let currentFilter = 'all';
 let searchQuery = '';
 let currentOffset = 0;
@@ -23,7 +23,9 @@ let colFilters = {
 };
 let currentSortBy = 'index';
 let currentSortDir = 'asc';
-let showColFilters = true;
+let showColFilters = false;
+let libraryTrackDetails = new Map();
+let trackDetailsOpener = null;
 
 let currentAuditResult = null;
 let currentTieringPlan = null;
@@ -96,14 +98,17 @@ function showConfirm(title, message) {
         }
 
         if (titleEl) titleEl.textContent = title;
-        if (msgEl) msgEl.innerHTML = message.replace(/\n/g, '<br>');
+        if (msgEl) msgEl.textContent = message;
+        const opener = document.activeElement;
         modal.style.display = 'flex';
+        btnCancel.focus();
 
         const cleanup = (val) => {
             modal.style.display = 'none';
             btnOk.onclick = null;
             btnCancel.onclick = null;
             btnClose.onclick = null;
+            opener?.focus();
             resolve(val);
         };
 
@@ -111,14 +116,6 @@ function showConfirm(title, message) {
         btnCancel.onclick = () => cleanup(false);
         btnClose.onclick = () => cleanup(false);
     });
-}
-
-function getNavidromeConfigFromStorage() {
-    return {
-        server_url: localStorage.getItem('navidrome_server_url') || document.getElementById('navi-url')?.value || '',
-        username: localStorage.getItem('navidrome_username') || document.getElementById('navi-user')?.value || '',
-        password: document.getElementById('navi-pass')?.value || ''
-    };
 }
 
 // ==============================================================================
@@ -312,7 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initVaultTiering();
     initDuplicates();
     initNavidrome();
-    initNavidromeStorage();
     initOrganize();
     initModal();
     initKeyboardShortcuts();
@@ -323,84 +319,71 @@ document.addEventListener('DOMContentLoaded', () => {
 // Sidebar Collapsible & Mobile Management
 function initSidebar() {
     const sidebar = document.getElementById('sidebar');
-    const toggle = document.getElementById('sidebar-toggle');
-    if (!sidebar || !toggle) return;
-
-    // Restore desktop collapsed preference
-    if (window.innerWidth > 900 && localStorage.getItem('sidebar_collapsed') === 'true') {
-        sidebar.classList.add('collapsed');
-    }
-
-    toggle.addEventListener('click', () => {
-        const isCollapsed = sidebar.classList.toggle('collapsed');
-        if (window.innerWidth > 900) {
-            localStorage.setItem('sidebar_collapsed', isCollapsed);
-        }
-    });
+    // Top navigation stays visible regardless of the old sidebar preference.
+    sidebar?.classList.remove('collapsed');
 }
 
 // 1. Tab Navigation
 const TAB_TITLES = {
     'tab-library': 'Kho nhạc',
     'tab-organize': 'Sắp xếp thư viện',
-    'tab-audiophile': 'Kiểm tra chất lượng âm thanh',
-    'tab-vault': 'Cấu trúc kho 3 cấp',
+    'tab-audiophile': 'Tổng quan chất lượng',
+    'tab-vault': 'Nhóm theo định dạng',
     'tab-duplicates': 'Quản lý trùng lặp',
-    'tab-navidrome': 'Tích hợp máy chủ Navidrome'
+    'tab-navidrome': 'Cài đặt',
+    'tab-tools': 'Ghi tag'
 };
 
 function initTabs() {
-    // Support both old .nav-tab and new .sidebar-nav-item selectors
-    const tabs = document.querySelectorAll('.nav-tab, .sidebar-nav-item');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const target = tab.dataset.tab;
-            if (!target) return;
-            // Update active state on all nav elements
-            tabs.forEach(t => {
-                t.classList.remove('active');
-                t.removeAttribute('aria-current');
-            });
-            // Mark all elements for this tab as active (sidebar + any legacy tabs)
-            document.querySelectorAll(`[data-tab="${target}"]`).forEach(el => {
-                el.classList.add('active');
-                el.setAttribute('aria-current', 'page');
-            });
-
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            const targetContent = document.getElementById(target);
-            if (targetContent) {
-                targetContent.classList.add('active');
-            }
-            currentTab = target;
-
-            // Dynamically update topbar title
-            const topbarTitle = document.getElementById('topbar-page-title');
-            if (topbarTitle && TAB_TITLES[target]) {
-                topbarTitle.textContent = TAB_TITLES[target];
-            }
-
-            // Close mobile sidebar on navigation
-            if (window.innerWidth <= 900) {
-                document.getElementById('sidebar')?.classList.add('collapsed');
-            }
-
-            if (target === 'tab-library') {
-                loadTracks();
-            } else if (target === 'tab-vault') {
-                loadVaultTieringPlan();
-            } else if (target === 'tab-duplicates') {
-                loadDuplicates(false);
-            } else if (target === 'tab-navidrome') {
-                loadSmartPlaylists();
-            }
-        });
+    document.querySelectorAll('[data-tab]').forEach(button => {
+        button.addEventListener('click', () => switchTab(button.dataset.tab));
+    });
+    document.getElementById('library-detail-columns').addEventListener('change', event => {
+        document.getElementById('tab-library').classList.toggle('show-library-details', event.target.checked);
+    });
+    document.getElementById('library-refresh').addEventListener('click', async event => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+            const response = await fetch('/api/library/refresh', {method: 'POST'});
+            if (!response.ok) throw new Error('Không làm mới được kho nhạc.');
+            currentOffset = 0;
+            await Promise.all([loadTracks(), initStats()]);
+        } catch (error) { showToast(error.message, 'error'); }
+        finally { button.disabled = false; }
+    });
+    document.getElementById('btn-batch-organize').addEventListener('click', () => {
+        // Organization works on folders; never imply it applies to selected tracks only.
+        switchTab('tab-organize');
+        const input = document.getElementById('metadata-organize-folder');
+        const folders = new Set([...selectedTrackPaths].map(path => path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''));
+        input.value = folders.size === 1 ? [...folders][0] : '';
+        input.dispatchEvent(new Event('input'));
+        document.getElementById('metadata-organize-status').textContent = 'Sắp xếp theo thư mục, gồm cả bài chưa chọn. Xem trước phạm vi trước khi áp dụng.';
+        input.focus();
     });
 }
 
 function switchTab(tabId) {
-    const btn = document.querySelector(`[data-tab="${tabId}"]`);
-    if (btn) btn.click();
+    const target = document.getElementById(tabId);
+    if (!target?.classList.contains('tab-content')) return;
+    const parent = tabId;
+    document.querySelectorAll('.sidebar-nav-item').forEach(button => {
+        const active = button.dataset.tab === parent;
+        button.classList.toggle('active', active);
+        if (active) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+    });
+    document.querySelectorAll('.tab-content').forEach(section => section.classList.toggle('active', section === target));
+    currentTab = tabId;
+    document.getElementById('tool-back-row').hidden = true;
+    document.getElementById('topbar-page-title').textContent = TAB_TITLES[tabId] || 'Công cụ';
+    updateBatchBar();
+    if (tabId === 'tab-library') loadTracks();
+    else if (tabId === 'tab-vault') loadVaultTieringPlan();
+    else if (tabId === 'tab-duplicates') loadDuplicates(false);
+    else if (tabId === 'tab-navidrome') loadSmartPlaylists();
+    window.scrollTo({top: 0});
 }
 
 // 2. Stats & Clickable Stat Filter Cards
@@ -409,6 +392,10 @@ async function initStats() {
         const res = await fetch('/api/stats');
         const data = await res.json();
         const counts = data.counts || {};
+        document.getElementById('settings-root-path').textContent = data.root_directory || 'Chưa có thư mục';
+        const rootLabel = document.getElementById('sidebar-root-label');
+        rootLabel.textContent = data.root_directory?.split('/').pop() || 'Kho nhạc';
+        rootLabel.title = data.root_directory || '';
 
         document.getElementById('stat-true-hires').textContent = counts.true_hires ?? 0;
         document.getElementById('stat-true-dsd').textContent = counts.true_dsd ?? 0;
@@ -631,6 +618,7 @@ function initBatchActions() {
                 })
             });
             const data = await res.json();
+            if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
             if (data.success) {
                 showToast(`✅ Đã ghi tag thành công cho ${data.tagged_count} / ${count} bài hát!`, 'success');
                 selectedTrackPaths.clear();
@@ -643,7 +631,7 @@ function initBatchActions() {
             showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = '🏷️ Ghi Tag Metadata';
+            btn.textContent = '🏷️ Ghi tag phân loại';
         }
     });
 
@@ -671,6 +659,7 @@ function initBatchActions() {
                 })
             });
             const data = await res.json();
+            if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
             if (data.success) {
                 showToast(`🔬 Đã kiểm định và ghi tag 7 chuẩn cho ${data.tagged_count} / ${count} bài!`, 'success');
                 selectedTrackPaths.clear();
@@ -683,7 +672,7 @@ function initBatchActions() {
             showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = '🔬 Ghi Tag 7 Chuẩn';
+            btn.textContent = 'Kiểm tra & ghi tag';
         }
     });
 }
@@ -695,7 +684,7 @@ function updateBatchBar() {
     const size = selectedTrackPaths.size;
     if (countEl) countEl.textContent = size;
     document.dispatchEvent(new Event('audio-selection-change'));
-    if (bar) bar.style.display = size > 0 ? 'flex' : 'none';
+    if (bar) bar.style.display = size > 0 && currentTab === 'tab-library' ? 'flex' : 'none';
 
     const visibleCbs = document.querySelectorAll('.track-row-checkbox');
     if (chkAll && visibleCbs.length > 0) {
@@ -750,11 +739,11 @@ function updateActiveFilterChips() {
         activeCount++;
         const verdictLabels = {
             duplicate_meta: '⚠️ Trùng Metadata',
-            true_hires: 'True Hi-Res',
+            true_hires: 'PCM tần số cao',
             true_dsd: 'True DSD',
-            studio_master: 'Studio Master',
+            studio_master: 'Cần xem xét',
             cd_lossless: 'CD Lossless',
-            fake_hires: 'Fake Hi-Res',
+            fake_hires: 'Lỗi toàn vẹn',
             lossy: 'Lossy MP3'
         };
         const vLabel = verdictLabels[colFilters.verdict] || colFilters.verdict;
@@ -833,6 +822,7 @@ async function loadTracks() {
         const res = await fetch(url);
         const data = await res.json();
         const tracks = data.tracks || [];
+        libraryTrackDetails = new Map(tracks.map(track => [track.original_path, track]));
         const total = data.total || 0;
         currentTotalTracks = total;
 
@@ -905,10 +895,10 @@ async function loadTracks() {
                     <td>
                         <div class="track-main-info">
                             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
-                                <span class="track-title">${escapeHtml(track.title || track.original_path)}</span>
+                                <button type="button" class="track-title btn-track-details" data-path="${escapeHtml(track.original_path)}">${escapeHtml(track.title || track.original_path)}</button>
                                 ${dupeBadge}
                             </div>
-                            <span class="track-artist text-muted" style="font-size: 0.75rem;">${escapeHtml(track.original_path)}</span>
+                            <span class="track-artist track-path text-muted" style="font-size: 0.75rem;">${escapeHtml(track.original_path)}</span>
                         </div>
                     </td>
                     <td><span class="text-secondary">${escapeHtml(track.artist || 'Unknown Artist')}</span></td>
@@ -920,23 +910,7 @@ async function loadTracks() {
                             <button class="btn-action-icon btn-play-track ${isPlayingThis ? 'is-playing' : ''}" data-path="${escapeHtml(track.original_path)}" data-title="${escapeHtml(track.title || track.original_path)}" data-artist="${escapeHtml(track.artist || '')}" data-specs="${escapeHtml(track.specs || '')}" title="Phát nghe thử trực tiếp">
                                 ${isPlayingThis ? '⏸' : '▶'}
                             </button>
-                            <button class="btn-action-icon btn-inspect" data-path="${escapeHtml(track.original_path)}" data-title="${escapeHtml(track.title || track.original_path)}" data-specs="${escapeHtml(track.specs)}" title="Xem Spectrogram & Thông Số">
-                                📊
-                            </button>
-                            <button class="btn-action-icon btn-lab-jump" data-path="${escapeHtml(track.original_path)}" title="Kiểm tra tính nhất quán kỹ thuật của bài này">
-                                🔬
-                            </button>
-                            ${track.is_duplicate_meta ? `
-                            <button class="btn-action-icon btn-jump-dupes" data-title="${escapeHtml(track.title || track.original_path)}" title="Mở chi tiết so sánh & dọn dẹp các bản trùng trong tab Trùng Lặp">
-                                🔍
-                            </button>
-                            ` : ''}
-                            <button class="btn-action-icon btn-tag-file" data-path="${escapeHtml(track.original_path)}" title="Ghi tag metadata">
-                                🏷️
-                            </button>
-                            <button class="btn-action-icon btn-untag-file" data-path="${escapeHtml(track.original_path)}" title="Hoàn tác / Khôi phục metadata gốc">
-                                ↩️
-                            </button>
+                            <button class="btn-action-icon btn-track-details" data-path="${escapeHtml(track.original_path)}" title="Chi tiết bài hát">Chi tiết</button>
                         </div>
                     </td>
                 </tr>
@@ -978,28 +952,10 @@ async function loadTracks() {
             chkAll.checked = tracks.length > 0 && tracks.every(t => selectedTrackPaths.has(t.original_path));
         }
 
-        // Attach button events
-        document.querySelectorAll('.btn-inspect').forEach(btn => {
-            btn.addEventListener('click', () => {
-                openSpectrogramModal(btn.dataset.path, btn.dataset.title, btn.dataset.specs);
-            });
-        });
-
-        document.querySelectorAll('.btn-lab-jump').forEach(btn => {
-            btn.addEventListener('click', () => {
-                jumpToAudiophileLab(btn.dataset.path);
-            });
-        });
-
-        document.querySelectorAll('.btn-tag-file').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                await tagSingleTrack(btn.dataset.path, btn);
-            });
-        });
-
-        document.querySelectorAll('.btn-untag-file').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                await rollbackSingleTrack(btn.dataset.path, btn);
+        document.querySelectorAll('.btn-track-details').forEach(button => {
+            button.addEventListener('click', () => {
+                const track = libraryTrackDetails.get(button.dataset.path);
+                openSpectrogramModal(track.original_path, track.title, track.specs);
             });
         });
 
@@ -1062,6 +1018,7 @@ function initAudiophileLab() {
                 })
             });
             const data = await res.json();
+            if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
             if (data.success) {
                 showToast(`✅ ${data.message}`, 'success');
                 if (typeof loadTracks === 'function') loadTracks();
@@ -1383,7 +1340,7 @@ function initVaultTiering() {
         }
 
         const modeText = selectedTieringMode === 'symlink' ?
-            'TẠO LIÊN KẾT MỀM (SYMLINK)\n👉 An toàn tuyệt đối 100%: File gốc KHÔNG bị di chuyển hay thay đổi vị trí!' :
+            'TẠO LIÊN KẾT MỀM (SYMLINK)\n👉 Giữ nguyên tệp gốc: File gốc KHÔNG bị di chuyển hay thay đổi vị trí!' :
             'DI CHUYỂN THẬT (MOVE)\n👉 Các file sẽ được di chuyển vào 3 thư mục tương ứng. Hệ thống tự động tạo file rollback để khôi phục bất cứ lúc nào!';
 
         const confirmed = await showConfirm(
@@ -1408,6 +1365,7 @@ function initVaultTiering() {
                 body: JSON.stringify({ mode: selectedTieringMode, plan_items: currentTieringPlan.items })
             });
             const data = await res.json();
+            if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
             if (data.success) {
                 statusMsg.innerHTML = `<span class="text-emerald">✅ ${data.message}</span> (Thư mục đích: <code>${data.target_base}</code>)`;
                 showToast(`✅ ${data.message}`, 'success', 5000);
@@ -1420,7 +1378,7 @@ function initVaultTiering() {
             showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = '⚡ 1-Click Thực Thi Phân Cấp Kho Nhạc';
+            btn.textContent = 'Áp dụng kế hoạch';
         }
     });
 
@@ -1438,6 +1396,7 @@ function initVaultTiering() {
         try {
             const res = await fetch('/api/vault/tiering/rollback', { method: 'POST' });
             const data = await res.json();
+            if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
             if (data.success) {
                 showToast(`✅ ${data.message}`, 'success');
                 await loadVaultTieringPlan();
@@ -1802,7 +1761,7 @@ function renderDuplicates() {
 
     // Set title and description based on currentDupeType
     if (currentDupeType === 'byte') {
-        document.getElementById('dupe-title-text').textContent = 'Trùng 100% Byte (An toàn tuyệt đối)';
+        document.getElementById('dupe-title-text').textContent = 'Tệp giống hệt từng byte';
         document.getElementById('dupe-desc-text').textContent = 'Các file có cùng mã băm MD5 tuyệt đối. Có thể di chuyển các bản thừa vào thư mục _Duplicates_Archive/ để giải phóng dung lượng đĩa.';
     } else if (currentDupeType === 'meta') {
         document.getElementById('dupe-title-text').textContent = `Trùng Metadata Ca Sĩ & Tên Bài (${rawList.length} nhóm)`;
@@ -2059,6 +2018,7 @@ function renderDuplicates() {
                     body: JSON.stringify({ file1: f1, file2: f2 })
                 });
                 const data = await res.json();
+                if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
                 if (data.match_pct !== undefined) {
                     showToast(`🎵 Khớp ${data.match_pct}%: ${data.explanation}`, data.is_identical ? 'success' : 'info');
                     btn.textContent = `🎵 ${data.match_pct}%`;
@@ -2156,6 +2116,7 @@ async function archiveSingleGroup(toArchive, btn) {
             body: JSON.stringify({ files_to_archive: toArchive })
         });
         const data = await res.json();
+        if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (data.success) {
             showToast(`✅ Đã di chuyển ${data.archived_count || toArchive.length} bản phụ vào _Duplicates_Archive`, 'success');
             await loadDuplicates(true);
@@ -2257,6 +2218,7 @@ async function executeBatchArchiveDuplicates() {
             body: JSON.stringify({ files_to_archive: filesToArchive })
         });
         const data = await res.json();
+        if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (data.success) {
             showToast(`✅ ${data.message}`, 'success');
             await loadDuplicates(true);
@@ -2274,245 +2236,196 @@ async function executeBatchArchiveDuplicates() {
 // 7. NAVIDROME INTEGRATION & SEAMLESS SYNC
 // ==============================================================================
 let navidromeScanInterval = null;
+let navidromeConnection = null;
+let navidromeMonitorGeneration = 0;
+let navidromeScanRequest = null;
 
-function initNavidrome() {
-    const savedUrl = localStorage.getItem('navi_url') || 'http://localhost:4533';
-    const savedUser = localStorage.getItem('navi_user') || '';
-    const savedPass = localStorage.getItem('navi_pass') || '';
-
-    const elUrl = document.getElementById('navi-url');
-    const elUser = document.getElementById('navi-user');
-    const elPass = document.getElementById('navi-pass');
-
-    if (elUrl) elUrl.value = savedUrl;
-    if (elUser) elUser.value = savedUser;
-    if (elPass) elPass.value = savedPass;
-
-    // Auto-ping in background on startup
-    checkNavidromeHealth(true);
-
-    // Topbar Quick Pill Click -> jump to Navidrome Tab
-    const pill = document.getElementById('navidrome-quick-pill');
-    pill?.addEventListener('click', (e) => {
-        // If clicking action buttons inside the pill, don't switch tab
-        if (e.target.closest('.navidrome-pill-actions')) return;
-        switchTab('tab-navidrome');
+async function navidromeRequest(path, method = 'POST', body) {
+    const response = await fetch(`/api/navidrome/${path}`, {
+        method, headers: {'Content-Type': 'application/json'},
+        ...(body === undefined ? {} : {body: JSON.stringify(body)})
     });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Không thể kết nối Navidrome.');
+    return data;
+}
 
-    // Topbar Quick Rescan Button
-    document.getElementById('btn-quick-rescan')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        triggerNavidromeRescan(false);
-    });
+function getNavidromeConfigFromStorage() {
+    // Only public connection information ever reaches the client.
+    return navidromeConnection?.configured ? {server_url: navidromeConnection.server_url, username: navidromeConnection.username} : null;
+}
 
-    // Navidrome Tab: Ping Button
-    document.getElementById('btn-test-navidrome')?.addEventListener('click', async () => {
-        const cfg = getNavidromeConfigFromInputs();
-        saveNavidromeConfig(cfg);
-        const box = document.getElementById('navi-result-msg');
-        if (box) box.innerHTML = `<span class="text-muted">Đang kết nối Navidrome Subsonic API...</span>`;
-        await checkNavidromeHealth(false);
-    });
+function getNavidromeConfigFromInputs() {
+    return {server_url: document.getElementById('navi-url').value.trim(),
+        username: document.getElementById('navi-user').value.trim(),
+        password: document.getElementById('navi-pass').value};
+}
 
-    // Navidrome Tab: Trigger Scan Button
-    document.getElementById('btn-trigger-navidrome-scan')?.addEventListener('click', async () => {
-        await triggerNavidromeRescan(true);
-    });
+function populateNavidromeSettings() {
+    document.getElementById('navi-url').value = navidromeConnection?.server_url || '';
+    document.getElementById('navi-user').value = navidromeConnection?.username || '';
+    document.getElementById('navi-pass').value = '';
+    document.getElementById('navi-password-help').textContent = navidromeConnection?.password_saved
+        ? 'Mật khẩu đã lưu trên máy chủ. Để trống để giữ nguyên.' : 'Mật khẩu chỉ được lưu trên máy chạy ứng dụng.';
+}
 
-    // Smart Playlists: Install All Button
-    document.getElementById('btn-install-all-playlists')?.addEventListener('click', async () => {
-        await installAllSmartPlaylists();
+async function initNavidrome() {
+    document.getElementById('navi-header-text').addEventListener('click', () => switchTab('tab-navidrome'));
+    document.getElementById('btn-quick-rescan').addEventListener('click', () => triggerNavidromeRescan(false));
+    document.getElementById('navidrome-retry').addEventListener('click', () => triggerNavidromeRescan(false));
+    document.getElementById('btn-trigger-navidrome-scan').addEventListener('click', () => triggerNavidromeRescan(true));
+    document.getElementById('btn-install-all-playlists').addEventListener('click', installAllSmartPlaylists);
+    document.getElementById('btn-test-navidrome').addEventListener('click', async event => {
+        const button = event.currentTarget; button.disabled = true;
+        stopNavidromeMonitor();
+        try {
+            navidromeConnection = await navidromeRequest('config', 'POST', getNavidromeConfigFromInputs());
+            populateNavidromeSettings();
+            await checkNavidromeHealth(false);
+        } catch (error) { document.getElementById('navi-result-msg').textContent = error.message; }
+        finally { button.disabled = false; }
     });
+    document.getElementById('navi-disconnect').addEventListener('click', async () => {
+        try {
+            navidromeConnection = await navidromeRequest('config', 'DELETE');
+            stopNavidromeMonitor(); populateNavidromeSettings(); updateNavidromeUIStatus(false);
+            document.getElementById('navi-result-msg').textContent = 'Đã xóa kết nối đã lưu.';
+            document.getElementById('navidrome-sync-notice').hidden = true;
+        } catch (error) { showToast(error.message, 'error'); }
+    });
+    try {
+        navidromeConnection = await navidromeRequest('config', 'GET');
+        // Migrate earlier browser settings once; only remove them after a successful save.
+        const oldUrl = localStorage.getItem('navi_url') || localStorage.getItem('navidrome_server_url');
+        if (!navidromeConnection.configured && oldUrl) {
+            navidromeConnection = await navidromeRequest('config', 'POST', {server_url: oldUrl,
+                username: localStorage.getItem('navi_user') || localStorage.getItem('navidrome_username') || '',
+                password: localStorage.getItem('navi_pass') || localStorage.getItem('navidrome_password') || ''});
+        }
+        ['navi_url', 'navi_user', 'navi_pass', 'navidrome_server_url', 'navidrome_username', 'navidrome_password'].forEach(key => localStorage.removeItem(key));
+        populateNavidromeSettings();
+        if (navidromeConnection.configured) await checkNavidromeHealth(true);
+        else updateNavidromeUIStatus(false);
+    } catch (error) {
+        updateNavidromeUIStatus(false);
+        document.getElementById('navi-result-msg').textContent = error.message;
+    }
 }
 
 async function checkNavidromeHealth(silent = false) {
-    const cfg = getNavidromeConfigFromInputs();
-    saveNavidromeConfig(cfg);
-    const box = document.getElementById('navi-result-msg');
-
     try {
-        const res = await fetch('/api/navidrome/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(cfg)
-        });
-        const data = await res.json();
-        updateNavidromeUIStatus(data.success, data.message || '', cfg.server_url);
-
-        if (!silent && box) {
-            if (data.success) {
-                box.innerHTML = `<div class="alert-box alert-indigo mt-2"><div class="alert-content"><strong>✅ ${data.message}</strong></div></div>`;
-            } else {
-                box.innerHTML = `<div class="alert-box alert-rose mt-2"><div class="alert-content"><strong>❌ ${data.message}</strong></div></div>`;
-            }
+        const data = await navidromeRequest('test');
+        updateNavidromeUIStatus(data.success);
+        if (!silent) document.getElementById('navi-result-msg').textContent = data.message;
+        if (data.success) {
+            const scan = await navidromeRequest('scan-status');
+            if (scan.success && scan.scanning) startNavidromeScanMonitor();
         }
         return data.success;
-    } catch (e) {
-        updateNavidromeUIStatus(false, e.message, cfg.server_url);
-        if (!silent && box) {
-            box.innerHTML = `<div class="alert-box alert-rose mt-2"><div class="alert-content"><strong>❌ Lỗi kết nối: ${e.message}</strong></div></div>`;
-        }
+    } catch (error) {
+        updateNavidromeUIStatus(false);
+        if (!silent) document.getElementById('navi-result-msg').textContent = error.message;
         return false;
     }
 }
 
-function updateNavidromeUIStatus(isOnline, message = '', serverUrl = '') {
-    // Topbar quick pill
-    const pill = document.getElementById('navidrome-quick-pill');
-    const dot = document.getElementById('navi-header-dot');
-    const text = document.getElementById('navi-header-text');
-    const openBtn = document.getElementById('btn-open-navidrome');
-    const heroDot = document.getElementById('navi-hero-dot');
-    const heroLabel = document.getElementById('navi-hero-status-label');
-    const heroOpen = document.getElementById('btn-hero-open-navidrome');
-    const badge = document.getElementById('navidrome-badge');
-    const sideDot = document.getElementById('navidrome-status-dot');
+function updateNavidromeUIStatus(isOnline) {
+    const configured = navidromeConnection?.configured;
+    const url = navidromeConnection?.server_url || '';
+    const label = isOnline ? 'Đã kết nối' : configured ? 'Ngoại tuyến' : 'Chưa kết nối';
+    const state = isOnline ? 'online' : 'offline';
+    document.getElementById('navidrome-quick-pill').className = `navidrome-pill ${state}`;
+    document.getElementById('navi-header-dot').className = `status-pulse-dot ${state}`;
+    document.getElementById('navi-header-text').textContent = `Navidrome · ${label}`;
+    document.getElementById('navi-hero-dot').className = `status-pulse-dot ${state}`;
+    document.getElementById('navi-hero-status-label').textContent = label;
+    document.getElementById('navidrome-badge').textContent = label;
+    document.getElementById('navidrome-status-dot').className = isOnline ? 'nav-badge online' : 'nav-badge';
+    ['btn-open-navidrome', 'btn-hero-open-navidrome'].forEach(id => {
+        const link = document.getElementById(id);
+        link.style.display = configured ? 'inline-flex' : 'none';
+        link.href = url || '#';
+    });
+    document.getElementById('btn-quick-rescan').disabled = !configured;
+}
 
-    const cleanUrl = (serverUrl || '').replace(/\/+$/, '');
+function showNavidromeSync(message, retry = false) {
+    document.getElementById('navidrome-sync-notice').hidden = false;
+    document.getElementById('navidrome-sync-message').textContent = message;
+    document.getElementById('navidrome-retry').hidden = !retry;
+}
 
-    if (isOnline) {
-        pill?.classList.remove('scanning', 'offline');
-        pill?.classList.add('online');
-        if (dot) dot.className = 'status-pulse-dot online';
-        if (text) text.textContent = 'Navidrome: Sẵn sàng';
-        if (openBtn) {
-            openBtn.href = cleanUrl || '#';
-            openBtn.style.display = cleanUrl ? 'inline-flex' : 'none';
-        }
-
-        if (heroDot) heroDot.className = 'status-pulse-dot online';
-        if (heroLabel) heroLabel.textContent = 'Đã kết nối Navidrome (Subsonic API)';
-        if (heroOpen && cleanUrl) {
-            heroOpen.href = cleanUrl;
-            heroOpen.style.display = 'inline-flex';
-        }
-
-        if (badge) {
-            badge.textContent = 'Đã kết nối';
-            badge.className = 'stat-tag tag-emerald';
-        }
-        if (sideDot) sideDot.className = 'nav-badge online';
+function handleNavidromeResult(scan) {
+    if (!scan) return;
+    if (scan.success) {
+        showNavidromeSync('Đã lưu thay đổi cục bộ · Navidrome đang cập nhật thư viện…');
+        startNavidromeScanMonitor();
     } else {
-        pill?.classList.remove('scanning', 'online');
-        pill?.classList.add('offline');
-        if (dot) dot.className = 'status-pulse-dot offline';
-        if (text) text.textContent = 'Navidrome: Ngoại tuyến';
-        if (openBtn) openBtn.style.display = 'none';
-
-        if (heroDot) heroDot.className = 'status-pulse-dot offline';
-        if (heroLabel) heroLabel.textContent = 'Chưa kết nối Navidrome';
-        if (heroOpen) heroOpen.style.display = 'none';
-
-        if (badge) {
-            badge.textContent = 'Chưa kết nối';
-            badge.className = 'stat-tag tag-rose';
-        }
-        if (sideDot) sideDot.className = 'nav-badge';
+        stopNavidromeMonitor(); updateNavidromeUIStatus(false);
+        showNavidromeSync('Thay đổi cục bộ đã được giữ. Navidrome chưa cập nhật: ' + (scan.message || 'Không kết nối được.'), true);
     }
 }
 
 async function triggerNavidromeRescan(fromTab = true) {
-    const cfg = getNavidromeConfigFromStorage() || getNavidromeConfigFromInputs();
-    if (!cfg || !cfg.server_url) {
-        showToast('⚠️ Vui lòng cấu hình URL máy chủ Navidrome trước!', 'warning');
-        switchTab('tab-navidrome');
+    if (!navidromeConnection?.configured) {
+        switchTab('tab-navidrome'); document.getElementById('navi-url').focus();
         return;
     }
-
-    const box = document.getElementById('navi-result-msg');
-    if (fromTab && box) {
-        box.innerHTML = `<span class="text-muted">Đang gửi yêu cầu quét kho nhạc đến Navidrome...</span>`;
-    }
-    showToast('📡 Đang kích hoạt quét kho nhạc trên Navidrome...', 'info');
-
-    try {
-        const res = await fetch('/api/navidrome/scan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(cfg)
-        });
-        const data = await res.json();
-        if (data.success) {
-            if (fromTab && box) {
-                box.innerHTML = `<div class="alert-box alert-indigo mt-2"><div class="alert-content"><strong>📡 ${data.message}</strong></div></div>`;
+    if (navidromeScanRequest) return navidromeScanRequest;
+    const full = fromTab && document.getElementById('navi-full-scan').checked;
+    document.getElementById('navi-full-scan').checked = false;
+    navidromeScanRequest = (async () => {
+        try {
+            const result = await navidromeRequest('scan', 'POST', {full_scan: full});
+            if (result.success) {
+                showNavidromeSync('Đã yêu cầu Navidrome cập nhật thư viện…');
+                startNavidromeScanMonitor();
+            } else {
+                updateNavidromeUIStatus(false);
+                showNavidromeSync(result.message || 'Chưa cập nhật được Navidrome.', true);
             }
-            showToast('🔄 Navidrome đang quét cập nhật thư viện...', 'info');
-            startNavidromeScanMonitor(cfg);
-        } else {
-            if (fromTab && box) {
-                box.innerHTML = `<div class="alert-box alert-rose mt-2"><div class="alert-content"><strong>❌ ${data.message}</strong></div></div>`;
-            }
-            showToast(`❌ Lỗi quét Navidrome: ${data.message}`, 'error');
-        }
-    } catch (e) {
-        showToast(`❌ Lỗi kết nối: ${e.message}`, 'error');
-    }
+        } catch (error) { showNavidromeSync(error.message, true); }
+        finally { navidromeScanRequest = null; }
+    })();
+    return navidromeScanRequest;
 }
 
-function startNavidromeScanMonitor(cfg) {
-    if (navidromeScanInterval) clearInterval(navidromeScanInterval);
+function stopNavidromeMonitor() {
+    clearTimeout(navidromeScanInterval); navidromeScanInterval = null;
+    navidromeMonitorGeneration += 1;
+    document.getElementById('navi-scan-progress').style.display = 'none';
+}
 
-    // Update UI to scanning state
-    const pill = document.getElementById('navidrome-quick-pill');
-    const dot = document.getElementById('navi-header-dot');
-    const text = document.getElementById('navi-header-text');
-    const monitor = document.getElementById('navi-scan-progress');
-    const monitorText = document.getElementById('navi-scan-status-text');
-    const monitorCount = document.getElementById('navi-scan-count-text');
-    const sideDot = document.getElementById('navidrome-status-dot');
-
-    pill?.classList.remove('online', 'offline');
-    pill?.classList.add('scanning');
-    if (dot) dot.className = 'status-pulse-dot scanning';
-    if (text) text.textContent = 'Navidrome: Đang quét...';
-    if (sideDot) sideDot.className = 'nav-badge online';
-    if (monitor) monitor.style.display = 'block';
-
-    const checkStatus = async () => {
+function startNavidromeScanMonitor() {
+    stopNavidromeMonitor();
+    const generation = navidromeMonitorGeneration;
+    const started = Date.now();
+    document.getElementById('navidrome-quick-pill').className = 'navidrome-pill scanning';
+    document.getElementById('navi-header-text').textContent = 'Navidrome · Đang cập nhật';
+    document.getElementById('navi-scan-progress').style.display = 'block';
+    const check = async () => {
+        if (generation !== navidromeMonitorGeneration) return;
         try {
-            const params = new URLSearchParams({
-                server_url: cfg.server_url || '',
-                username: cfg.username || '',
-                password: cfg.password || ''
-            });
-            const res = await fetch(`/api/navidrome/scan-status?${params.toString()}`);
-            const data = await res.json();
-
-            if (data.success) {
-                if (data.scanning) {
-                    const count = data.count || 0;
-                    if (text) text.textContent = `Navidrome: Đang quét (${count})`;
-                    if (monitorText) monitorText.textContent = `Navidrome đang quét thư viện...`;
-                    if (monitorCount) monitorCount.textContent = `Đã phát hiện ${count} bài hát`;
-                } else {
-                    // Scanning finished!
-                    clearInterval(navidromeScanInterval);
-                    navidromeScanInterval = null;
-
-                    updateNavidromeUIStatus(true, 'Hoàn tất quét', cfg.server_url);
-                    if (monitor) monitor.style.display = 'none';
-                    showToast(`✅ Navidrome đã hoàn tất quét thư viện! (${data.count || 0} bài hát)`, 'success', 4000);
-
-                    // If currently on library tab, reload tracks & stats
-                    if (currentTab === 'tab-library') {
-                        initStats();
-                        loadTracks();
-                    }
-                }
+            const status = await navidromeRequest('scan-status');
+            if (generation !== navidromeMonitorGeneration) return;
+            if (!status.success) throw new Error('Không đọc được tiến độ Navidrome.');
+            if (!status.scanning) {
+                stopNavidromeMonitor(); updateNavidromeUIStatus(true);
+                showNavidromeSync('Navidrome đã hoàn tất lượt quét thư viện.');
+                return;
             }
-        } catch (e) {
-            // Stop polling on error
-            clearInterval(navidromeScanInterval);
-            navidromeScanInterval = null;
+            document.getElementById('navi-scan-count-text').textContent = `${status.count || 0} bài đã xử lý`;
+            if (Date.now() - started > 10 * 60 * 1000) throw new Error('Navidrome vẫn có thể đang quét. Kiểm tra lại trạng thái khi cần.');
+            navidromeScanInterval = setTimeout(check, document.hidden ? 10000 : 2500);
+        } catch (error) {
+            if (generation !== navidromeMonitorGeneration) return;
+            stopNavidromeMonitor(); updateNavidromeUIStatus(false);
+            showNavidromeSync(error.message + ' Thay đổi cục bộ vẫn được giữ.', true);
         }
     };
-
-    navidromeScanInterval = setInterval(checkStatus, 2500);
-    // Run immediately once
-    setTimeout(checkStatus, 600);
+    navidromeScanInterval = setTimeout(check, 800);
 }
 
-// Smart Playlists Management
 async function loadSmartPlaylists() {
     const container = document.getElementById('smart-playlists-container');
     if (!container) return;
@@ -2562,7 +2475,7 @@ async function installAllSmartPlaylists() {
 }
 
 async function installSmartPlaylists(playlistKeys = null) {
-    const cfg = getNavidromeConfigFromStorage() || getNavidromeConfigFromInputs();
+    const cfg = getNavidromeConfigFromStorage();
     showToast('⚙️ Đang ghi file .nsp vào kho nhạc...', 'info');
 
     try {
@@ -2575,43 +2488,17 @@ async function installSmartPlaylists(playlistKeys = null) {
             })
         });
         const data = await res.json();
+        if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (data.success) {
             showToast(`✅ ${data.message}`, 'success', 4000);
             loadSmartPlaylists();
-            if (cfg && cfg.server_url) {
-                startNavidromeScanMonitor(cfg);
-            }
+
         } else {
             showToast(`❌ Lỗi: ${data.message}`, 'error');
         }
     } catch (e) {
         showToast(`❌ Lỗi: ${e.message}`, 'error');
     }
-}
-
-function getNavidromeConfigFromInputs() {
-    return {
-        server_url: document.getElementById('navi-url')?.value.trim() || '',
-        username: document.getElementById('navi-user')?.value.trim() || '',
-        password: document.getElementById('navi-pass')?.value.trim() || ''
-    };
-}
-
-function getNavidromeConfigFromStorage() {
-    const url = localStorage.getItem('navi_url');
-    if (!url) return null;
-    return {
-        server_url: url,
-        username: localStorage.getItem('navi_user') || '',
-        password: localStorage.getItem('navi_pass') || ''
-    };
-}
-
-function saveNavidromeConfig(cfg) {
-    if (!cfg) return;
-    localStorage.setItem('navi_url', cfg.server_url || '');
-    localStorage.setItem('navi_user', cfg.username || '');
-    localStorage.setItem('navi_pass', cfg.password || '');
 }
 
 // 8. Organize Dry-run & Batch Operations
@@ -2637,6 +2524,7 @@ function initOrganize() {
     const request = async (action, body = {}) => {
         const res = await fetch(`/api/organize/${action}`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
         const data = await res.json();
+        if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (!res.ok) throw new Error(res.status === 405 && action === 'edit'
             ? 'Máy chủ đang chạy bản cũ, chưa hỗ trợ lưu tên. Hãy khởi động lại ứng dụng rồi thử lại.'
             : data.detail || 'Không hoàn tất thao tác.');
@@ -2799,6 +2687,7 @@ function initOrganize() {
         try {
             const res = await fetch('/api/organize/dry-run', { method: 'POST' });
             const data = await res.json();
+            if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
             if (data.success) {
                 box.innerHTML = `<pre class="track-specs-badge mt-2" style="white-space: pre-wrap; font-size: 0.8rem; max-height: 250px; overflow-y: auto;">${escapeHtml(data.output)}</pre>`;
             } else {
@@ -2812,7 +2701,7 @@ function initOrganize() {
     document.getElementById('btn-tag-navidrome-all')?.addEventListener('click', async () => {
         const confirmed = await showConfirm(
             'Gắn tag Audiophile toàn bộ thư viện',
-            'Gắn tag Audiophile (Dynamic Range, True Hi-Res...) vào toàn bộ các bài hát trong thư viện?\n\nBản sao lưu metadata gốc sẽ được tạo tự động để bạn có thể hoàn tác bất kỳ lúc nào.'
+            'Gắn tag Audiophile (Dynamic Range, ReplayGain và nhãn định dạng) vào toàn bộ các bài hát trong thư viện?\n\nBản sao lưu metadata gốc sẽ được tạo tự động để bạn có thể hoàn tác bất kỳ lúc nào.'
         );
         if (!confirmed) return;
 
@@ -2834,7 +2723,6 @@ function initOrganize() {
                 tracks.push(...page);
             } while (tracks.length < total);
             let success = 0;
-            const naviCfg = getNavidromeConfigFromStorage();
             for (let i = 0; i < tracks.length; i++) {
                 const t = tracks[i];
                 if (box) box.innerHTML = `<span class="text-muted">Đang ghi tag [${i + 1}/${tracks.length}]: ${escapeHtml(t.title || t.original_path)}</span>`;
@@ -2842,12 +2730,13 @@ function initOrganize() {
                     const tagRes = await fetch('/api/audiophile/tag', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ filepath: t.original_path, navidrome_config: naviCfg })
+                        body: JSON.stringify({ filepath: t.original_path, defer_scan: true })
                     });
                     const tagData = await tagRes.json();
                     if (tagData.success) success++;
                 } catch (err) {}
             }
+            if (success > 0 && navidromeConnection?.configured) await triggerNavidromeRescan(false);
             if (box) box.innerHTML = `<div class="text-emerald">✅ Đã gắn tag và sao lưu metadata cho ${success}/${tracks.length} bài hát!</div>`;
             showToast(`✅ Đã gắn tag thành công cho ${success}/${tracks.length} bài hát!`, 'success');
             if (typeof loadTracks === 'function') loadTracks();
@@ -2878,9 +2767,10 @@ function initOrganize() {
             const res = await fetch('/api/audiophile/tag/rollback-all', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(naviCfg || {})
+                body: JSON.stringify({navidrome_config: naviCfg})
             });
             const data = await res.json();
+            if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
             if (data.success) {
                 if (box) box.innerHTML = `<div class="text-emerald">✅ ${escapeHtml(data.message)}</div>`;
                 showToast(`✅ ${data.message}`, 'success');
@@ -2908,13 +2798,13 @@ function initModal() {
     
     closeBtns.forEach(btn => {
         btn?.addEventListener('click', () => {
-            modal.classList.remove('active');
+            closeSpectrogramModal();
         });
     });
 
     modal?.addEventListener('click', (e) => {
         if (e.target === modal) {
-            modal.classList.remove('active');
+            closeSpectrogramModal();
         }
     });
 
@@ -2929,6 +2819,19 @@ function initModal() {
             modal.classList.remove('active');
             jumpToAudiophileLab(currentSelectedTrack.path);
         }
+    });
+
+    document.getElementById('modal-btn-duplicates').addEventListener('click', () => {
+        if (!currentSelectedTrack) return;
+        const title = currentSelectedTrack.title || '';
+        closeSpectrogramModal();
+        currentDupeType = 'meta';
+        dupeSearchQuery = title.toLowerCase().trim();
+        document.getElementById('dupe-search-input').value = title;
+        document.querySelectorAll('#dupe-filter-pills .filter-pill').forEach(pill => pill.classList.toggle('active', pill.dataset.dupetype === 'meta'));
+        document.getElementById('dupe-subtoolbar').style.display = 'flex';
+        document.getElementById('dupe-subfilter-pills').style.display = 'flex';
+        switchTab('tab-duplicates');
     });
 
     document.getElementById('modal-btn-rollback-tag')?.addEventListener('click', async () => {
@@ -2949,13 +2852,17 @@ function initModal() {
 function closeSpectrogramModal() {
     const modal = document.getElementById('spectrogram-modal');
     if (modal) modal.classList.remove('active');
+    trackDetailsOpener?.focus();
 }
 
 async function openSpectrogramModal(filepath, title, specs) {
     const modal = document.getElementById('spectrogram-modal');
+    trackDetailsOpener = document.activeElement;
     modal.classList.add('active');
+    modal.focus();
 
     currentSelectedTrack = { path: filepath, title, specs };
+    currentAuditResult = null;
     document.getElementById('modal-track-title').textContent = title || filepath;
     document.getElementById('modal-track-path').textContent = filepath;
 
@@ -2973,6 +2880,23 @@ async function openSpectrogramModal(filepath, title, specs) {
         }
     }
 
+    const track = libraryTrackDetails.get(filepath) || {};
+    document.getElementById('modal-btn-duplicates').hidden = !track.is_duplicate_meta;
+    document.getElementById('track-summary').innerHTML = [
+        ['Nghệ sĩ', track.artist || '—'], ['Album', track.album || '—'], ['Định dạng', specs || '—'],
+        ['Nguồn thông tin', track.verdict_source === 'audit' ? 'Kết quả kiểm tra đã lưu' : 'Metadata · nguồn master chưa xác thực']
+    ].map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('');
+    const diagnostics = document.getElementById('track-diagnostics');
+    diagnostics.open = false;
+    diagnostics.ontoggle = () => {
+        if (!diagnostics.open || diagnostics.dataset.path === filepath) return;
+        diagnostics.dataset.path = filepath;
+        loadTrackDiagnostics(filepath);
+    };
+    delete diagnostics.dataset.path;
+}
+
+function loadTrackDiagnostics(filepath) {
     const img = document.getElementById('spectrogram-img');
     const dspGrid = document.getElementById('dsp-metrics-grid');
     img.src = '';
@@ -2991,6 +2915,7 @@ async function openSpectrogramModal(filepath, title, specs) {
     })
     .then(r => r.json())
     .then(data => {
+        if (currentSelectedTrack?.path !== filepath) return;
         const cutoffLabel = data.cutoff_hz ? (data.cutoff_hz > 24000 ? '>24 kHz (Full Range)' : `${(data.cutoff_hz/1000).toFixed(1)} kHz (-${data.cutoff_drop_db || 0}dB)`) : 'Không rõ';
         dspGrid.innerHTML = `
             <div class="dsp-metric">
@@ -3023,6 +2948,7 @@ async function openSpectrogramModal(filepath, title, specs) {
     })
     .then(r => r.json())
     .then(data => {
+        if (currentSelectedTrack?.path !== filepath) return;
         currentAuditResult = data;
         const dr = data.dynamic_range || {};
         const integ = data.integrity || {};
@@ -3059,6 +2985,7 @@ async function openSpectrogramModal(filepath, title, specs) {
 }
 
 async function tagSingleTrack(filepath, btnElement = null) {
+    const originalText = btnElement?.textContent;
     if (btnElement) {
         btnElement.textContent = '⏳...';
         btnElement.disabled = true;
@@ -3071,6 +2998,7 @@ async function tagSingleTrack(filepath, btnElement = null) {
             body: JSON.stringify({ filepath, navidrome_config: naviCfg })
         });
         const data = await res.json();
+        if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (data.success) {
             showToast(`✅ ${data.message}`, 'success');
             if (typeof loadTracks === 'function') loadTracks();
@@ -3081,7 +3009,7 @@ async function tagSingleTrack(filepath, btnElement = null) {
         showToast(`❌ Lỗi: ${e.message}`, 'error');
     } finally {
         if (btnElement) {
-            btnElement.textContent = 'Tag';
+            btnElement.textContent = originalText;
             btnElement.disabled = false;
         }
     }
@@ -3108,6 +3036,7 @@ async function rollbackSingleTrack(filepath, btnElement = null) {
             body: JSON.stringify({ filepath, navidrome_config: naviCfg })
         });
         const data = await res.json();
+        if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (data.success) {
             showToast(`✅ ${data.message}`, 'success');
             if (typeof loadTracks === 'function') {
@@ -3142,40 +3071,41 @@ function switchABChannel(targetChannel) {
     }
 }
 
-function initNavidromeStorage() {
-    const elUrl = document.getElementById('navi-url');
-    const elUser = document.getElementById('navi-user');
-    const elPass = document.getElementById('navi-pass');
-
-    const savedUrl = localStorage.getItem('navi_url') || localStorage.getItem('navidrome_server_url');
-    const savedUser = localStorage.getItem('navi_user') || localStorage.getItem('navidrome_username');
-    const savedPass = localStorage.getItem('navi_pass') || localStorage.getItem('navidrome_password');
-
-    if (elUrl && savedUrl) elUrl.value = savedUrl;
-    if (elUser && savedUser) elUser.value = savedUser;
-    if (elPass && savedPass) elPass.value = savedPass;
-
-    [elUrl, elUser, elPass].forEach(el => {
-        if (!el) return;
-        el.addEventListener('input', () => {
-            saveNavidromeConfig(getNavidromeConfigFromInputs());
-        });
-    });
-}
-
 function initKeyboardShortcuts() {
     window.addEventListener('keydown', (e) => {
         const activeTag = document.activeElement ? document.activeElement.tagName : '';
         const isEditing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) ||
                           (document.activeElement && document.activeElement.isContentEditable);
 
-        // Quick Tab switching shortcuts: keys 1 to 6
+        const confirmation = document.getElementById('confirm-modal');
+        if (confirmation.style.display === 'flex') {
+            if (e.key === 'Escape') { e.preventDefault(); document.getElementById('confirm-modal-btn-cancel').click(); }
+            if (e.key === 'Tab') {
+                const buttons = [...confirmation.querySelectorAll('button')].filter(button => !button.disabled);
+                const first = buttons[0], last = buttons[buttons.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+            return;
+        }
+        const drawer = document.getElementById('spectrogram-modal');
+        if (drawer.classList.contains('active')) {
+            if (e.key === 'Escape') { e.preventDefault(); closeSpectrogramModal(); }
+            if (e.key === 'Tab') {
+                const focusable = [...drawer.querySelectorAll('button, a[href], summary, input')].filter(node => !node.disabled && node.getClientRects().length);
+                const first = focusable[0], last = focusable[focusable.length - 1];
+                if (e.shiftKey && (document.activeElement === first || document.activeElement === drawer)) { e.preventDefault(); last?.focus(); }
+                else if (!e.shiftKey && (document.activeElement === last || document.activeElement === drawer)) { e.preventDefault(); first?.focus(); }
+            }
+            return;
+        }
+        // Top-level navigation shortcuts, with legacy tool shortcuts retained.
         if (!isEditing && !e.ctrlKey && !e.metaKey && !e.altKey && e.key >= '1' && e.key <= '6') {
             const tabMap = {
-                '1': 'tab-library',
-                '2': 'tab-organize',
-                '3': 'tab-audiophile',
-                '4': 'tab-vault',
+                '1': 'tab-audiophile',
+                '2': 'tab-library',
+                '3': 'tab-tools',
+                '4': 'tab-navidrome',
                 '5': 'tab-duplicates',
                 '6': 'tab-navidrome'
             };
@@ -3216,8 +3146,9 @@ function initKeyboardShortcuts() {
         // Search shortcut: '/'
         if (e.key === '/' && !isEditing) {
             e.preventDefault();
-            const searchInput = document.getElementById('search-input');
+            const searchInput = document.getElementById('track-search-input');
             if (searchInput) {
+                if (currentTab !== 'tab-library') switchTab('tab-library');
                 searchInput.focus();
                 searchInput.select();
             }

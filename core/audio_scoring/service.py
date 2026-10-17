@@ -31,6 +31,7 @@ class AnalysisService:
             conn.executescript('''
                 PRAGMA journal_mode=WAL;
                 CREATE TABLE IF NOT EXISTS analysis_cache (key TEXT PRIMARY KEY, result TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS analysis_files (filepath TEXT PRIMARY KEY, result TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS scoring_jobs (id TEXT PRIMARY KEY, status TEXT NOT NULL,
                     total INTEGER DEFAULT 0, completed INTEGER DEFAULT 0, errors INTEGER DEFAULT 0,
                     options TEXT NOT NULL, message TEXT DEFAULT '');
@@ -38,6 +39,12 @@ class AnalysisService:
                     job_id TEXT NOT NULL, filepath TEXT NOT NULL, payload TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS scoring_results_job ON scoring_results(job_id,seq);
             ''')
+            # Keep one result per file across scans, including jobs created before the dashboard.
+            conn.execute("""INSERT OR IGNORE INTO analysis_files
+                SELECT r.filepath, json_extract(r.payload, '$.result') FROM scoring_results r
+                JOIN (SELECT filepath, MAX(seq) seq FROM scoring_results
+                      WHERE json_extract(payload, '$.result') IS NOT NULL GROUP BY filepath) latest
+                ON latest.seq = r.seq""")
             conn.execute("UPDATE scoring_jobs SET status='INTERRUPTED', message='Ứng dụng đã khởi động lại; hãy tạo lượt quét mới.' WHERE status IN ('QUEUED','SCANNING','RUNNING','CANCELLING')")
             conn.commit()
 
@@ -96,9 +103,33 @@ class AnalysisService:
                 with closing(self.connect()) as conn:
                     conn.execute('INSERT OR REPLACE INTO analysis_cache VALUES (?,?)', (key, json.dumps(data, ensure_ascii=False, allow_nan=False)))
                     conn.commit()
+            data['file_stat'] = {'size_bytes': after.st_size, 'mtime_ns': after.st_mtime_ns, 'ctime_ns': after.st_ctime_ns}
+            with closing(self.connect()) as conn:
+                conn.execute('INSERT OR REPLACE INTO analysis_files VALUES (?,?)',
+                             (str(path.relative_to(self.root)), json.dumps(data, ensure_ascii=False, allow_nan=False)))
+                conn.commit()
             return data
         finally:
             self.slots.release()
+
+    def dashboard_results(self):
+        with closing(self.connect()) as conn:
+            return {path: json.loads(result) for path, result in
+                    conn.execute("SELECT filepath,json_remove(result, '$.spectral', '$.mastering', '$.reference') FROM analysis_files")}
+
+    def saved_result(self, value):
+        path = self.resolve(value)
+        with closing(self.connect()) as conn:
+            row = conn.execute('SELECT result FROM analysis_files WHERE filepath=?',
+                               (str(path.relative_to(self.root)),)).fetchone()
+        if not row:
+            return None
+        result = json.loads(row[0])
+        stat = path.stat()
+        if (result.get('file_stat') != {'size_bytes': stat.st_size, 'mtime_ns': stat.st_mtime_ns, 'ctime_ns': stat.st_ctime_ns}
+                or result.get('engine_signature') != engine_signature() or result.get('rule_version') != self.config['version']):
+            return None
+        return result
 
     @staticmethod
     def _changed(before, after):

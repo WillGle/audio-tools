@@ -59,7 +59,7 @@ Truy cập giao diện Web tại: **`http://localhost:5050`**. Mặc định ch�
 
 ## Duyệt và sắp xếp kho nhạc local
 
-Ở tab **Sắp xếp**, nhập thư mục tải mới (tương đối trong kho,
+Trong **Sắp xếp**, nhập thư mục tải mới (tương đối trong kho,
 ví dụ `Downloads`), hoặc để trống để quét toàn bộ. Bấm **Đọc metadata & xem trước**.
 Ứng dụng đọc tag trong cả thư mục con và đề xuất
 `Nghệ sĩ / Album / Số bài - Tên bài.ext`, ưu tiên album artist để gom album.
@@ -92,7 +92,7 @@ cột và sắp xếp theo nghệ sĩ/album để duyệt mà không cần di ch
 
 ## Audio Authenticity & Integrity
 
-Mở tab **Kiểm tra âm thanh**, chọn phạm vi (một bài, các bài đã chọn hoặc thư mục),
+Mở **Tổng quan**, chọn phạm vi (một bài, các bài đã chọn hoặc thư mục),
 chọn chế độ rồi bấm **Bắt đầu kiểm tra**. Có thể tìm bài bằng tên và chọn bằng
 phím mũi tên/Enter, hoặc chọn nhiều bài ở Kho Nhạc rồi bấm nút kiểm tra.
 Kết quả hiển thị điểm authenticity, confidence, coverage, cảnh báo toàn vẹn và
@@ -170,3 +170,13 @@ BALANCED không chạy flaccheck để tránh thêm một lượt decode/toàn b
 Danh sách bài hát được quét từ vault hiện tại. Dashboard dùng kết quả kiểm định còn khớp engine, rule và file; nhóm CD/lossy có thể phân loại từ metadata khi chưa kiểm định, với chú thích ở nhãn bài hát. Bài chưa xác định không được gán số liệu chất lượng mẫu.
 
 CLI tổ chức thư viện dùng chung nhật ký `.vault_tiering_rollback.json` với Vault Tiering; khôi phục bằng `python organize_library.py --rollback /path/to/vault`. Khi có xung đột, file đích được giữ nguyên và mục rollback lỗi được giữ lại để thử lại.
+
+## Giao diện và kết nối Navidrome
+
+Ứng dụng mở ở **Tổng quan chất lượng**: tổng tệp, hi-res theo định dạng, nghi upsample, lossy/lỗi kỹ thuật, lossless tiêu chuẩn, cần xem xét và chưa kiểm tra. Bấm một nhóm để lọc ngay trên dashboard; **Chi tiết** mở bằng chứng đã lưu, **Quét toàn bộ kho** bắt đầu kiểm tra. Mỗi tệp chỉ thuộc một nhóm; kết quả thay đổi tệp hoặc phiên bản engine bị loại đến khi quét lại. Hi-res không xác minh độ phân giải gốc; nghi upsample chỉ là dấu hiệu phổ, không kết luận giả nguồn. Thanh điều hướng luôn ở trên cùng, mở trực tiếp **Tổng quan**, **Kho nhạc**, **Sắp xếp**, **Bài trùng**, **Phân nhóm**, **Ghi tag**, **Cài đặt**. Trên điện thoại thanh này cuộn ngang. Các chức năng xem trước, xác nhận, xuất, hoàn tác, lịch sử quét và hủy vẫn được giữ.
+
+Trong **Cài đặt**, lưu URL, tài khoản và mật khẩu Navidrome một lần. Hai ứng dụng phải đọc cùng tệp nhạc; đường dẫn mount có thể khác nhau. Kết nối được giữ trong `AUDIO_TOOLS_CACHE_DIR/navidrome.json` (mặc định `cache/navidrome.json`), quyền `0600`; API không trả lại mật khẩu. Thông tin trình duyệt từ phiên bản cũ được chuyển một lần rồi xóa khỏi localStorage sau khi lưu thành công. Mật khẩu trống giữ giá trị cũ khi URL và tài khoản không đổi; nút xóa kết nối loại bỏ cấu hình trên máy chủ.
+
+Sau mỗi đợt thay đổi tệp/tag hoặc hoàn tác, ứng dụng yêu cầu Navidrome quét một lần, kể cả khi chỉ một phần thao tác thành công. Kết quả cục bộ và trạng thái quét hiển thị riêng; lỗi kết nối không đảo ngược thay đổi cục bộ và có nút thử cập nhật lại. Quét đầy đủ là lựa chọn thủ công. Hoàn tất quét chỉ xác nhận lượt quét chung, không chứng minh mọi bài đã xuất hiện trên Navidrome.
+
+Danh sách kho được dùng lại tối đa 15 giây và làm mới sau thao tác thay đổi; bấm **Làm mới** để nhận ngay thay đổi bên ngoài. Không thêm dependency runtime; Playwright vẫn chỉ là tùy chọn kiểm tra trình duyệt.

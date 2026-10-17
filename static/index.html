@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hi-Res Vault Companion — Audiophile 7-Pillar Studio</title>
+    <title>Audio Scorer · Kiểm tra chất lượng nhạc</title>
     <meta name="description" content="Công cụ kiểm tra chất lượng âm thanh, tổ chức thư viện và tích hợp Navidrome cho audiophile.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=4.0">
+    <link rel="stylesheet" href="style.css?v=5.4">
 </head>
 <body>
     <div class="app-background"></div>
@@ -16,114 +13,105 @@
     <!-- ===== APP SHELL ===== -->
     <div class="app-shell">
 
-        <!-- ===== LEFT SIDEBAR ===== -->
-        <aside class="sidebar" id="sidebar">
-            <!-- Brand -->
-            <div class="sidebar-brand">
-                <div class="brand-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M2 10v4"></path><path d="M6 7v10"></path><path d="M10 4v16"></path>
-                        <path d="M14 8v8"></path><path d="M18 6v12"></path><path d="M22 10v4"></path>
-                    </svg>
-                </div>
-                <div class="sidebar-brand-text">
-                    <span class="sidebar-brand-name">Hi-Res Vault</span>
-                    <span class="sidebar-brand-sub">Audiophile Studio</span>
-                </div>
-            </div>
-
-            <!-- Nav Items -->
-            <nav class="sidebar-nav" role="navigation" aria-label="Điều hướng chính">
-                <button class="sidebar-nav-item active" data-tab="tab-library" id="btn-tab-library" aria-current="page">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle>
-                    </svg>
-                    <span class="nav-label">Kho nhạc</span>
-                </button>
-
-                <button class="sidebar-nav-item" data-tab="tab-organize" id="btn-tab-organize">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                    <span class="nav-label">Sắp xếp</span>
-                </button>
-
-                <button class="sidebar-nav-item" data-tab="tab-audiophile" id="btn-tab-audiophile">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                    </svg>
-                    <span class="nav-label">Kiểm tra âm thanh</span>
-                </button>
-
-                <button class="sidebar-nav-item" data-tab="tab-vault" id="btn-tab-vault">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                        <polyline points="2 17 12 22 22 17"></polyline>
-                        <polyline points="2 12 12 17 22 12"></polyline>
-                    </svg>
-                    <span class="nav-label">Kho 3 Cấp</span>
-                    <span class="nav-badge-chip" id="vault-badge-tier">3 Tiers</span>
-                </button>
-
-                <button class="sidebar-nav-item" data-tab="tab-duplicates" id="btn-tab-duplicates">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                    <span class="nav-label">Trùng lặp</span>
-                    <span id="dupe-badge-count" class="nav-badge-chip" title="Chưa tải kết quả quét trùng lặp">—</span>
-                </button>
-
-                <button class="sidebar-nav-item" data-tab="tab-navidrome" id="btn-tab-navidrome">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                        <line x1="8" y1="21" x2="16" y2="21"></line>
-                        <line x1="12" y1="17" x2="12" y2="21"></line>
-                    </svg>
-                    <span class="nav-label">Navidrome</span>
-                    <span class="nav-badge" id="navidrome-status-dot"></span>
-                </button>
-            </nav>
-
-            <!-- Sidebar Footer: vault path -->
-            <div class="sidebar-footer">
-                <div class="sidebar-vault-info" id="sidebar-vault-info">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-                    <span id="sidebar-root-label" class="sidebar-vault-path">Kho nhạc</span>
-                </div>
-            </div>
-        </aside>
-
         <!-- ===== MAIN CONTENT AREA ===== -->
         <div class="main-content-area">
             <!-- Top bar (mobile + page title + seamless Navidrome status) -->
             <header class="topbar">
+                <div class="sidebar" id="sidebar">
+                    <!-- Brand -->
+                    <div class="sidebar-brand">
+                        <div class="brand-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 10v4"></path><path d="M6 7v10"></path><path d="M10 4v16"></path>
+                                <path d="M14 8v8"></path><path d="M18 6v12"></path><path d="M22 10v4"></path>
+                            </svg>
+                        </div>
+                        <div class="sidebar-brand-text">
+                            <span class="sidebar-brand-name">Audio Scorer</span>
+                            <span class="sidebar-brand-sub">Kiểm tra chất lượng nhạc</span>
+                        </div>
+                    </div>
+
+                    <!-- Nav Items -->
+                    <nav class="sidebar-nav" aria-label="Điều hướng chính">
+                        <button class="sidebar-nav-item active" data-tab="tab-audiophile" id="btn-tab-audiophile" aria-current="page">
+                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h3l3-7 5 14 3-7h4"/></svg>
+                            <span class="nav-label">Phân tích chất lượng</span>
+                        </button>
+                        <button class="sidebar-nav-item" data-tab="tab-library" id="btn-tab-library">
+                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                            <span class="nav-label">Kho nhạc</span>
+                        </button>
+                        <button class="sidebar-nav-item" data-tab="tab-organize" id="btn-tab-organize"><span class="nav-label">Sắp xếp</span></button>
+                        <button class="sidebar-nav-item" data-tab="tab-duplicates" id="btn-tab-duplicates"><span class="nav-label">Bài trùng</span></button>
+                        <button class="sidebar-nav-item" data-tab="tab-vault" id="btn-tab-vault"><span class="nav-label">Phân nhóm</span></button>
+                        <button class="sidebar-nav-item" data-tab="tab-tools" id="btn-tab-tools">
+                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg>
+                            <span class="nav-label">Ghi tag</span>
+                        </button>
+                        <button class="sidebar-nav-item" data-tab="tab-navidrome" id="btn-tab-navidrome">
+                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg>
+                            <span class="nav-label">Cài đặt</span><span class="nav-badge" id="navidrome-status-dot"></span>
+                        </button>
+                    </nav>
+
+                    <!-- Sidebar Footer: vault path -->
+                    <div class="sidebar-footer">
+                        <div class="sidebar-vault-info" id="sidebar-vault-info">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                            <span id="sidebar-root-label" class="sidebar-vault-path">Kho nhạc</span>
+                        </div>
+                    </div>
+                </div>
                 <button class="sidebar-toggle" id="sidebar-toggle" title="Mở/đóng menu hoặc thu gọn thanh điều hướng (Ctrl+B)">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                 </button>
                 <div class="topbar-title-group">
-                    <h1 class="topbar-title" id="topbar-page-title">Kho nhạc</h1>
+                    <h1 class="topbar-title" id="topbar-page-title">Tổng quan chất lượng</h1>
                 </div>
                 <div class="topbar-status">
                     <!-- Seamless Navidrome Quick Pill -->
-                    <div class="navidrome-pill" id="navidrome-quick-pill" title="Trạng thái kết nối Navidrome. Bấm để chuyển tab cài đặt.">
+                    <div class="navidrome-pill" id="navidrome-quick-pill" role="status" title="Trạng thái kết nối Navidrome. Bấm để chuyển tab cài đặt.">
                         <span class="status-pulse-dot" id="navi-header-dot"></span>
-                        <span class="navidrome-pill-text" id="navi-header-text">Navidrome: Đang kiểm tra...</span>
+                        <button class="navidrome-pill-text" id="navi-header-text" type="button" title="Cài đặt Navidrome">Navidrome · Chưa kết nối</button>
                         <div class="navidrome-pill-actions">
                             <button class="btn-icon-xs" id="btn-quick-rescan" title="Kích hoạt quét nhanh thư viện Navidrome" type="button">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                             </button>
                             <a href="#" target="_blank" rel="noopener noreferrer" class="btn-icon-xs" id="btn-open-navidrome" title="Mở Web UI Navidrome" style="display: none;">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+Mở ↗
                             </a>
                         </div>
                     </div>
-                    <span class="cache-badge"><span class="status-dot-emerald"></span> 7 Tiêu Chuẩn Audiophile</span>
+
                 </div>
             </header>
 
             <!-- Tab sections -->
             <main class="page-content" id="page-content">
+
+                <div class="tool-back-row" id="tool-back-row" hidden><button class="btn btn-secondary btn-sm" type="button" data-tab="tab-tools">← Công cụ</button><span>Chọn phạm vi → Xem trước / kiểm tra → Xem lại → Áp dụng</span></div>
+                <div class="sync-notice" id="navidrome-sync-notice" role="status" hidden><span id="navidrome-sync-message"></span><button id="navidrome-retry" class="btn btn-sm btn-secondary" type="button" hidden>Thử cập nhật lại</button></div>
+                <section class="tab-content" id="tab-tools" aria-label="Công cụ">
+                    <div class="workspace-heading"><div><h2>Ghi tag &amp; hoàn tác</h2><p>Xem lại kết quả trước khi thay đổi tệp.</p></div></div>
+                    <details class="scoring-detail bulk-tools" open><summary>Ghi tag &amp; hoàn tác cho toàn bộ kho</summary><p class="text-secondary">Các thao tác này ghi metadata vào tệp. Bản sao lưu tag được giữ để hoàn tác.</p><div id="bulk-tools-slot">                    <!-- Card 3: Quality Tagging -->
+                    <div class="card glass-card">
+                        <div class="card-header">
+                            <h3>Metadata trong tệp</h3>
+
+                        </div>
+                        <div class="card-body">
+                            <p class="text-secondary">Ghi tag từ kết quả đo hoặc khôi phục tag đã sao lưu. Mỗi đợt thay đổi chỉ yêu cầu Navidrome cập nhật một lần.</p>
+                            <div class="btn-group" style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                                <button class="btn btn-emerald" id="btn-tag-navidrome-all">Ghi Metadata Tag Vào File Âm Thanh</button>
+                                <button class="btn btn-outline-rose" id="btn-rollback-all-tags" title="Hoàn tác toàn bộ các file đã gắn tag về lại metadata gốc">↩️ Hoàn Tác Toàn Bộ Tag Đã Ghi</button>
+                                <button class="btn btn-secondary" id="btn-run-dryrun">Xem Mô Phỏng Phân Loại Thư Mục (Dry-Run)</button>
+                            </div>
+                            <div id="organize-status-box" class="mt-4"></div>
+                        </div>
+                    </div>
+</div></details>
+                </section>
 
                 <!-- ===== TAB: Organize ===== -->
                 <section class="tab-content" id="tab-organize">
@@ -158,64 +146,8 @@
                 </section>
 
                 <!-- ===== TAB: Library ===== -->
-                <section class="tab-content active" id="tab-library">
-                    <!-- Stat Cards -->
-                    <div class="stats-grid mb-6">
-                        <div class="stat-card border-emerald clickable" data-filter="true_hires" title="Bấm để lọc PCM sample rate cao">
-                            <div class="stat-header">
-                                <span class="stat-title">PCM sample rate cao</span>
-                                <span class="stat-tag tag-emerald">24/96k+</span>
-                            </div>
-                            <div class="stat-value text-emerald" id="stat-true-hires">—</div>
-                            <p class="stat-desc">Nhóm định dạng; nguồn master chưa xác thực.</p>
-                        </div>
-
-                        <div class="stat-card border-cyan clickable" data-filter="dsd" title="Bấm để lọc Định dạng DSD">
-                            <div class="stat-header">
-                                <span class="stat-title">Định dạng DSD</span>
-                                <span class="stat-tag tag-cyan">Super Audio</span>
-                            </div>
-                            <div class="stat-value text-cyan" id="stat-true-dsd">—</div>
-                            <p class="stat-desc">DSD; không chứng minh nguồn SACD/native.</p>
-                        </div>
-
-                        <div class="stat-card border-amber clickable" data-filter="studio_master" title="Bấm để lọc Cần xem xét">
-                            <div class="stat-header">
-                                <span class="stat-title">Cần xem xét</span>
-                                <span class="stat-tag tag-amber">24-bit</span>
-                            </div>
-                            <div class="stat-value text-amber" id="stat-studio-master">—</div>
-                            <p class="stat-desc">Có bằng chứng cần kiểm tra chi tiết.</p>
-                        </div>
-
-                        <div class="stat-card border-rose highlight-warning clickable" data-filter="fake_hires" title="Bấm để lọc Lỗi toàn vẹn">
-                            <div class="stat-header">
-                                <span class="stat-title">Lỗi toàn vẹn</span>
-                                <span class="stat-tag tag-rose">Cần Chú Ý</span>
-                            </div>
-                            <div class="stat-value text-rose" id="stat-fake-hires">—</div>
-                            <p class="stat-desc">Lỗi giải mã/frame/checksum đã phát hiện.</p>
-                        </div>
-
-                        <div class="stat-card border-indigo clickable" data-filter="cd_lossless" title="Bấm để lọc CD Lossless">
-                            <div class="stat-header">
-                                <span class="stat-title">CD Lossless</span>
-                                <span class="stat-tag tag-indigo">16/44.1k</span>
-                            </div>
-                            <div class="stat-value text-indigo" id="stat-cd-lossless">—</div>
-                            <p class="stat-desc">Nhóm định dạng lossless, chưa xác thực nguồn.</p>
-                        </div>
-
-                        <div class="stat-card border-slate clickable" data-filter="lossy" title="Bấm để lọc MP3/AAC">
-                            <div class="stat-header">
-                                <span class="stat-title">Nhạc Nén (Lossy)</span>
-                                <span class="stat-tag tag-slate">MP3 / AAC</span>
-                            </div>
-                            <div class="stat-value text-slate" id="stat-lossy">—</div>
-                            <p class="stat-desc">Định dạng nén tổn hao thông thường.</p>
-                        </div>
-                    </div>
-
+                <section class="tab-content" id="tab-library">
+                    <div class="workspace-heading"><div><h2>Kho nhạc của bạn</h2><p>Tìm bài, kiểm tra và sắp xếp. Nghe trọn thư viện trên Navidrome.</p></div><button id="library-refresh" class="btn btn-secondary btn-sm" type="button">Làm mới</button></div>
                     <!-- Toolbar & Filter Pills -->
                     <div class="explorer-toolbar mb-3">
                         <div class="search-box">
@@ -225,19 +157,20 @@
 
                         <div class="filter-pills" id="filter-pills">
                             <button class="filter-pill active" data-filter="all">Tất cả (<span id="stat-total-pill">—</span>)</button>
-                            <button class="filter-pill pill-dot-emerald" data-filter="true_hires">PCM sample rate cao</button>
-                            <button class="filter-pill pill-dot-rose" data-filter="fake_hires">Lỗi toàn vẹn</button>
-                            <button class="filter-pill pill-dot-amber" data-filter="studio_master">Cần xem xét</button>
-                            <button class="filter-pill pill-dot-indigo" data-filter="cd_lossless">CD Lossless</button>
-                            <button class="filter-pill pill-dot-slate" data-filter="lossy">Lossy MP3</button>
+                            <button class="filter-pill pill-dot-emerald" data-filter="true_hires">PCM tần số cao <span id="stat-true-hires">—</span></button>
+                            <button class="filter-pill pill-dot-rose" data-filter="fake_hires">Lỗi toàn vẹn <span id="stat-fake-hires">—</span></button>
+                            <button class="filter-pill pill-dot-amber" data-filter="studio_master">Cần xem xét <span id="stat-studio-master">—</span></button>
+                            <button class="filter-pill pill-dot-indigo" data-filter="cd_lossless">CD lossless <span id="stat-cd-lossless">—</span></button>
+                            <button class="filter-pill pill-dot-slate" data-filter="lossy">Lossy <span id="stat-lossy">—</span></button>
+                            <button class="filter-pill" data-filter="dsd">DSD <span id="stat-true-dsd">—</span></button>
                             <button class="filter-pill pill-dot-rose" data-filter="duplicate_meta" id="pill-filter-dupe-meta" title="Lọc các bài hát bị trùng lặp metadata trong kho nhạc">
-                                ⚠️ Trùng Metadata (<span id="stat-dupe-meta-pill">0</span>)
+                                Trùng metadata (<span id="stat-dupe-meta-pill">0</span>)
                             </button>
                         </div>
 
                         <button class="btn btn-secondary btn-sm" id="btn-toggle-col-filters" title="Bật/Tắt thanh tìm kiếm & lọc chi tiết theo cột">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-                            <span>Lọc Cột</span>
+                            <span>Bộ lọc chi tiết</span>
                             <span class="badge" id="col-filter-badge" style="display:none; font-size:0.7rem; background: var(--accent-indigo);">0</span>
                         </button>
                     </div>
@@ -249,8 +182,9 @@
                         <button class="btn btn-xs btn-outline-rose" id="btn-clear-all-col-filters">Xóa tất cả lọc</button>
                     </div>
 
+                    <label class="library-detail-toggle"><input id="library-detail-columns" type="checkbox"> Hiện đường dẫn &amp; thông số</label>
                     <!-- Tracks Table -->
-                    <p class="table-hint" id="library-table-hint">Mỗi hàng là một bài hát; đường dẫn gốc nằm dưới tên bài. Cuộn ngang bảng nếu chưa thấy đủ cột và nút thao tác.</p>
+                    <p class="table-hint" id="library-table-hint">Bấm tên bài để xem chi tiết. Chọn nhiều bài để kiểm tra hoặc ghi tag cùng lúc.</p>
                     <div class="table-container" tabindex="0" role="region" aria-label="Danh sách nhạc" aria-describedby="library-table-hint">
                         <table class="tracks-table" id="tracks-table">
                             <colgroup><col><col><col><col><col><col><col><col></colgroup>
@@ -263,7 +197,7 @@
                                         <div class="th-content"><span>#</span> <span class="sort-icon" id="sort-icon-index">↕</span></div>
                                     </th>
                                     <th class="sortable-th" data-sort="title" title="Bấm để sắp xếp theo Tên bài hát">
-                                        <div class="th-content"><span>Bài Hát • Tên Tệp</span> <span class="sort-icon" id="sort-icon-title">↕</span></div>
+                                        <div class="th-content"><span>Bài hát</span> <span class="sort-icon" id="sort-icon-title">↕</span></div>
                                     </th>
                                     <th class="sortable-th" data-sort="artist" title="Bấm để sắp xếp theo Nghệ sĩ">
                                         <div class="th-content"><span>Nghệ Sĩ</span> <span class="sort-icon" id="sort-icon-artist">↕</span></div>
@@ -275,12 +209,12 @@
                                         <div class="th-content"><span>Định Dạng</span> <span class="sort-icon" id="sort-icon-format">↕</span></div>
                                     </th>
                                     <th class="sortable-th" data-sort="verdict" style="width: 150px;" title="Bấm để sắp xếp theo Đánh giá chất lượng">
-                                        <div class="th-content"><span>Đánh Giá</span> <span class="sort-icon" id="sort-icon-verdict">↕</span></div>
+                                        <div class="th-content"><span>Trạng thái</span> <span class="sort-icon" id="sort-icon-verdict">↕</span></div>
                                     </th>
                                     <th style="width: 220px; text-align: right;">Thao Tác</th>
                                 </tr>
                                 <!-- Interactive Column Filter Row -->
-                                <tr class="col-filter-row" id="col-filter-row">
+                                <tr class="col-filter-row" id="col-filter-row" style="display:none;">
                                     <th style="text-align: center; padding: 4px;">
                                         <button id="btn-reset-col-filters" class="btn btn-xs btn-outline" title="Đặt lại bộ lọc cột" style="padding: 2px 5px; font-size: 0.72rem;">✕</button>
                                     </th>
@@ -339,9 +273,10 @@
                         </div>
                         <div class="batch-actions-group">
                             <button class="btn btn-sm btn-primary" id="btn-batch-score">Kiểm tra đã chọn</button>
-                            <button class="btn btn-sm btn-emerald" id="btn-batch-tag" title="Ghi tag chuẩn chất lượng vào các bài đã chọn">🏷️ Ghi Tag Metadata</button>
-                            <button class="btn btn-sm btn-primary" id="btn-batch-audiophile-tag" title="Chạy kiểm định và gắn tag 7 chuẩn cho các bài đã chọn">🔬 Ghi Tag 7 Chuẩn</button>
-                            <button class="btn btn-sm btn-outline-rose" id="btn-batch-clear-selection">✕ Bỏ Chọn</button>
+                            <button class="btn btn-sm btn-secondary" id="btn-batch-organize" type="button">Sắp xếp thư mục…</button>
+                            <details class="batch-more"><summary class="btn btn-sm btn-secondary">Thêm</summary><div class="batch-more-menu"><button class="btn btn-sm btn-emerald" id="btn-batch-tag" title="Ghi tag chuẩn chất lượng vào các bài đã chọn">Ghi tag phân loại</button>
+                            <button class="btn btn-sm btn-primary" id="btn-batch-audiophile-tag" title="Chạy kiểm định và gắn tag 7 chuẩn cho các bài đã chọn">Kiểm tra &amp; ghi tag</button>
+                            </div></details><button class="btn btn-sm btn-outline-rose" id="btn-batch-clear-selection">Bỏ chọn</button>
                         </div>
                     </div>
 
@@ -368,11 +303,25 @@
                 </section>
 
                 <!-- ===== TAB: Audiophile Studio ===== -->
-                <section class="tab-content" id="tab-audiophile">
+                <section class="tab-content active" id="tab-audiophile">
+                    <div class="workspace-heading quality-heading"><div><span class="scorer-eyebrow">AUDIO SCORER / TỔNG QUAN KHO NHẠC</span><h2>Chất lượng kho nhạc</h2><p>Hi-res, nghi upsample và tệp cần chú ý — trong một màn hình.</p></div><button class="btn btn-primary" id="dashboard-scan" type="button">Quét toàn bộ kho</button></div>
+                    <p class="scorer-state" id="scorer-state" role="status">Chọn một bài hoặc quét kho để bắt đầu.</p>
+                    <div class="quality-cards" aria-label="Thống kê chất lượng">
+<button type="button" class="quality-card" data-quality="all" aria-pressed="true"><span>Tổng số tệp</span><strong id="quality-all">—</strong><small>Toàn bộ kho nhạc</small></button>
+<button type="button" class="quality-card" data-quality="hires" aria-pressed="false"><span>Hi-res · định dạng</span><strong id="quality-hires">—</strong><small>Lossless >16 bit / >48 kHz</small></button>
+<button type="button" class="quality-card" data-quality="upsample" aria-pressed="false"><span>Nghi upsample</span><strong id="quality-upsample">—</strong><small>Có dấu hiệu giới hạn phổ</small></button>
+<button type="button" class="quality-card" data-quality="low_quality" aria-pressed="false"><span>Lossy / lỗi kỹ thuật</span><strong id="quality-low_quality">—</strong><small>Codec lossy hoặc kiểm tra báo lỗi</small></button>
+<button type="button" class="quality-card" data-quality="standard" aria-pressed="false"><span>Lossless tiêu chuẩn</span><strong id="quality-standard">—</strong><small>Không có cảnh báo đáng kể</small></button>
+<button type="button" class="quality-card" data-quality="review" aria-pressed="false"><span>Cần xem xét</span><strong id="quality-review">—</strong><small>Sơ bộ hoặc có cảnh báo</small></button>
+<button type="button" class="quality-card" data-quality="unchecked" aria-pressed="false"><span>Chưa kiểm tra</span><strong id="quality-unchecked">—</strong><small>Chưa có kết quả còn hiệu lực</small></button>
+                    </div>
+                    <p class="quality-note" id="dashboard-summary" role="status">Đang đọc kết quả đã lưu…</p>
+                    <p class="quality-note">Nghi upsample chưa phải kết luận giả nguồn. Hi-res là định dạng, không xác minh nguồn master hay độ phân giải gốc; lossy không đồng nghĩa nghe kém.</p>
+                    <section class="quality-files" aria-labelledby="dashboard-files-heading"><div class="workspace-heading"><h3 id="dashboard-files-heading">Tất cả tệp</h3><button class="btn btn-secondary btn-sm" id="dashboard-refresh" type="button">Làm mới</button></div><div class="table-container"><table class="tracks-table"><thead><tr><th>Tệp nhạc</th><th>Phân loại</th><th>Điểm</th><th></th></tr></thead><tbody id="dashboard-files"></tbody></table></div><div class="quality-pagination"><button class="btn btn-secondary btn-sm" id="dashboard-prev" disabled>Trước</button><span id="dashboard-page"></span><button class="btn btn-secondary btn-sm" id="dashboard-next" disabled>Tiếp</button></div></section>
                     <div class="audiophile-banner">
                         <div class="audiophile-banner-content">
                             <div>
-                                <h2>Kiểm tra âm thanh</h2>
+                                <h2>Bắt đầu kiểm tra</h2>
                                 <p>Chọn nhạc → kiểm tra → xem bằng chứng. Phân tích cục bộ, không thay đổi tệp nhạc.</p>
                             </div>
                             <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
@@ -384,7 +333,7 @@
 
                     <section class="pillar-card border-indigo scoring-panel" aria-labelledby="scoring-heading">
                         <details id="scoring-setup" open>
-                            <summary id="scoring-heading">Thiết lập kiểm tra · chọn nhạc và chế độ</summary>
+                            <summary id="scoring-heading">1. Chọn nhạc để chấm điểm</summary>
                         <form id="scoring-form">
                             <div class="scoring-controls">
                                 <label>Phạm vi <select id="scoring-target"><option value="single">Một bài hát</option><option value="selected">Các bài đã chọn trong Kho nhạc</option><option value="folder">Thư mục / toàn bộ kho</option></select></label>
@@ -407,13 +356,14 @@
                                 <p>Quét cả thư mục con. Đường dẫn tính từ thư mục kho nhạc.</p>
                             </div>
                             <div class="scoring-controls">
-                                <label>Chế độ <select id="scoring-mode" aria-describedby="scoring-mode-help"><option value="FAST">Nhanh · sơ bộ</option><option value="BALANCED" selected>Cân bằng · khuyên dùng</option><option value="DEEP">Chuyên sâu · lâu hơn</option></select></label>
+                                <span class="text-secondary" id="scoring-mode-label">Cân bằng · khuyên dùng</span>
                                 <button type="submit" class="btn btn-primary" id="scoring-single" disabled>Bắt đầu kiểm tra</button>
                             </div>
                             <p id="scoring-mode-help" class="text-secondary">Giải mã toàn tệp, kiểm tra toàn vẹn và đo nhiều vùng phổ.</p>
-                        <details class="scoring-detail"><summary>Tùy chọn nâng cao · kỳ vọng nguồn và tệp tham chiếu</summary>
+                        <details class="scoring-detail" id="scoring-advanced"><summary>Tùy chọn nâng cao · chế độ, nguồn và tệp tham chiếu</summary>
                             <p>Áp dụng cho mọi bài trong lượt quét. Đường dẫn tham chiếu phải nằm trong kho nhạc; mức tin cậy do bạn xác nhận.</p>
                             <div class="scoring-controls">
+                                <label>Chế độ <select id="scoring-mode" aria-describedby="scoring-mode-help"><option value="FAST">Nhanh · sơ bộ</option><option value="BALANCED" selected>Cân bằng · khuyên dùng</option><option value="DEEP">Chuyên sâu · lâu hơn</option></select></label>
                                 <label>Số tệp song song <input id="scoring-workers" type="number" min="1" max="4" value="2"></label>
                                 <label>Codec <input id="claim-codec" placeholder="flac / alac / pcm_s24le"></label>
                                 <label>Container <input id="claim-container" placeholder="flac / wav / m4a"></label>
@@ -447,13 +397,20 @@
                         <button id="scoring-more" class="btn btn-secondary" hidden>Xem thêm kết quả</button>
                         </details>
                         <section id="scoring-result" aria-labelledby="scoring-result-heading" tabindex="-1" hidden>
+                        <div class="scorer-scorecard" id="scorer-scorecard" data-level="unknown">
+                            <div class="scorer-dial" id="scorer-dial" style="--score-fill: 0%;"><div><strong id="scorer-score-value">—</strong><span>ĐIỂM KỸ THUẬT / 100</span></div></div>
+                            <p id="scorer-assessment">Chưa có kết quả</p>
+                            <dl class="scorer-evidence"><div><dt>Độ phủ</dt><dd id="scorer-coverage">—</dd></div><div><dt>Tin cậy</dt><dd id="scorer-confidence">—</dd></div></dl>
+                            <small>Điểm không đánh giá chất lượng nghe.</small>
+                        </div>
+
                         <p class="text-secondary">Chi tiết bài đang chọn</p>
                         <h2 id="auth-filename"></h2>
+                        <div id="auth-warnings" role="alert"></div>
                         <div class="scoring-score-header"><h3 id="scoring-result-heading">Authenticity &amp; Integrity Score</h3><span id="auth-score">N/A</span></div>
                         <p id="auth-verdict" role="status">Chọn một bài ở bên dưới hoặc quét thư mục để đo.</p>
                         <p id="auth-confidence">Độ tin cậy: chưa đo · Coverage: chưa đo</p>
                         <p class="text-secondary scoring-note">Điểm không đánh giá chất lượng nghe. Độ phân giải cao không bảo đảm âm thanh hay.</p>
-                        <div id="auth-warnings" role="alert"></div>
                         <details class="scoring-detail" id="auth-properties-panel"><summary>Đối chiếu thông số · khai báo và đo được</summary><div id="auth-properties"></div></details>
                         <div id="auth-details"></div>
                         <details class="scoring-detail"><summary>Phổ theo cửa sổ và từng kênh</summary>
@@ -648,7 +605,7 @@
                     <div class="audiophile-banner">
                         <div class="audiophile-banner-content">
                             <div>
-                                <h2>Tự Động Xuất Cấu Trúc Kho Nhạc 3 Cấp (Vault Tiering)</h2>
+                                <h2>Nhóm tệp theo định dạng</h2>
                                 <p>1-Click tổ chức toàn bộ thư viện thành 3 tầng chuẩn Audiophile: DSD &amp; PCM sample rate cao, định dạng Lossless, và Cách ly (Quarantine) các tệp Lỗi toàn vẹn, MP3, Bit-Rot lỗi.</p>
                             </div>
                         </div>
@@ -693,7 +650,7 @@
                         </div>
                         <div class="btn-group">
                             <button class="btn btn-secondary" id="btn-rollback-tiering" title="Khôi phục lại vị trí cũ nếu đã chọn Move">Khôi Phục (Rollback)</button>
-                            <button class="btn btn-emerald" id="btn-execute-tiering">1-Click Thực Thi Phân Cấp Kho Nhạc</button>
+                            <button class="btn btn-emerald" id="btn-execute-tiering">Áp dụng kế hoạch</button>
                         </div>
                     </div>
 
@@ -766,7 +723,7 @@
 
                     <div class="technical-note mb-4" style="padding: 1.35rem 1.65rem;">
                         <div class="tech-note-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.4rem;">
-                            <h4 id="dupe-title-text" style="font-size: 0.95rem;">Trùng 100% Byte (An toàn tuyệt đối)</h4>
+                            <h4 id="dupe-title-text" style="font-size: 0.95rem;">Tệp giống hệt từng byte</h4>
                             <span id="dupe-selection-summary" class="stat-tag tag-emerald" style="padding: 3px 10px;">Đang giữ 0 bài gốc, chọn 0 bản phụ để lưu trữ</span>
                         </div>
                         <p id="dupe-desc-text" style="line-height: 1.5;">Các file có cùng mã băm MD5 tuyệt đối. Có thể di chuyển các bản thừa vào thư mục <code>_Duplicates_Archive/</code> để giải phóng dung lượng đĩa mà không hề làm mất bài hát gốc.</p>
@@ -779,6 +736,7 @@
 
                 <!-- ===== TAB: Navidrome ===== -->
                 <section class="tab-content" id="tab-navidrome">
+                    <div class="settings-root"><h2>Thư mục nhạc</h2><code id="settings-root-path">Đang tải…</code><p>Ứng dụng và Navidrome cần đọc cùng các tệp nhạc. Đường dẫn gắn thư mục trên hai máy có thể khác nhau.</p><p class="text-secondary">Thư mục được đặt bằng HIRES_VAULT_DIR khi khởi động ứng dụng.</p></div>
                     <!-- Navidrome Hero Banner -->
                     <div class="navidrome-hero-card glass-card mb-6">
                         <div class="navidrome-hero-content">
@@ -786,8 +744,8 @@
                                 <span class="status-pulse-dot" id="navi-hero-dot"></span>
                                 <span id="navi-hero-status-label">Đang kiểm tra kết nối...</span>
                             </div>
-                            <h2>Tích Hợp Máy Chủ Nghe Nhạc Navidrome</h2>
-                            <p class="text-secondary">Kết nối đồng bộ 2 chiều qua Subsonic REST API: tự động cập nhật thư viện, hiển thị tag kiểm định và tạo Smart Playlists theo chuẩn Audiophile.</p>
+                            <h2>Kết nối Navidrome</h2>
+                            <p class="text-secondary">Cập nhật thư viện Navidrome sau khi thay đổi tệp. Việc nghe nhạc tiếp tục trên Navidrome.</p>
                         </div>
                         <div class="navidrome-hero-actions">
                             <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="btn-hero-open-navidrome" style="display: none;">
@@ -801,14 +759,14 @@
                         <!-- Card 1: Subsonic REST API Config -->
                         <div class="card glass-card">
                             <div class="card-header">
-                                <h3>Cấu Hình Subsonic REST API</h3>
+                                <h3>Máy chủ Navidrome</h3>
                                 <span class="badge" id="navidrome-badge">Chưa kết nối</span>
                             </div>
                             <div class="card-body">
-                                <p class="text-muted mb-4">Nhập thông tin máy chủ Navidrome (LXC IP hoặc localhost) để đồng bộ tự động khi phân loại hoặc đổi tag.</p>
+                                <p class="text-muted mb-4">Lưu kết nối một lần. Mật khẩu được giữ trên máy chạy ứng dụng, không lưu trong trình duyệt.</p>
                                 <div class="form-group">
-                                    <label for="navi-url">Navidrome URL (LXC Container IP / Host)</label>
-                                    <input type="text" id="navi-url" class="form-input" placeholder="http://192.168.1.x:4533" value="http://localhost:4533">
+                                    <label for="navi-url">Địa chỉ Navidrome</label>
+                                    <input type="text" id="navi-url" class="form-input" placeholder="http://192.168.1.x:4533">
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
@@ -817,13 +775,15 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="navi-pass">Password</label>
-                                        <input type="password" id="navi-pass" class="form-input" placeholder="••••••••">
+                                        <input type="password" id="navi-pass" class="form-input" autocomplete="new-password" placeholder="Nhập mật khẩu"><small id="navi-password-help">Để trống để giữ mật khẩu đã lưu.</small>
                                     </div>
                                 </div>
                                 <div class="btn-group mt-4">
-                                    <button class="btn btn-primary" id="btn-test-navidrome">Kiểm Tra Kết Nối (Ping)</button>
-                                    <button class="btn btn-secondary" id="btn-trigger-navidrome-scan">Kích Hoạt Quét Kho Nhạc</button>
+                                    <button class="btn btn-primary" id="btn-test-navidrome">Lưu &amp; kiểm tra</button>
+                                    <button class="btn btn-secondary" id="btn-trigger-navidrome-scan">Cập nhật thư viện</button>
                                 </div>
+                                <label class="library-detail-toggle"><input type="checkbox" id="navi-full-scan"> Quét đầy đủ ở lần cập nhật thủ công tiếp theo</label>
+                                <button class="btn btn-secondary btn-sm" id="navi-disconnect" type="button">Xóa kết nối đã lưu</button>
                                 <div id="navi-result-msg" class="mt-4"></div>
 
                                 <!-- Live Scan Monitor -->
@@ -852,27 +812,6 @@
                         </div>
                     </div>
 
-                    <!-- Card 3: Quality Tagging -->
-                    <div class="card glass-card">
-                        <div class="card-header">
-                            <h3>Gắn Tag Phân Loại Chất Lượng Vào File Nhạc</h3>
-                            <span class="stat-tag tag-emerald">Audiophile Ready</span>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted mb-3">Ghi nhãn tiêu chuẩn <code>[PCM sample rate cao]</code>, <code>[Studio Master]</code> hoặc <code>[Lỗi toàn vẹn]</code> vào trường metadata <code>COMMENT</code> để Navidrome lọc và tạo Smart Playlist.</p>
-                            <div class="alert-box alert-indigo mb-4">
-                                <div class="alert-content">
-                                    <strong>Tiêu chuẩn tích hợp:</strong> Khi bạn bấm ghi tag hoặc sắp xếp thư mục, ứng dụng sẽ <em>tự động gọi Navidrome Rescan</em> ngay sau đó để máy chủ cập nhật bài hát lập tức.
-                                </div>
-                            </div>
-                            <div class="btn-group" style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
-                                <button class="btn btn-emerald" id="btn-tag-navidrome-all">Ghi Metadata Tag Vào File Âm Thanh</button>
-                                <button class="btn btn-outline-rose" id="btn-rollback-all-tags" title="Hoàn tác toàn bộ các file đã gắn tag về lại metadata gốc">↩️ Hoàn Tác Toàn Bộ Tag Đã Ghi</button>
-                                <button class="btn btn-secondary" id="btn-run-dryrun">Xem Mô Phỏng Phân Loại Thư Mục (Dry-Run)</button>
-                            </div>
-                            <div id="organize-status-box" class="mt-4"></div>
-                        </div>
-                    </div>
                 </section>
 
             </main>
@@ -882,7 +821,7 @@
     <!-- ===== MODALS ===== -->
 
     <!-- Spectrogram & Full Audiophile Audit Modal -->
-    <div class="modal-backdrop" id="spectrogram-modal">
+    <div class="modal-backdrop track-drawer" id="spectrogram-modal" role="dialog" aria-modal="true" aria-labelledby="modal-track-title" tabindex="-1">
         <div class="modal-card" style="max-width: 900px;">
             <div class="modal-header">
                 <div class="modal-title-group">
@@ -896,6 +835,10 @@
                 <button class="btn-close" id="modal-close-btn" aria-label="Đóng chi tiết bài hát">&times;</button>
             </div>
             <div class="modal-body">
+                <dl class="track-summary" id="track-summary"></dl>
+                <p class="text-secondary">Kiểm tra âm thanh để xem cảnh báo, độ phủ và bằng chứng. Thông số định dạng không xác minh nguồn master.</p>
+                <details id="track-diagnostics" class="scoring-detail"><summary>Đo thông số &amp; xem phổ âm</summary>
+
                 <div class="spectrogram-image-container" id="spectrogram-img-container">
                     <img id="spectrogram-img" src="" alt="Spectrogram">
                 </div>
@@ -915,12 +858,14 @@
                         <div class="dr-stat-mini"><div class="dr-stat-label">Phân Cấp Vault</div><div class="dr-stat-val" id="modal-audit-tier" style="font-size: 0.78rem;">--</div></div>
                     </div>
                 </div>
+                </details>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="modal-btn-open-lab">Kiểm tra âm thanh</button>
+                <button class="btn btn-secondary" id="modal-btn-duplicates" hidden>So sánh bản trùng</button>
                 <button class="btn btn-secondary" id="modal-btn-close">Đóng</button>
-                <button class="btn btn-outline-rose" id="modal-btn-rollback-tag" title="Hoàn tác và khôi phục metadata gốc">↩️ Hoàn Tác Tag</button>
-                <button class="btn btn-primary" id="modal-btn-apply-tag">Ghi Tag Đầy Đủ Vào File</button>
+                <button class="btn btn-outline-rose" id="modal-btn-rollback-tag" title="Hoàn tác và khôi phục metadata gốc">Hoàn tác tag</button>
+                <button class="btn btn-primary" id="modal-btn-apply-tag">Kiểm tra &amp; ghi tag</button>
             </div>
         </div>
     </div>
@@ -967,7 +912,7 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Confirmation Modal -->
-    <div class="modal-backdrop" id="confirm-modal" style="display: none;">
+    <div class="modal-backdrop" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" style="display: none;">
         <div class="modal-card modal-confirm-card">
             <div class="modal-header">
                 <h3 id="confirm-modal-title">Xác Nhận Thao Tác</h3>
@@ -983,56 +928,10 @@
         </div>
     </div>
 
-    <script src="app.js?v=3.3"></script>
-    <script src="scoring.js?v=1"></script>
+    <script src="app.js?v=5.3"></script>
+    <script src="scoring.js?v=4"></script>
 
     <!-- Sidebar toggle & topbar title update -->
-    <script>
-    (function() {
-        // Sidebar toggle for mobile
-        const toggleBtn = document.getElementById('sidebar-toggle');
-        const sidebar = document.getElementById('sidebar');
-        if (toggleBtn && sidebar) {
-            toggleBtn.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-            });
-        }
 
-        // Update topbar title when tab changes
-        const titles = {
-            'tab-library': 'Kho nhạc',
-            'tab-organize': 'Sắp xếp',
-            'tab-audiophile': 'Kiểm tra âm thanh',
-            'tab-vault': 'Kho 3 Cấp',
-            'tab-duplicates': 'Trùng lặp',
-            'tab-navidrome': 'Navidrome'
-        };
-        const titleEl = document.getElementById('topbar-page-title');
-        const navItems = document.querySelectorAll('.sidebar-nav-item');
-        navItems.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.dataset.tab;
-                if (titleEl && titles[tab]) titleEl.textContent = titles[tab];
-                navItems.forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
-                btn.classList.add('active');
-                btn.setAttribute('aria-current', 'page');
-                // Close sidebar on mobile after click
-                if (window.innerWidth < 900 && sidebar) {
-                    sidebar.classList.add('collapsed');
-                }
-            });
-        });
-
-        // Update sidebar root label from stats API
-        fetch('/api/stats').then(r => r.json()).then(d => {
-            const el = document.getElementById('sidebar-root-label');
-            if (el && d.root_directory) {
-                const parts = d.root_directory.split('/');
-                el.textContent = parts[parts.length - 1] || d.root_directory;
-                el.title = d.root_directory;
-            }
-        }).catch(() => {});
-    })();
-    </script>
 </body>
 </html>

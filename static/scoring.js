@@ -16,6 +16,53 @@
         CANCELLING: 'Đang hủy', COMPLETED: 'Đã hoàn tất', CANCELLED: 'Đã hủy',
         FAILED: 'Không hoàn tất', INTERRUPTED: 'Bị gián đoạn khi khởi động lại'};
 
+    const categoryNames = {all: 'Tất cả tệp', hires: 'Hi-res · định dạng', upsample: 'Nghi upsample',
+        low_quality: 'Lossy / lỗi kỹ thuật', standard: 'Lossless tiêu chuẩn', review: 'Cần xem xét', unchecked: 'Chưa kiểm tra'};
+    let dashboardCategory = 'all', dashboardOffset = 0, dashboardGeneration = 0;
+    async function refreshDashboard() {
+        const generation = ++dashboardGeneration;
+        try {
+            const data = await request(`/api/quality-dashboard?category=${dashboardCategory}&offset=${dashboardOffset}&limit=10`);
+            if (generation !== dashboardGeneration) return;
+            Object.entries({all: data.total, ...data.counts}).forEach(([key, value]) => {
+                el(`quality-${key}`).textContent = value.toLocaleString('vi-VN');
+            });
+            el('dashboard-summary').textContent = `${data.total - data.counts.unchecked}/${data.total} tệp có kết quả còn hiệu lực · Mỗi tệp chỉ thuộc một nhóm.`;
+            el('dashboard-files-heading').textContent = categoryNames[dashboardCategory];
+            const body = el('dashboard-files'); body.replaceChildren();
+            data.files.forEach(file => {
+                const row = document.createElement('tr');
+                const title = text('td', file.title, row);
+                text('small', `${file.artist} · ${file.original_path}`, title).className = 'scoring-row-note';
+                const badge = text('span', categoryNames[file.category], text('td', '', row));
+                badge.className = 'quality-label'; badge.dataset.category = file.category;
+                text('td', file.score == null ? '—' : `${file.score}/100`, row);
+                const button = text('button', file.category === 'unchecked' ? 'Kiểm tra' : 'Chi tiết', text('td', '', row));
+                button.className = 'btn btn-secondary btn-sm';
+                button.addEventListener('click', async () => {
+                    selectLabTrack(file.original_path, file.title);
+                    el('scoring-target').value = 'single'; syncSelection(); el('scoring-setup').open = true;
+                    if (file.category !== 'unchecked') {
+                        try {
+                            const result = await request(`/api/quality-result?filepath=${encodeURIComponent(file.original_path)}`);
+                            window.renderAuthenticity(result);
+                            el('scoring-result').scrollIntoView({block: 'start', behavior: 'smooth'});
+                            return;
+                        } catch (error) { fail(error); }
+                    }
+                    el('scoring-setup').scrollIntoView({block: 'start', behavior: 'smooth'});
+                });
+                body.append(row);
+            });
+            if (!data.files.length) text('td', 'Chưa có tệp trong nhóm này.', text('tr', '', body)).colSpan = 4;
+            el('dashboard-page').textContent = data.matched ? `${data.offset + 1}–${data.offset + data.files.length} / ${data.matched}` : '0 tệp';
+            el('dashboard-prev').disabled = dashboardOffset === 0;
+            el('dashboard-next').disabled = dashboardOffset + data.files.length >= data.matched;
+        } catch (error) {
+            if (generation === dashboardGeneration) el('dashboard-summary').textContent = `Chưa tải được tổng quan. ${error.message}`;
+        }
+    }
+
     function warningStyle(r, error) {
         if (!r || error) return {level: 'danger', label: 'Không phân tích được', coverage: 'unknown'};
         const config = r.configuration;
@@ -54,6 +101,8 @@
         el('scoring-selected-count').textContent = selectedTrackPaths.size;
         el('scoring-single').disabled = busy || (scope === 'single' && !el('lab-selected-path').value) || (scope === 'selected' && !selectedTrackPaths.size);
         el('scoring-single').textContent = busy ? 'Đang kiểm tra…' : 'Bắt đầu kiểm tra';
+        el('dashboard-scan').disabled = busy;
+        el('dashboard-scan').textContent = busy ? 'Đang kiểm tra…' : 'Quét toàn bộ kho';
         el('btn-run-audiophile-audit').disabled = busy || !el('lab-selected-path').value;
     }
     function text(tag, content, parent) {
@@ -136,6 +185,13 @@
         clearLabAudit();
         el('scoring-result').hidden = false;
         const warning = warningStyle(r);
+        el('scorer-scorecard').dataset.level = warning.level;
+        el('scorer-score-value').textContent = r.score == null ? 'N/A' : r.score;
+        el('scorer-dial').style.setProperty('--score-fill', `${r.score == null ? 0 : Math.max(0, Math.min(100, r.score))}%`);
+        el('scorer-assessment').textContent = warning.label;
+        el('scorer-coverage').textContent = `${(r.coverage * 100).toFixed(1)}%`;
+        el('scorer-confidence').textContent = confidence[r.assessment_confidence];
+        el('scorer-state').textContent = r.filename;
         el('scoring-result').dataset.level = warning.level;
         el('scoring-result').dataset.verdict = r.critical_failure ? 'critical' : r.verdict;
         el('auth-score').textContent = r.score == null ? 'N/A' : `${r.score}/100`;
@@ -265,8 +321,10 @@
             const state = await request(`/api/scoring/jobs/${jobId}`);
             if (generation !== viewGeneration) return;
             el('scoring-error').hidden = true;
+            const dashboardChanged = lastCompleted !== state.completed;
             lastCompleted = state.completed;
             singleResult = state.options.filepaths?.length === 1 && state.options.folder == null;
+            el('scorer-state').textContent = `${jobLabels[state.status]} · ${state.completed}/${state.total} tệp`;
             el('scoring-progress').dataset.status = state.status;
             el('scoring-progress').textContent = `${jobLabels[state.status]} · ${state.completed}/${state.total} tệp · ${state.errors} lỗi. ${state.message}`;
             const active = ['QUEUED', 'SCANNING', 'RUNNING', 'CANCELLING'].includes(state.status);
@@ -284,6 +342,7 @@
             el('scoring-more').hidden = offset >= state.completed;
             if (active) timer = setTimeout(() => poll(generation), 1000);
             else await history();
+            if (dashboardChanged || !active) await refreshDashboard();
         } catch (error) {
             if (generation !== viewGeneration) return;
             el('scoring-more').disabled = false;
@@ -297,6 +356,13 @@
         busy = true; updateSortHeaders();
         el('scoring-setup').open = false;
         clearLabAudit();
+        el('scorer-scorecard').dataset.level = 'unknown';
+        el('scorer-score-value').textContent = '—';
+        el('scorer-dial').style.setProperty('--score-fill', '0%');
+        el('scorer-coverage').textContent = '—';
+        el('scorer-confidence').textContent = '—';
+        el('scorer-assessment').textContent = 'Chọn kết quả một bài để xem điểm';
+        el('scorer-state').textContent = 'Đang tải lượt kiểm tra…';
         viewGeneration += 1;
         el('scoring-result').hidden = true;
         el('scoring-comparison').hidden = true;
@@ -330,6 +396,18 @@
         catch (error) { busy = false; syncSelection(); fail(error); }
     }
     document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[data-quality]').forEach(button => button.addEventListener('click', () => {
+            dashboardCategory = button.dataset.quality; dashboardOffset = 0;
+            document.querySelectorAll('[data-quality]').forEach(card => card.setAttribute('aria-pressed', String(card === button)));
+            refreshDashboard();
+        }));
+        el('dashboard-scan').addEventListener('click', () => start({folder: ''}));
+        el('dashboard-refresh').addEventListener('click', async () => {
+            try { await post('/api/library/refresh', {}); await refreshDashboard(); } catch (error) { fail(error); }
+        });
+        el('dashboard-prev').addEventListener('click', () => { dashboardOffset = Math.max(0, dashboardOffset - 10); refreshDashboard(); });
+        el('dashboard-next').addEventListener('click', () => { dashboardOffset += 10; refreshDashboard(); });
+        refreshDashboard();
         document.querySelectorAll('.scoring-sort').forEach(button => button.addEventListener('click', () => {
             if (busy || !jobId) return;
             const column = button.dataset.sort;
@@ -356,6 +434,7 @@
             switchTab('tab-audiophile'); el('scoring-target').value = 'selected'; syncSelection(); el('scoring-single').click();
         });
         el('scoring-mode').addEventListener('change', () => {
+            el('scoring-mode-label').textContent = el('scoring-mode').selectedOptions[0].textContent;
             el('scoring-mode-help').textContent = {FAST: 'Chỉ sàng lọc 20 giây đầu; chưa có điểm kết luận.', BALANCED: 'Giải mã toàn tệp, kiểm tra toàn vẹn và đo nhiều vùng phổ.', DEEP: 'Nhiều vùng phổ hơn và detector thử nghiệm nếu có; cần thêm thời gian.'}[el('scoring-mode').value];
         });
         el('scoring-cancel').addEventListener('click', () => {
