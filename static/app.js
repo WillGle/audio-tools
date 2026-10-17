@@ -3,6 +3,14 @@ function formatMeasurement(value, unit = '') {
     return Number.isFinite(value) ? `${value}${unit}` : '—';
 }
 
+function postJSON(url, body) {
+    return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+}
+
 // State
 let currentTab = 'tab-audiophile';
 let currentFilter = 'all';
@@ -618,13 +626,9 @@ function initBatchActions() {
 
         try {
             const naviCfg = getNavidromeConfigFromStorage();
-            const res = await fetch('/api/tag/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    filepaths: Array.from(selectedTrackPaths),
-                    navidrome_config: naviCfg
-                })
+            const res = await postJSON('/api/tag/batch', {
+                filepaths: Array.from(selectedTrackPaths),
+                navidrome_config: naviCfg
             });
             const data = await res.json();
             if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
@@ -659,13 +663,9 @@ function initBatchActions() {
 
         try {
             const naviCfg = getNavidromeConfigFromStorage();
-            const res = await fetch('/api/audiophile/tag/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    filepaths: Array.from(selectedTrackPaths),
-                    navidrome_config: naviCfg
-                })
+            const res = await postJSON('/api/audiophile/tag/batch', {
+                filepaths: Array.from(selectedTrackPaths),
+                navidrome_config: naviCfg
             });
             const data = await res.json();
             if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
@@ -1025,14 +1025,10 @@ function initAudiophileLab() {
         btnTagNow.textContent = '⏳ Đang ghi tag...';
         try {
             const naviCfg = getNavidromeConfigFromStorage();
-            const res = await fetch('/api/audiophile/tag', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    filepath: currentAuditResult.filepath,
-                    audit_data: currentAuditResult,
-                    navidrome_config: naviCfg
-                })
+            const res = await postJSON('/api/audiophile/tag', {
+                filepath: currentAuditResult.filepath,
+                audit_data: currentAuditResult,
+                navidrome_config: naviCfg
             });
             const data = await res.json();
             if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
@@ -1165,11 +1161,7 @@ async function runAudiophileAuditForPath(filepath) {
     clearLabAudit();
 
     try {
-        const res = await fetch('/api/audiophile/audit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filepath })
-        });
+        const res = await postJSON('/api/audiophile/audit', { filepath });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Không phân tích được audio');
         if (document.getElementById('lab-selected-path').value !== filepath) return;
@@ -1379,11 +1371,7 @@ function initVaultTiering() {
         statusMsg.textContent = 'Đang tiến hành phân cấp kho nhạc...';
 
         try {
-            const res = await fetch('/api/vault/tiering/execute', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: selectedTieringMode, plan_items: currentTieringPlan.items })
-            });
+            const res = await postJSON('/api/vault/tiering/execute', { mode: selectedTieringMode, plan_items: currentTieringPlan.items });
             const data = await res.json();
             if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
             if (data.success) {
@@ -2055,11 +2043,7 @@ function renderDuplicates() {
             btn.textContent = '⏳...';
             btn.disabled = true;
             try {
-                const res = await fetch('/api/fingerprint/compare', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ file1: f1, file2: f2 })
-                });
+                const res = await postJSON('/api/fingerprint/compare', { file1: f1, file2: f2 });
                 const data = await res.json();
                 if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
                 if (data.match_pct !== undefined) {
@@ -2153,11 +2137,7 @@ async function archiveSingleGroup(toArchive, btn) {
         btn.textContent = '⏳ Đang di chuyển...';
     }
     try {
-        const res = await fetch('/api/duplicates/archive-byte-dupes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ files_to_archive: toArchive })
-        });
+        const res = await postJSON('/api/duplicates/archive-byte-dupes', { files_to_archive: toArchive });
         const data = await res.json();
         if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (data.success) {
@@ -2179,6 +2159,15 @@ async function archiveSingleGroup(toArchive, btn) {
     }
 }
 
+function duplicateArchivePaths(activeList) {
+    return activeList.flatMap((item, idx) => {
+        const gId = item.id || item.hash || (`grp_${idx}`);
+        const paths = (item.files || []).map(file => typeof file === 'string' ? file : file.path);
+        const kept = userSelectedKeep[gId] || paths[0];
+        return paths.filter(path => path !== kept);
+    });
+}
+
 function updateDupeArchiveButton(activeList) {
     const btn = document.getElementById('btn-archive-byte-dupes');
     const summarySpan = document.getElementById('dupe-selection-summary');
@@ -2193,19 +2182,7 @@ function updateDupeArchiveButton(activeList) {
         return;
     }
 
-    let totalToArchive = 0;
-    activeList.forEach((item, idx) => {
-        const gId = item.id || item.hash || (`grp_${idx}`);
-        const files = item.files || [];
-        const kept = userSelectedKeep[gId] || (typeof files[0] === 'string' ? files[0] : files[0].path);
-        
-        files.forEach(f => {
-            const p = typeof f === 'string' ? f : f.path;
-            if (p !== kept) {
-                totalToArchive++;
-            }
-        });
-    });
+    const totalToArchive = duplicateArchivePaths(activeList).length;
 
     const typeLabel = currentDupeType === 'meta' ? 'Bản Phụ Metadata' : (currentDupeType === 'name' ? 'Bản Trùng Tên' : 'Bản Trùng Byte');
     btn.textContent = `Di Chuyển ${totalToArchive} ${typeLabel} Vào Archive`;
@@ -2221,19 +2198,7 @@ async function executeBatchArchiveDuplicates() {
     const activeList = currentFilteredDuplicates.length > 0 ? currentFilteredDuplicates : getActiveDuplicatesList();
     if (!activeList || activeList.length === 0) return;
 
-    const filesToArchive = [];
-    activeList.forEach((item, idx) => {
-        const gId = item.id || item.hash || (`grp_${idx}`);
-        const files = item.files || [];
-        const kept = userSelectedKeep[gId] || (typeof files[0] === 'string' ? files[0] : files[0].path);
-
-        files.forEach(f => {
-            const p = typeof f === 'string' ? f : f.path;
-            if (p !== kept) {
-                filesToArchive.push(p);
-            }
-        });
-    });
+    const filesToArchive = duplicateArchivePaths(activeList);
 
     if (filesToArchive.length === 0) {
         showToast("Không có bản phụ nào được chọn để di chuyển!", 'warning');
@@ -2255,11 +2220,7 @@ async function executeBatchArchiveDuplicates() {
     }
 
     try {
-        const res = await fetch('/api/duplicates/archive-byte-dupes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ files_to_archive: filesToArchive })
-        });
+        const res = await postJSON('/api/duplicates/archive-byte-dupes', { files_to_archive: filesToArchive });
         const data = await res.json();
         if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (data.success) {
@@ -2523,13 +2484,9 @@ async function installSmartPlaylists(playlistKeys = null) {
     showToast('⚙️ Đang ghi file .nsp vào kho nhạc...', 'info');
 
     try {
-        const res = await fetch('/api/navidrome/smart-playlists/install', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                playlists: playlistKeys,
-                navidrome_config: cfg
-            })
+        const res = await postJSON('/api/navidrome/smart-playlists/install', {
+            playlists: playlistKeys,
+            navidrome_config: cfg
         });
         const data = await res.json();
         if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
@@ -2771,11 +2728,7 @@ function initOrganize() {
                 const t = tracks[i];
                 if (box) box.innerHTML = `<span class="text-muted">Đang ghi tag [${i + 1}/${tracks.length}]: ${escapeHtml(t.title || t.original_path)}</span>`;
                 try {
-                    const tagRes = await fetch('/api/audiophile/tag', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ filepath: t.original_path, defer_scan: true })
-                    });
+                    const tagRes = await postJSON('/api/audiophile/tag', { filepath: t.original_path, defer_scan: true });
                     const tagData = await tagRes.json();
                     if (tagData.success) success++;
                 } catch (err) {}
@@ -2808,11 +2761,7 @@ function initOrganize() {
 
         try {
             const naviCfg = getNavidromeConfigFromStorage();
-            const res = await fetch('/api/audiophile/tag/rollback-all', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({navidrome_config: naviCfg})
-            });
+            const res = await postJSON('/api/audiophile/tag/rollback-all', {navidrome_config: naviCfg});
             const data = await res.json();
             if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
             if (data.success) {
@@ -2954,11 +2903,7 @@ function loadTrackDiagnostics(filepath) {
     document.getElementById('modal-audit-fp').textContent = '—';
 
     // 1. Phân tích DSP cơ bản
-    fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filepath })
-    })
+    postJSON('/api/analyze', { filepath })
     .then(r => { if (!r.ok) throw new Error('Không phân tích được tệp'); return r.json(); })
     .then(data => {
         if (currentSelectedTrack?.path !== filepath) return;
@@ -2988,11 +2933,7 @@ function loadTrackDiagnostics(filepath) {
     });
 
     // 2. Chạy nhanh Audiophile audit cho modal
-    fetch('/api/audiophile/audit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filepath })
-    })
+    postJSON('/api/audiophile/audit', { filepath })
     .then(r => { if (!r.ok) throw new Error('Không phân tích được tệp'); return r.json(); })
     .then(data => {
         if (currentSelectedTrack?.path !== filepath) return;
@@ -3044,11 +2985,7 @@ async function tagSingleTrack(filepath, btnElement = null) {
     }
     try {
         const naviCfg = getNavidromeConfigFromStorage();
-        const res = await fetch('/api/audiophile/tag', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filepath, navidrome_config: naviCfg })
-        });
+        const res = await postJSON('/api/audiophile/tag', { filepath, navidrome_config: naviCfg });
         const data = await res.json();
         if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (data.success) {
@@ -3082,11 +3019,7 @@ async function rollbackSingleTrack(filepath, btnElement = null) {
     }
     try {
         const naviCfg = getNavidromeConfigFromStorage();
-        const res = await fetch('/api/audiophile/tag/rollback', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filepath, navidrome_config: naviCfg })
-        });
+        const res = await postJSON('/api/audiophile/tag/rollback', { filepath, navidrome_config: naviCfg });
         const data = await res.json();
         if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (data.success) {

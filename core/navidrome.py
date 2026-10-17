@@ -130,79 +130,64 @@ def _build_auth_params(username, password):
         'f': 'json'
     }
 
+def _request(server_url, username, password, endpoint, *, timeout=8, **params):
+    url = server_url.rstrip('/') + f'/rest/{endpoint}.view'
+    params = {**_build_auth_params(username, password), **params}
+    req = urllib.request.Request(f"{url}?{urllib.parse.urlencode(params)}",
+                                headers={'User-Agent': 'HiResVaultCompanion/1.0'})
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        return json.loads(response.read().decode('utf-8')).get('subsonic-response', {})
+
+
 def test_navidrome_connection(server_url, username, password):
-    url = server_url.rstrip('/') + '/rest/ping.view'
-    params = _build_auth_params(username, password)
-    full_url = f"{url}?{urllib.parse.urlencode(params)}"
-    
     try:
-        req = urllib.request.Request(full_url, headers={'User-Agent': 'HiResVaultCompanion/1.0'})
-        with urllib.request.urlopen(req, timeout=8) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            sub_resp = data.get('subsonic-response', {})
-            status = sub_resp.get('status')
-            if status == 'ok':
-                return {
-                    'success': True,
-                    'message': f"Kết nối Navidrome thành công! Phiên bản Subsonic API: {sub_resp.get('version', '1.16.1')}",
-                    'server_version': sub_resp.get('version')
-                }
-            else:
-                err = sub_resp.get('error', {})
-                return {
-                    'success': False,
-                    'message': f"Lỗi từ Navidrome: {err.get('message', 'Xác thực thất bại')} (Mã lỗi: {err.get('code')})"
-                }
+        sub_resp = _request(server_url, username, password, 'ping')
+        if sub_resp.get('status') == 'ok':
+            return {
+                'success': True,
+                'message': f"Kết nối Navidrome thành công! Phiên bản Subsonic API: {sub_resp.get('version', '1.16.1')}",
+                'server_version': sub_resp.get('version')
+            }
+        err = sub_resp.get('error', {})
+        return {
+            'success': False,
+            'message': f"Lỗi từ Navidrome: {err.get('message', 'Xác thực thất bại')} (Mã lỗi: {err.get('code')})"
+        }
     except urllib.error.HTTPError as e:
         return {'success': False, 'message': f"Lỗi HTTP {e.code}: {e.reason}"}
     except Exception as e:
         return {'success': False, 'message': f"Không thể kết nối đến Navidrome tại {server_url}: {str(e)}"}
 
 def trigger_navidrome_scan(server_url, username, password, full_scan=False):
-    url = server_url.rstrip('/') + '/rest/startScan.view'
-    params = _build_auth_params(username, password)
-    if full_scan:
-        params['fullScan'] = 'true'
-        
-    full_url = f"{url}?{urllib.parse.urlencode(params)}"
     try:
-        req = urllib.request.Request(full_url, headers={'User-Agent': 'HiResVaultCompanion/1.0'})
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            sub_resp = data.get('subsonic-response', {})
-            if sub_resp.get('status') == 'ok':
-                scan_status = sub_resp.get('scanStatus', {})
-                return {
-                    'success': True,
-                    'message': "Đã kích hoạt quét thư viện Navidrome thành công!",
-                    'scanning': scan_status.get('scanning', True),
-                    'count': scan_status.get('count')
-                }
-            else:
-                err = sub_resp.get('error', {})
-                return {
-                    'success': False,
-                    'message': f"Lỗi yêu cầu quét: {err.get('message', 'Không thành công')}"
-                }
+        params = {'fullScan': 'true'} if full_scan else {}
+        sub_resp = _request(server_url, username, password, 'startScan', timeout=10, **params)
+        if sub_resp.get('status') == 'ok':
+            scan_status = sub_resp.get('scanStatus', {})
+            return {
+                'success': True,
+                'message': "Đã kích hoạt quét thư viện Navidrome thành công!",
+                'scanning': scan_status.get('scanning', True),
+                'count': scan_status.get('count')
+            }
+        err = sub_resp.get('error', {})
+        return {
+            'success': False,
+            'message': f"Lỗi yêu cầu quét: {err.get('message', 'Không thành công')}"
+        }
     except Exception as e:
         return {'success': False, 'message': f"Lỗi khi gửi yêu cầu quét Navidrome: {str(e)}"}
 
 def get_navidrome_scan_status(server_url, username, password):
-    url = server_url.rstrip('/') + '/rest/getScanStatus.view'
-    params = _build_auth_params(username, password)
-    full_url = f"{url}?{urllib.parse.urlencode(params)}"
     try:
-        req = urllib.request.Request(full_url, headers={'User-Agent': 'HiResVaultCompanion/1.0'})
-        with urllib.request.urlopen(req, timeout=8) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            sub_resp = data.get('subsonic-response', {})
-            if sub_resp.get('status') == 'ok':
-                scan_status = sub_resp.get('scanStatus', {})
-                return {
-                    'success': True,
-                    'scanning': scan_status.get('scanning', False),
-                    'count': scan_status.get('count')
-                }
-            return {'success': False, 'scanning': False, 'count': None}
+        sub_resp = _request(server_url, username, password, 'getScanStatus')
+        if sub_resp.get('status') == 'ok':
+            scan_status = sub_resp.get('scanStatus', {})
+            return {
+                'success': True,
+                'scanning': scan_status.get('scanning', False),
+                'count': scan_status.get('count')
+            }
+        return {'success': False, 'scanning': False, 'count': None}
     except Exception as e:
         return {'success': False, 'error': str(e), 'scanning': False, 'count': None}

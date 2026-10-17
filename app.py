@@ -110,6 +110,17 @@ VERDICT_FILTERS = {
     'lossy': 'LOSSY', 'suspicious': 'REVIEW', 'unverified': 'UNKNOWN'
 }
 
+TRACK_FORMATS = {
+    'flac': (('.flac',), ('flac',)),
+    'dsd': (('.dsf', '.dff'), ('dsd',)),
+    'mp3': (('.mp3',), ('mp3',)),
+    'm4a': (('.m4a', '.aac'), ('aac', 'alac')),
+    'aac': (('.m4a', '.aac'), ('aac', 'alac')),
+    'wav': (('.wav',), ('wav',)),
+    '24bit': ((), ('24bit',)),
+    '16bit': ((), ('16bit',)),
+}
+
 
 def save_verdict(result):
     with _verdict_lock:
@@ -334,7 +345,6 @@ def get_tracks(
             
     filtered = []
     for it in items:
-        tier = it.get('tier', '')
         specs = it.get('specs', '')
         orig_p = it.get('original_path', '')
         title = it.get('title', '')
@@ -361,45 +371,20 @@ def get_tracks(
             q_title = col_title.strip().lower()
             if q_title not in title.lower() and q_title not in orig_p.lower():
                 continue
-
-        if col_artist:
-            q_artist = col_artist.strip().lower()
-            if q_artist not in artist.lower():
-                continue
-
-        if col_album:
-            q_album = col_album.strip().lower()
-            if q_album not in album.lower():
-                continue
+        if any(query and query.strip().lower() not in value.lower()
+               for query, value in ((col_artist, artist), (col_album, album))):
+            continue
 
         if col_format:
             fmt = col_format.strip().lower()
             specs_lower = specs.lower()
             orig_lower = orig_p.lower()
-            if fmt == 'flac':
-                if not (orig_lower.endswith('.flac') or 'flac' in specs_lower):
-                    continue
-            elif fmt == 'dsd':
-                if not (orig_lower.endswith(('.dsf', '.dff')) or 'dsd' in specs_lower):
-                    continue
-            elif fmt == 'mp3':
-                if not (orig_lower.endswith('.mp3') or 'mp3' in specs_lower):
-                    continue
-            elif fmt in ('m4a', 'aac'):
-                if not (orig_lower.endswith(('.m4a', '.aac')) or 'aac' in specs_lower or 'alac' in specs_lower):
-                    continue
-            elif fmt == 'wav':
-                if not (orig_lower.endswith('.wav') or 'wav' in specs_lower):
-                    continue
-            elif fmt == '24bit':
-                if '24bit' not in specs_lower:
-                    continue
-            elif fmt == '16bit':
-                if '16bit' not in specs_lower:
-                    continue
-            else:
-                if fmt not in specs_lower and fmt not in orig_lower:
-                    continue
+            extensions, labels = TRACK_FORMATS.get(fmt, ((), (fmt,)))
+            matches = orig_lower.endswith(extensions) or any(label in specs_lower for label in labels)
+            if fmt not in TRACK_FORMATS:
+                matches = matches or fmt in orig_lower
+            if not matches:
+                continue
 
         if col_verdict:
             verd = col_verdict.strip().lower()
@@ -429,19 +414,17 @@ def get_tracks(
     # 4. Sorting
     if sort_by:
         reverse = (sort_dir == 'desc')
-        if sort_by == 'title':
-            filtered.sort(key=lambda x: (x.get('title') or x.get('original_path', '')).lower(), reverse=reverse)
-        elif sort_by == 'artist':
-            filtered.sort(key=lambda x: (x.get('artist') or '').lower(), reverse=reverse)
-        elif sort_by == 'album':
-            filtered.sort(key=lambda x: (x.get('album') or '').lower(), reverse=reverse)
-        elif sort_by == 'format':
-            filtered.sort(key=lambda x: (x.get('specs') or '').lower(), reverse=reverse)
-        elif sort_by == 'verdict':
-            filtered.sort(key=lambda x: (x.get('tier') or '').lower(), reverse=reverse)
-        elif sort_by == 'index':
-            if reverse:
-                filtered.reverse()
+        field = {'title': 'title', 'artist': 'artist', 'album': 'album',
+                 'format': 'specs', 'verdict': 'tier'}.get(sort_by)
+        if field:
+            def sort_key(item):
+                value = item.get(field)
+                if field == 'title' and not value:
+                    value = item.get('original_path', '')
+                return (value or '').lower()
+            filtered.sort(key=sort_key, reverse=reverse)
+        elif sort_by == 'index' and reverse:
+            filtered.reverse()
 
     total_count = len(filtered)
     page_items = filtered[offset : offset + limit]
@@ -540,11 +523,11 @@ def request_navidrome_scan(cfg=None, full_scan=False):
         return {'success': False, 'message': 'Không thể yêu cầu Navidrome cập nhật. Thay đổi cục bộ vẫn được giữ.'}
 
 
-def finish_library_change(result, changed, cfg=None):
+def finish_library_change(result, changed, cfg=None, *, defer_scan=False):
     # A partial batch still needs a refresh for the files that changed.
     if changed:
         invalidate_library()
-    result['navidrome_scan'] = request_navidrome_scan(cfg) if changed else None
+    result['navidrome_scan'] = request_navidrome_scan(cfg) if changed and not defer_scan else None
     return result
 
 
@@ -609,16 +592,11 @@ def tag_single_file(req: TagRequest):
     ok, msg = apply_quality_tag(str(p), analysis)
     
     # Trigger Navidrome scan nếu có config
-    if ok:
-        invalidate_library()
-    scan_res = request_navidrome_scan(req.navidrome_config) if ok else None
-        
-    return {
+    return finish_library_change({
         'success': ok,
         'message': msg,
         'analysis': analysis,
-        'navidrome_scan': scan_res
-    }
+    }, ok, req.navidrome_config)
 
 @app.post("/api/organize/dry-run")
 def organize_dry_run():
@@ -637,6 +615,24 @@ _organize_lock = Lock()
 _organize_plan_file = CACHE_DIR / 'metadata_organize_plan.json'
 
 
+def save_organize_plan(plan):
+    from uuid import uuid4
+    plan['plan_id'] = uuid4().hex
+    temp = _organize_plan_file.with_suffix('.tmp')
+    temp.write_text(json.dumps(plan, ensure_ascii=False), encoding='utf-8')
+    temp.replace(_organize_plan_file)
+    return plan
+
+
+def load_organize_plan(plan_id):
+    if not _organize_plan_file.exists():
+        raise HTTPException(status_code=409, detail='Hãy tạo bản xem trước mới.')
+    plan = json.loads(_organize_plan_file.read_text(encoding='utf-8'))
+    if not plan_id or plan['plan_id'] != plan_id:
+        raise HTTPException(status_code=409, detail='Bản xem trước đã thay đổi. Hãy xem lại trước khi áp dụng.')
+    return plan
+
+
 class OrganizeRequest(BaseModel):
     folder: str = ''
     plan_id: str = ''
@@ -646,17 +642,12 @@ class OrganizeRequest(BaseModel):
 @app.post('/api/organize/preview')
 def preview_metadata_organization(req: OrganizeRequest):
     from core.organizer import metadata_plan
-    from uuid import uuid4
     with _organize_lock:
         try:
             plan = metadata_plan(ROOT_DIR, req.folder, req.filename_format)
         except (ValueError, OSError) as exc:
             raise HTTPException(status_code=400, detail=str(exc))
-        plan['plan_id'] = uuid4().hex
-        temp = _organize_plan_file.with_suffix('.tmp')
-        temp.write_text(json.dumps(plan, ensure_ascii=False), encoding='utf-8')
-        temp.replace(_organize_plan_file)
-        return plan
+        return save_organize_plan(plan)
 
 
 class OrganizeEditRequest(BaseModel):
@@ -668,33 +659,20 @@ class OrganizeEditRequest(BaseModel):
 @app.post('/api/organize/edit')
 def edit_metadata_organization(req: OrganizeEditRequest):
     from core.organizer import edit_proposed_filename
-    from uuid import uuid4
     with _organize_lock:
-        if not _organize_plan_file.exists():
-            raise HTTPException(status_code=409, detail='Hãy tạo bản xem trước mới.')
-        plan = json.loads(_organize_plan_file.read_text(encoding='utf-8'))
-        if not req.plan_id or plan['plan_id'] != req.plan_id:
-            raise HTTPException(status_code=409, detail='Bản xem trước đã thay đổi. Hãy xem lại trước khi áp dụng.')
+        plan = load_organize_plan(req.plan_id)
         try:
             edit_proposed_filename(ROOT_DIR, plan, req.original_path, req.filename)
         except (ValueError, OSError) as exc:
             raise HTTPException(status_code=400, detail=str(exc))
-        plan['plan_id'] = uuid4().hex
-        temp = _organize_plan_file.with_suffix('.tmp')
-        temp.write_text(json.dumps(plan, ensure_ascii=False), encoding='utf-8')
-        temp.replace(_organize_plan_file)
-        return plan
+        return save_organize_plan(plan)
 
 
 @app.post('/api/organize/apply')
 def apply_metadata_organization(req: OrganizeRequest):
     from core.organizer import file_stamp, ROLLBACK_NAME
     with _organize_lock:
-        if not _organize_plan_file.exists():
-            raise HTTPException(status_code=409, detail='Hãy tạo bản xem trước mới.')
-        plan = json.loads(_organize_plan_file.read_text(encoding='utf-8'))
-        if not req.plan_id or plan['plan_id'] != req.plan_id:
-            raise HTTPException(status_code=409, detail='Bản xem trước đã thay đổi. Hãy xem lại trước khi áp dụng.')
+        plan = load_organize_plan(req.plan_id)
         ready = [item for item in plan['items'] if item['status'] == 'READY']
         try:
             for item in ready:
@@ -916,16 +894,11 @@ def audiophile_apply_tags(req: AudiophileTagRequest):
 
     ok, msg = apply_audiophile_tags(str(p), audit)
 
-    if ok:
-        invalidate_library()
-    scan_res = request_navidrome_scan(req.navidrome_config) if ok and not req.defer_scan else None
-
-    return {
+    return finish_library_change({
         'success': ok,
         'message': msg,
         'audit': audit,
-        'navidrome_scan': scan_res
-    }
+    }, ok, req.navidrome_config, defer_scan=req.defer_scan)
 
 @app.post("/api/audiophile/tag/rollback")
 def audiophile_rollback_tags(req: TagRollbackRequest):
@@ -933,85 +906,56 @@ def audiophile_rollback_tags(req: TagRollbackRequest):
 
     ok, msg = revert_audiophile_tags(str(p))
 
-    if ok:
-        invalidate_library()
-    scan_res = request_navidrome_scan(req.navidrome_config) if ok else None
-
-    return {
+    return finish_library_change({
         'success': ok,
         'message': msg,
-        'navidrome_scan': scan_res
-    }
+    }, ok, req.navidrome_config)
 
 @app.post("/api/audiophile/tag/rollback-all")
 def audiophile_rollback_all_tags(req: Optional[TagRollbackAllRequest] = None):
     try:
         count, paths = rollback_all_audiophile_tags(ROOT_DIR)
-        if count:
-            invalidate_library()
-        scan_res = request_navidrome_scan(req.navidrome_config if req else None) if count else None
-        return {
+        return finish_library_change({
             'success': True,
             'reverted_count': count,
             'message': f"Đã hoàn tác và khôi phục metadata gốc cho {count} bài hát!",
-            'navidrome_scan': scan_res
-        }
+        }, count, req.navidrome_config if req else None)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi hoàn tác toàn bộ tag: {str(e)}")
 
-@app.post("/api/tag/batch")
-def batch_tag_files(req: BatchTagRequest):
+def tag_batch(req, *, audiophile=False):
     results = []
     success_count = 0
     for fp in req.filepaths:
         try:
             p = audio_path(fp)
-            analysis = analyze_audio_file(str(p))
-            ok, msg = apply_quality_tag(str(p), analysis)
+            if audiophile:
+                audit = run_full_audiophile_audit(str(p), scoring=scoring_service.single(str(p)))
+                ok, msg = apply_audiophile_tags(str(p), audit)
+            else:
+                analysis = analyze_audio_file(str(p))
+                ok, msg = apply_quality_tag(str(p), analysis)
             if ok:
                 success_count += 1
             results.append({"filepath": fp, "success": ok, "message": msg})
         except Exception as e:
             results.append({"filepath": fp, "success": False, "message": str(e)})
 
-    if success_count:
-        invalidate_library()
-    scan_res = request_navidrome_scan(req.navidrome_config) if success_count else None
-
-    return {
+    return finish_library_change({
         "success": True,
         "total": len(req.filepaths),
         "tagged_count": success_count,
         "results": results,
-        "navidrome_scan": scan_res
-    }
+    }, success_count, req.navidrome_config)
+
+
+@app.post("/api/tag/batch")
+def batch_tag_files(req: BatchTagRequest):
+    return tag_batch(req)
 
 @app.post("/api/audiophile/tag/batch")
 def batch_audiophile_tag(req: BatchTagRequest):
-    results = []
-    success_count = 0
-    for fp in req.filepaths:
-        try:
-            p = audio_path(fp)
-            audit = run_full_audiophile_audit(str(p), scoring=scoring_service.single(str(p)))
-            ok, msg = apply_audiophile_tags(str(p), audit)
-            if ok:
-                success_count += 1
-            results.append({"filepath": fp, "success": ok, "message": msg})
-        except Exception as e:
-            results.append({"filepath": fp, "success": False, "message": str(e)})
-
-    if success_count:
-        invalidate_library()
-    scan_res = request_navidrome_scan(req.navidrome_config) if success_count else None
-
-    return {
-        "success": True,
-        "total": len(req.filepaths),
-        "tagged_count": success_count,
-        "results": results,
-        "navidrome_scan": scan_res
-    }
+    return tag_batch(req, audiophile=True)
 
 @app.get("/api/vault/tiering/plan")
 def get_vault_tiering_plan():
