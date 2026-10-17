@@ -72,6 +72,14 @@ class AnalysisService:
         if path.stat().st_size > self.config['limits']['file_bytes'] or (ref and ref.stat().st_size > self.config['limits']['file_bytes']):
             raise ValueError('Tệp vượt giới hạn kích thước')
         claims = Expectations.model_validate(expectations or {}).model_dump(exclude_none=True)
+        # A current canonical result is already keyed by the file metadata and
+        # engine/rule signatures. Reuse it before reading the audio to hash it.
+        if mode != 'FAST' and not claims and ref is None:
+            cached = self.saved_result(value)
+            if cached and cached.get('mode') == mode:
+                cached['cache_hit'] = True
+                cached['filename'] = path.name
+                return cached
         while not self.slots.acquire(timeout=.1):
             checkpoint(cancel)
         try:
@@ -203,6 +211,7 @@ class AnalysisService:
 
     def _work(self, job_id, options, event):
         completed = errors = 0
+        write_conn = None
         try:
             self._update(job_id, status='SCANNING')
             paths = list(self._paths(options, event))
@@ -212,6 +221,8 @@ class AnalysisService:
             iterator = iter(paths)
             with ThreadPoolExecutor(max_workers=options['concurrency']) as pool:
                 pending = {}
+                write_conn = self.connect()
+                pending_writes = 0
                 def fill():
                     while len(pending) < options['concurrency']:
                         checkpoint(event)
@@ -238,13 +249,19 @@ class AnalysisService:
                             message = message.replace(str(self.root), '<vault>')[:1000]
                             data = {'filepath': path, 'result': None, 'error': message}
                         completed += 1
-                        with closing(self.connect()) as conn:
-                            conn.execute('INSERT INTO scoring_results(job_id,filepath,payload) VALUES (?,?,?)',
-                                         (job_id, path, json.dumps(data, ensure_ascii=False, allow_nan=False)))
-                            conn.execute('UPDATE scoring_jobs SET completed=?, errors=? WHERE id=?',
-                                         (completed, errors, job_id))
-                            conn.commit()
+                        write_conn.execute('INSERT INTO scoring_results(job_id,filepath,payload) VALUES (?,?,?)',
+                                           (job_id, path, json.dumps(data, ensure_ascii=False, allow_nan=False)))
+                        write_conn.execute('UPDATE scoring_jobs SET completed=?, errors=? WHERE id=?',
+                                           (completed, errors, job_id))
+                        pending_writes += 1
+                        if pending_writes >= 32:
+                            write_conn.commit()
+                            pending_writes = 0
                     fill()
+                if pending_writes:
+                    write_conn.commit()
+                write_conn.close()
+                write_conn = None
             checkpoint(event)
             self._update(job_id, status='COMPLETED')
         except AnalysisCancelled:
@@ -252,6 +269,8 @@ class AnalysisService:
         except Exception as exc:
             self._update(job_id, status='FAILED', message=(str(exc).replace(str(self.root), '<vault>')[:1000] if isinstance(exc, (ToolError, ValueError, OSError)) else 'Lỗi hàng đợi'))
         finally:
+            if write_conn is not None:
+                write_conn.close()
             with self.lock:
                 self.events.pop(job_id, None)
 
