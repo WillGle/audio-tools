@@ -38,13 +38,13 @@ def dashboard_fields(result):
                  'badge': 'Lỗi toàn vẹn' if result['critical_failure'] else 'Decode đầy đủ' if integ.get('full_decode') else 'Chưa kết luận',
                  'message': rules['integrity']['explanation'], 'badge_color': color}
     usage = depth.get('observed_bit_usage')
-    bitdepth = {'nominal_bits': specs.get('bit_depth'), 'real_bits': max(usage) if usage else specs.get('bit_depth'),
+    bitdepth = {'nominal_bits': specs.get('bit_depth'), 'real_bits': max(usage) if usage else None,
                 'is_fake_24bit': any(e['code'] == 'BIT_DEPTH_PADDING_DETECTED' for e in rules['bit_depth']['evidence']),
                 'badge': rules['bit_depth']['status'], 'badge_color': color,
-                'lsb_nonzero_pct': min(depth.get('lsb_nonzero_percent') or [0]),
+                'lsb_nonzero_pct': min(depth['lsb_nonzero_percent']) if depth.get('lsb_nonzero_percent') else None,
                 'noise_floor_db': None, 'explanation': rules['bit_depth']['explanation']}
     dr = mastering.get('dr_estimate')
-    dynamic = {'dr_score': round(dr) if dr is not None else 0, 'dr_float': dr,
+    dynamic = {'dr_score': round(dr) if dr is not None else None, 'dr_float': dr,
                'dr_badge': f'DR≈{dr:.1f}' if dr is not None else 'DR chưa đo được',
                'peak_db': mastering.get('sample_peak_dbfs'), 'rms_db': mastering.get('rms_dbfs'),
                'badge_color': '#6366f1', 'verdict_text': 'Ước lượng DR từ block 3 giây; không đánh giá nguồn master hoặc chất lượng nghe.',

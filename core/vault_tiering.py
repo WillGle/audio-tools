@@ -5,7 +5,7 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from core.paths import vault_path
-from core.analyzer import get_audio_specs
+from core.analyzer import get_audio_specs, format_audio_specs
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -89,7 +89,7 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
         title = meta.get('title') or clean_name(full_path.stem)
         audio = get_audio_specs(str(full_path))
         codec = audio.get('codec', '').lower()
-        specs = f"{codec.upper()} {audio['bit_depth']}bit/{audio['sample_rate']/1000:.1f}kHz"
+        specs = format_audio_specs(audio)
 
         # 1. Tiêu chí vào Tier 3: Quarantine (Fake Hi-Res, MP3, Fake 24-bit, File Lỗi)
         if not audio.get('is_readable'):
@@ -110,7 +110,7 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
             target_tier = 'tier_1'
             reason = 'Định dạng DSD; nguồn master chưa xác thực'
             sub_folder = 'DSD_SACD'
-        elif audio['sample_rate'] >= 88200 or verdict == 'TRUE_HIRES':
+        elif (audio['sample_rate'] is not None and audio['sample_rate'] >= 88200) or verdict == 'TRUE_HIRES':
             target_tier = 'tier_1'
             reason = 'PCM sample rate cao; xem audit để xác thực chất lượng'
             sub_folder = 'PCM_HiRes_96k_Plus'

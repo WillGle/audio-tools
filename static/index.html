@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Scorer · Kiểm tra chất lượng nhạc</title>
     <meta name="description" content="Công cụ kiểm tra chất lượng âm thanh, tổ chức thư viện và tích hợp Navidrome cho audiophile.">
-    <link rel="stylesheet" href="style.css?v=5.4">
+    <link rel="stylesheet" href="style.css?v=5.5">
 </head>
 <body>
     <div class="app-background"></div>
@@ -164,7 +164,7 @@ Mở ↗
                             <button class="filter-pill pill-dot-slate" data-filter="lossy">Lossy <span id="stat-lossy">—</span></button>
                             <button class="filter-pill" data-filter="dsd">DSD <span id="stat-true-dsd">—</span></button>
                             <button class="filter-pill pill-dot-rose" data-filter="duplicate_meta" id="pill-filter-dupe-meta" title="Lọc các bài hát bị trùng lặp metadata trong kho nhạc">
-                                Trùng metadata (<span id="stat-dupe-meta-pill">0</span>)
+                                Trùng metadata (<span id="stat-dupe-meta-pill">—</span>)
                             </button>
                         </div>
 
@@ -283,7 +283,7 @@ Mở ↗
                     <!-- Pagination -->
                     <div class="pagination-bar mt-4">
                         <div class="pagination-left">
-                            <span class="pagination-info" id="pagination-info">Hiển thị 0 - 0 trong tổng số 0 bài</span>
+                            <span class="pagination-info" id="pagination-info">Đang tải danh sách…</span>
                             <div class="page-size-selector">
                                 <span>Hiển thị:</span>
                                 <select id="select-page-size" class="page-size-select">
@@ -296,7 +296,7 @@ Mở ↗
                         </div>
                         <div class="pagination-actions">
                             <button class="btn btn-sm btn-secondary" id="btn-prev-page" disabled>Trang Trước</button>
-                            <span class="pagination-current-page" id="pagination-page-display">Trang 1 / 1</span>
+                            <span class="pagination-current-page" id="pagination-page-display">—</span>
                             <button class="btn btn-sm btn-secondary" id="btn-next-page">Trang Tiếp</button>
                         </div>
                     </div>
@@ -450,7 +450,7 @@ Mở ↗
                                     <span id="dr-score-huge" style="font-size: 1.5rem; font-family: 'Outfit', sans-serif; font-weight: 700; color: #fbbf24;">DR--</span>
                                 </div>
                                 <div class="dr-meter-scale-bar" title="Thang đo dải động: Đỏ (Nén gắt) - Vàng (Trung bình) - Xanh lục (Audiophile) - Xanh dương (Dải động cực rộng)">
-                                    <div class="dr-needle-indicator" id="dr-needle" style="left: 50%;"></div>
+                                    <div class="dr-needle-indicator" id="dr-needle" style="left: 0%;" hidden></div>
                                 </div>
                                 <div class="dr-scale-labels">
                                     <span style="color: #ef4444;">DR1 (Nén Nặng)</span>
@@ -481,7 +481,7 @@ Mở ↗
                             </div>
                             <div style="background: rgba(0,0,0,0.3); padding: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin: 0.5rem 0;">
                                 <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;">STREAMINFO AUDIO MD5:</div>
-                                <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #34d399;" id="md5-streaminfo-hex">00000000000000000000000000000000</code>
+                                <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #34d399;" id="md5-streaminfo-hex">Chưa đo</code>
                             </div>
                             <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="integrity-msg-desc">Decode toàn file và kiểm tra frame/STREAMINFO MD5 khi có. Checksum không xác minh playback hay nguồn master.</p>
                         </div>
@@ -501,7 +501,7 @@ Mở ↗
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
                                     <span class="text-muted">Mật Độ Entropy 8 Bit Cuối (LSB):</span>
-                                    <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600;" id="lsb-entropy-pct">0.0%</span>
+                                    <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600;" id="lsb-entropy-pct">Chưa đo</span>
                                 </div>
                                 <div class="entropy-bar-container">
                                     <div class="entropy-bar-fill" id="lsb-entropy-fill" style="width: 0%; background: #f43f5e;"></div>
@@ -531,8 +531,8 @@ Mở ↗
                                 <span class="stat-tag tag-cyan" id="pillar-dsd-badge">Chờ quét</span>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.5rem 0;">
-                                <div class="dr-stat-mini"><div class="dr-stat-label">Cấu Hình Kênh</div><div class="dr-stat-val" id="dsd-channels-val">Stereo 2.0</div></div>
-                                <div class="dr-stat-mini"><div class="dr-stat-label">Độ Tăng Noise Shaping</div><div class="dr-stat-val" id="dsd-noise-rise-val">+0 dB</div></div>
+                                <div class="dr-stat-mini"><div class="dr-stat-label">Cấu Hình Kênh</div><div class="dr-stat-val" id="dsd-channels-val">Chưa đo</div></div>
+                                <div class="dr-stat-mini"><div class="dr-stat-label">Độ Tăng Noise Shaping</div><div class="dr-stat-val" id="dsd-noise-rise-val">Chưa đo</div></div>
                             </div>
                             <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="dsd-msg-desc">Quan sát nhiễu siêu âm DSD; không thể xác lập nguồn SACD/native hoặc lịch sử chuyển đổi từ PCM.</p>
                         </div>
@@ -617,27 +617,27 @@ Mở ↗
                             <span class="tier-header-badge">TẦNG 1 &bull; HI-RES</span>
                             <h3>01_DSD &amp; Hi-Res</h3>
                             <p class="text-muted" style="font-size: 0.78rem;">Chuẩn &gt;24-bit / 96kHz &amp; Native DSD</p>
-                            <div class="vault-tier-metric" id="tier1-count">67 bài</div>
+                            <div class="vault-tier-metric" id="tier1-count">—</div>
                             <p class="vault-tier-desc">Phân nhóm theo định dạng DSD hoặc sample rate PCM cao; không xác thực nguồn master.</p>
-                            <div class="text-secondary" style="font-size: 0.8rem;" id="tier1-size">Dung lượng: ~11.4 GB</div>
+                            <div class="text-secondary" style="font-size: 0.8rem;" id="tier1-size">Dung lượng: —</div>
                         </div>
 
                         <div class="vault-tier-card tier-2 clickable-tier" data-tier="02_Lossless_CD" style="cursor: pointer;" title="Bấm để lọc bảng kế hoạch theo Tầng 2">
                             <span class="tier-header-badge">TẦNG 2 &bull; LOSSLESS</span>
                             <h3>02_Lossless CD</h3>
                             <p class="text-muted" style="font-size: 0.78rem;">Chuẩn Red Book 16/44.1k &amp; Studio 24/44-48k</p>
-                            <div class="vault-tier-metric" id="tier2-count">649 bài</div>
+                            <div class="vault-tier-metric" id="tier2-count">—</div>
                             <p class="vault-tier-desc">Nhóm định dạng lossless theo header; độ phân giải nguồn và master chưa xác thực.</p>
-                            <div class="text-secondary" style="font-size: 0.8rem;" id="tier2-size">Dung lượng: ~18.9 GB</div>
+                            <div class="text-secondary" style="font-size: 0.8rem;" id="tier2-size">Dung lượng: —</div>
                         </div>
 
                         <div class="vault-tier-card tier-3 clickable-tier" data-tier="03_Quarantine" style="cursor: pointer;" title="Bấm để lọc bảng kế hoạch theo Tầng 3">
                             <span class="tier-header-badge">TẦNG 3 &bull; CÁCH LY</span>
                             <h3>03_Quarantine</h3>
                             <p class="text-muted" style="font-size: 0.78rem;">Lỗi toàn vẹn, Fake 24-bit, MP3, File Lỗi</p>
-                            <div class="vault-tier-metric" id="tier3-count">928 bài</div>
+                            <div class="vault-tier-metric" id="tier3-count">—</div>
                             <p class="vault-tier-desc">Phân nhóm quản lý tệp lỗi, padding đã đo hoặc định dạng lossy; phân nhóm không chứng minh gian lận.</p>
-                            <div class="text-secondary" style="font-size: 0.8rem;" id="tier3-size">Dung lượng: ~7.4 GB</div>
+                            <div class="text-secondary" style="font-size: 0.8rem;" id="tier3-size">Dung lượng: —</div>
                         </div>
                     </div>
 
@@ -650,7 +650,7 @@ Mở ↗
                         </div>
                         <div class="btn-group">
                             <button class="btn btn-secondary" id="btn-rollback-tiering" title="Khôi phục lại vị trí cũ nếu đã chọn Move">Khôi Phục (Rollback)</button>
-                            <button class="btn btn-emerald" id="btn-execute-tiering">Áp dụng kế hoạch</button>
+                            <button class="btn btn-emerald" id="btn-execute-tiering" disabled>Áp dụng kế hoạch</button>
                         </div>
                     </div>
 
@@ -664,7 +664,7 @@ Mở ↗
                         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
                             <div>
                                 <h3>Bảng Kế Hoạch Phân Cấp Chi Tiết</h3>
-                                <span class="stat-tag tag-indigo" id="plan-total-badge">1.644 tệp (37.7 GB)</span>
+                                <span class="stat-tag tag-indigo" id="plan-total-badge">Chưa có kết quả</span>
                                 <span class="stat-tag tag-emerald" id="plan-filter-active-badge" style="display: none; margin-left: 6px;">Đang lọc tầng</span>
                             </div>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -696,9 +696,9 @@ Mở ↗
                 <section class="tab-content" id="tab-duplicates">
                     <div class="explorer-toolbar mb-4">
                         <div class="filter-pills" id="dupe-filter-pills" style="gap: 0.85rem;">
-                            <button class="filter-pill active" data-dupetype="byte">Trùng Byte 100% (<span id="dupe-count-byte">0</span>)</button>
-                            <button class="filter-pill" data-dupetype="meta">Trùng Metadata (<span id="dupe-count-meta">0</span>)</button>
-                            <button class="filter-pill" data-dupetype="name">Trùng Tên Tệp (<span id="dupe-count-name">0</span>)</button>
+                            <button class="filter-pill active" data-dupetype="byte">Trùng Byte 100% (<span id="dupe-count-byte">—</span>)</button>
+                            <button class="filter-pill" data-dupetype="meta">Trùng Metadata (<span id="dupe-count-meta">—</span>)</button>
+                            <button class="filter-pill" data-dupetype="name">Trùng Tên Tệp (<span id="dupe-count-name">—</span>)</button>
                         </div>
                         <div class="btn-group" style="margin-left: auto; gap: 0.85rem; flex-wrap: wrap;">
                             <button class="btn btn-secondary" id="btn-refresh-dupes" title="Quét lại toàn bộ thư mục">Quét Lại</button>
@@ -714,17 +714,17 @@ Mở ↗
                             <input type="text" id="dupe-search-input" placeholder="Lọc theo ca sĩ, bài hát, tên file (vd: LOSER, Orion, Aimer)...">
                         </div>
                         <div class="filter-pills" id="dupe-subfilter-pills" style="gap: 0.85rem;">
-                            <button class="filter-pill active" data-subfilter="all">Tất Cả (<span id="dupe-subcount-all">0</span>)</button>
-                            <button class="filter-pill pill-dot-emerald" data-subfilter="flac_vs_lossy">Có FLAC vs MP3 (<span id="dupe-subcount-flac">0</span>)</button>
-                            <button class="filter-pill pill-dot-indigo" data-subfilter="mixed_formats">Khác Định Dạng (<span id="dupe-subcount-mixed">0</span>)</button>
-                            <button class="filter-pill pill-dot-amber" data-subfilter="numbered">Tên Có Đuôi (1) (<span id="dupe-subcount-numbered">0</span>)</button>
+                            <button class="filter-pill active" data-subfilter="all">Tất Cả (<span id="dupe-subcount-all">—</span>)</button>
+                            <button class="filter-pill pill-dot-emerald" data-subfilter="flac_vs_lossy">Có FLAC vs MP3 (<span id="dupe-subcount-flac">—</span>)</button>
+                            <button class="filter-pill pill-dot-indigo" data-subfilter="mixed_formats">Khác Định Dạng (<span id="dupe-subcount-mixed">—</span>)</button>
+                            <button class="filter-pill pill-dot-amber" data-subfilter="numbered">Tên Có Đuôi (1) (<span id="dupe-subcount-numbered">—</span>)</button>
                         </div>
                     </div>
 
                     <div class="technical-note mb-4" style="padding: 1.35rem 1.65rem;">
                         <div class="tech-note-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.4rem;">
                             <h4 id="dupe-title-text" style="font-size: 0.95rem;">Tệp giống hệt từng byte</h4>
-                            <span id="dupe-selection-summary" class="stat-tag tag-emerald" style="padding: 3px 10px;">Đang giữ 0 bài gốc, chọn 0 bản phụ để lưu trữ</span>
+                            <span id="dupe-selection-summary" class="stat-tag tag-emerald" style="padding: 3px 10px;">Chưa có kết quả quét</span>
                         </div>
                         <p id="dupe-desc-text" style="line-height: 1.5;">Các file có cùng mã băm MD5 tuyệt đối. Có thể di chuyển các bản thừa vào thư mục <code>_Duplicates_Archive/</code> để giải phóng dung lượng đĩa mà không hề làm mất bài hát gốc.</p>
                     </div>
@@ -792,7 +792,7 @@ Mở ↗
                                         <span class="spinner-small"></span>
                                         <span id="navi-scan-status-text">Navidrome đang quét thư viện...</span>
                                     </div>
-                                    <div class="scan-monitor-sub" id="navi-scan-count-text">Đã phát hiện 0 bài hát</div>
+                                    <div class="scan-monitor-sub" id="navi-scan-count-text">Đang chờ tiến độ từ Navidrome…</div>
                                 </div>
                             </div>
                         </div>
@@ -928,8 +928,8 @@ Mở ↗
         </div>
     </div>
 
-    <script src="app.js?v=5.3"></script>
-    <script src="scoring.js?v=4"></script>
+    <script src="app.js?v=5.5"></script>
+    <script src="scoring.js?v=5"></script>
 
     <!-- Sidebar toggle & topbar title update -->
 

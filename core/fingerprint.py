@@ -43,7 +43,7 @@ def get_audio_fingerprint(filepath: str) -> Dict[str, Any]:
         raw_ints = fp_val if isinstance(fp_val, list) else []
 
         return {
-            'duration': float(data.get('duration', 0.0)),
+            'duration': float(data['duration']) if data.get('duration') is not None else None,
             'raw_ints': raw_ints,
             'is_available': bool(raw_ints),
             'sample_count': len(raw_ints)

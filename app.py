@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 # Add current folder to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from core.analyzer import analyze_audio_file, generate_spectrogram_image
+from core.analyzer import analyze_audio_file, generate_spectrogram_image, format_audio_specs
 from core.paths import vault_path
 from core.navidrome_config import read_config, resolve_config, public_config, write_config
 from core.tagger import apply_quality_tag
@@ -168,7 +168,7 @@ def _read_library_items():
             if verdict == 'UNKNOWN' and meta['metadata_available']:
                 if 'dsd' in meta['codec'].lower() or path.suffix.lower() in ('.dsf', '.dff'):
                     verdict, source = 'DSD_SOURCE_UNVERIFIED', 'metadata'
-                elif meta['sr'] > 48000 and meta['codec'].lower() not in ('mp3', 'aac', 'opus', 'vorbis'):
+                elif meta['sr'] is not None and meta['sr'] > 48000 and meta['codec'].lower() not in ('mp3', 'aac', 'opus', 'vorbis'):
                     verdict, source = 'FORMAT_HIRES', 'metadata'
                 elif meta['tier'] == '02_Lossless_CD':
                     verdict, source = 'CD_LOSSLESS', 'metadata'
@@ -179,7 +179,7 @@ def _read_library_items():
                 'tier': meta['tier'], 'title': meta['title'] or path.stem,
                 'artist': meta['artist'] or 'Unknown Artist',
                 'album': meta['album'] or 'Singles',
-                'specs': f"{meta['codec'].upper()} {meta['bits']}bit/{meta['sr']/1000:.1f}kHz",
+                'specs': format_audio_specs({'codec': meta['codec'], 'bit_depth': meta['bits'], 'sample_rate': meta['sr']}),
                 'verdict': verdict, 'verdict_source': source
             })
     return sorted(items, key=lambda item: item['original_path'])
@@ -234,8 +234,8 @@ def get_library_stats():
         verdict_counts['duplicate_meta'] = len(dupe_map)
         verdict_counts['duplicate_meta_groups'] = dupe_groups
     except Exception:
-        verdict_counts['duplicate_meta'] = 0
-        verdict_counts['duplicate_meta_groups'] = 0
+        verdict_counts['duplicate_meta'] = None
+        verdict_counts['duplicate_meta_groups'] = None
     return {'root_directory': str(ROOT_DIR), 'counts': verdict_counts, 'status': 'Ready'}
 
 

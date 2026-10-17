@@ -20,6 +20,7 @@ import json
 import shutil
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+from core.analyzer import format_audio_specs
 
 AUDIO_EXTENSIONS = {'.flac', '.wav', '.dsf', '.dff', '.m4a', '.mp3', '.ape', '.aac', '.ogg', '.opus', '.wma', '.aif', '.aiff'}
 
@@ -75,8 +76,8 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
     track = ''
     year = ''
     
-    sr = 44100
-    bits = 16
+    sr = None
+    bits = None
     codec = ext[1:]
     
     p_str = str(filepath)
@@ -84,8 +85,8 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
     if p_str in pre_scanned_specs:
         spec = pre_scanned_specs[p_str]
         codec = spec.get('codec', codec)
-        sr = spec.get('sample_rate', 44100)
-        bits = spec.get('bit_depth', 16)
+        sr = spec.get('sample_rate')
+        bits = spec.get('bit_depth')
         
     try:
         m = mutagen.File(p, easy=True)
@@ -108,6 +109,9 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
     except Exception:
         pass
         
+    sr = sr if sr and sr > 0 else None
+    bits = bits if bits and bits > 0 else None
+
     name_stem = p.stem
     is_numeric_stem = name_stem.isdigit() and len(name_stem) > 8
     
@@ -145,7 +149,7 @@ def process_file_metadata(filepath, pre_scanned_specs, hires_verdicts):
         tier = '02_Lossless_CD/Fake_Lossless_Transcodes'
     elif 'dsd' in codec or ext in ('.dsf', '.dff'):
         tier = '01_Hi-Res & DSD'
-    elif bits > 16 or sr > 48000:
+    elif (bits is not None and bits > 16) or (sr is not None and sr > 48000):
         tier = '01_Hi-Res & DSD'
     elif ext in ('.flac', '.wav', '.ape', '.aif', '.aiff') or codec.lower() in ('alac', 'wmalossless'):
         tier = '02_Lossless_CD'
@@ -298,7 +302,7 @@ def main():
             'artist': meta['artist'] or 'Unknown Artist',
             'album': meta['album'] or 'Singles',
             'title': meta['title'] or p.stem,
-            'specs': f"{meta['codec'].upper()} {meta['bits']}bit/{meta['sr']/1000:.1f}kHz",
+            'specs': format_audio_specs({'codec': meta['codec'], 'bit_depth': meta['bits'], 'sample_rate': meta['sr']}),
             'was_numeric': is_num,
             'is_recovered': is_recovered
         }

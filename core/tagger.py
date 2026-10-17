@@ -143,7 +143,7 @@ def apply_audiophile_tags(filepath: str, audit_data: Dict[str, Any]) -> Tuple[bo
     if p.suffix.lower() not in SUPPORTED_TAG_EXTENSIONS:
         return False, f"Định dạng chưa hỗ trợ gắn tag: {p.suffix.lower()}"
 
-    dr_score = audit_data.get('dynamic_range', {}).get('dr_score', 0)
+    dr_score = audit_data.get('dynamic_range', {}).get('dr_score')
     loudness = audit_data.get('loudness', {})
     rg_gain = loudness.get('replaygain_track_gain', '')
     tag_comment = get_audiophile_comment(audit_data)
@@ -158,7 +158,7 @@ def apply_audiophile_tags(filepath: str, audit_data: Dict[str, Any]) -> Tuple[bo
         audio.hires_verified = 'UNVERIFIED'  # Format grouping cannot verify source provenance.
         if p.suffix.lower() in ('.mp3', '.dsf'):
             audio.hires_status = tag_comment
-        if dr_score > 0 and not audit_data.get('dynamic_range', {}).get('is_estimate'):
+        if dr_score is not None and dr_score > 0 and not audit_data.get('dynamic_range', {}).get('is_estimate'):
             audio.dynamic_range = f"DR{dr_score}"
             audio.dr = str(dr_score)
         if rg_gain:
@@ -168,7 +168,8 @@ def apply_audiophile_tags(filepath: str, audit_data: Dict[str, Any]) -> Tuple[bo
             if r128_gain:
                 audio.r128_track_gain = float(r128_gain.removesuffix(' dB'))
         audio.save()
-        return True, f"Đã ghi Audiophile Tags {p.suffix[1:].upper()}: DR{dr_score} | Gain: {rg_gain}"
+        dr_label = f"DR{dr_score}" if dr_score is not None else "DR chưa đo được"
+        return True, f"Đã ghi Audiophile Tags {p.suffix[1:].upper()}: {dr_label} | Gain: {rg_gain}"
     except Exception as e:
         return False, str(e)
 
@@ -283,9 +284,9 @@ def rollback_all_audiophile_tags(root_dir=None) -> Tuple[int, List[str]]:
 
 # Backward compatibility alias
 def apply_quality_tag(filepath, verdict_data):
-    mock_audit = {
-        'dynamic_range': {'dr_score': 0, 'dr_badge': ''},
+    classification_audit = {
+        'dynamic_range': {},
         'vault_tier': {'badge': verdict_data.get('verdict', ''), 'tier_id': '02_cd_lossless'},
         'loudness': {}
     }
-    return apply_audiophile_tags(filepath, mock_audit)
+    return apply_audiophile_tags(filepath, classification_audit)

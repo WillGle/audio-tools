@@ -1,4 +1,5 @@
 import json
+import math
 import subprocess
 from pathlib import Path
 
@@ -13,11 +14,11 @@ def get_audio_specs(filepath):
         '-of', 'json',
         str(p)
     ]
-    codec = ext.lstrip('.')
-    sr = 44100
-    bits = 16
-    channels = 2
-    dur = 180.0
+    codec = ''
+    sr = None
+    bits = None
+    channels = None
+    dur = None
     readable = False
 
     try:
@@ -51,6 +52,7 @@ def get_audio_specs(filepath):
             from mutagen.flac import FLAC
             audio = FLAC(p)
             if hasattr(audio, 'info'):
+                codec = 'flac'
                 readable = audio.info.sample_rate > 0 and audio.info.channels > 0
                 if getattr(audio.info, 'bits_per_sample', 0) > 0:
                     bits = audio.info.bits_per_sample
@@ -62,9 +64,14 @@ def get_audio_specs(filepath):
                     channels = audio.info.channels
         except Exception:
             pass
-    elif ext in ('.dsf', '.dff'):
+    elif readable and 'dsd' in codec:
         bits = 1
         codec = 'dsd'
+
+    sr = sr if sr is not None and sr > 0 else None
+    bits = bits if bits is not None and bits > 0 else None
+    channels = channels if channels is not None and channels > 0 else None
+    dur = dur if dur is not None and math.isfinite(dur) and dur > 0 else None
 
     return {
         'is_readable': readable,
@@ -74,6 +81,15 @@ def get_audio_specs(filepath):
         'channels': channels,
         'duration': dur
     }
+
+def format_audio_specs(specs):
+    codec = specs.get('codec') or 'Chưa rõ codec'
+    bits = specs.get('bit_depth')
+    rate = specs.get('sample_rate')
+    depth = f'{bits}bit' if bits else '— bit'
+    frequency = f'{rate / 1000:.1f}kHz' if rate else '— kHz'
+    return f'{codec.upper()} {depth}/{frequency}'
+
 
 def analyze_audio_file(filepath):
     """Compatibility entry point backed by the evidence-based engine."""

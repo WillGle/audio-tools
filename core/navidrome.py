@@ -176,7 +176,7 @@ def trigger_navidrome_scan(server_url, username, password, full_scan=False):
                     'success': True,
                     'message': "Đã kích hoạt quét thư viện Navidrome thành công!",
                     'scanning': scan_status.get('scanning', True),
-                    'count': scan_status.get('count', 0)
+                    'count': scan_status.get('count')
                 }
             else:
                 err = sub_resp.get('error', {})
@@ -201,8 +201,8 @@ def get_navidrome_scan_status(server_url, username, password):
                 return {
                     'success': True,
                     'scanning': scan_status.get('scanning', False),
-                    'count': scan_status.get('count', 0)
+                    'count': scan_status.get('count')
                 }
-            return {'success': False, 'scanning': False, 'count': 0}
+            return {'success': False, 'scanning': False, 'count': None}
     except Exception as e:
-        return {'success': False, 'error': str(e), 'scanning': False, 'count': 0}
+        return {'success': False, 'error': str(e), 'scanning': False, 'count': None}

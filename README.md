@@ -173,6 +173,8 @@ CLI tổ chức thư viện dùng chung nhật ký `.vault_tiering_rollback.json
 
 ## Giao diện và kết nối Navidrome
 
+Số lượng và dung lượng lấy từ lượt quét; chỉ số âm thanh lấy từ phép đo. Không hiển thị số liệu mẫu hoặc tự gán giá trị cho phép đo thiếu. Khi đang tải, tải lỗi hoặc chưa đo, giao diện hiện `—` hoặc trạng thái tương ứng; số `0` chỉ hiển thị khi có kết quả xác định bằng 0.
+
 Ứng dụng mở ở **Tổng quan chất lượng**: tổng tệp, hi-res theo định dạng, nghi upsample, lossy/lỗi kỹ thuật, lossless tiêu chuẩn, cần xem xét và chưa kiểm tra. Bấm một nhóm để lọc ngay trên dashboard; **Chi tiết** mở bằng chứng đã lưu, **Quét toàn bộ kho** bắt đầu kiểm tra. Mỗi tệp chỉ thuộc một nhóm; kết quả thay đổi tệp hoặc phiên bản engine bị loại đến khi quét lại. Hi-res không xác minh độ phân giải gốc; nghi upsample chỉ là dấu hiệu phổ, không kết luận giả nguồn. Thanh điều hướng luôn ở trên cùng, mở trực tiếp **Tổng quan**, **Kho nhạc**, **Sắp xếp**, **Bài trùng**, **Phân nhóm**, **Ghi tag**, **Cài đặt**. Trên điện thoại thanh này cuộn ngang. Các chức năng xem trước, xác nhận, xuất, hoàn tác, lịch sử quét và hủy vẫn được giữ.
 
 Trong **Cài đặt**, lưu URL, tài khoản và mật khẩu Navidrome một lần. Hai ứng dụng phải đọc cùng tệp nhạc; đường dẫn mount có thể khác nhau. Kết nối được giữ trong `AUDIO_TOOLS_CACHE_DIR/navidrome.json` (mặc định `cache/navidrome.json`), quyền `0600`; API không trả lại mật khẩu. Thông tin trình duyệt từ phiên bản cũ được chuyển một lần rồi xóa khỏi localStorage sau khi lưu thành công. Mật khẩu trống giữ giá trị cũ khi URL và tài khoản không đổi; nút xóa kết nối loại bỏ cấu hình trên máy chủ.

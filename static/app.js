@@ -1,3 +1,8 @@
+// Missing measurements must stay unknown; measured zero remains a valid result.
+function formatMeasurement(value, unit = '') {
+    return Number.isFinite(value) ? `${value}${unit}` : '—';
+}
+
 // State
 let currentTab = 'tab-audiophile';
 let currentFilter = 'all';
@@ -388,8 +393,12 @@ function switchTab(tabId) {
 
 // 2. Stats & Clickable Stat Filter Cards
 async function initStats() {
+    ['stat-true-hires', 'stat-true-dsd', 'stat-studio-master', 'stat-fake-hires', 'stat-cd-lossless', 'stat-lossy', 'stat-dupe-meta-pill', 'stat-total-pill'].forEach(id => {
+        document.getElementById(id).textContent = '—';
+    });
     try {
         const res = await fetch('/api/stats');
+        if (!res.ok) throw new Error('Không tải được thống kê.');
         const data = await res.json();
         const counts = data.counts || {};
         document.getElementById('settings-root-path').textContent = data.root_directory || 'Chưa có thư mục';
@@ -397,21 +406,21 @@ async function initStats() {
         rootLabel.textContent = data.root_directory?.split('/').pop() || 'Kho nhạc';
         rootLabel.title = data.root_directory || '';
 
-        document.getElementById('stat-true-hires').textContent = counts.true_hires ?? 0;
-        document.getElementById('stat-true-dsd').textContent = counts.true_dsd ?? 0;
-        document.getElementById('stat-studio-master').textContent = counts.studio_master ?? 0;
-        document.getElementById('stat-fake-hires').textContent = counts.fake_hires ?? 0;
-        document.getElementById('stat-cd-lossless').textContent = counts.cd_lossless ?? 0;
-        document.getElementById('stat-lossy').textContent = counts.lossy ?? 0;
+        document.getElementById('stat-true-hires').textContent = formatMeasurement(counts.true_hires);
+        document.getElementById('stat-true-dsd').textContent = formatMeasurement(counts.true_dsd);
+        document.getElementById('stat-studio-master').textContent = formatMeasurement(counts.studio_master);
+        document.getElementById('stat-fake-hires').textContent = formatMeasurement(counts.fake_hires);
+        document.getElementById('stat-cd-lossless').textContent = formatMeasurement(counts.cd_lossless);
+        document.getElementById('stat-lossy').textContent = formatMeasurement(counts.lossy);
 
         const elDupePill = document.getElementById('stat-dupe-meta-pill');
         if (elDupePill) {
-            elDupePill.textContent = counts.duplicate_meta_groups !== undefined ? counts.duplicate_meta_groups : 0;
+            elDupePill.textContent = formatMeasurement(counts.duplicate_meta_groups);
         }
 
         const elTotalPill = document.getElementById('stat-total-pill');
         if (elTotalPill) {
-            elTotalPill.textContent = Number(counts.total ?? 0).toLocaleString('vi-VN');
+            elTotalPill.textContent = Number.isFinite(counts.total) ? counts.total.toLocaleString('vi-VN') : '—';
         }
     } catch (e) {
         console.error("Lỗi tải thống kê:", e);
@@ -805,6 +814,8 @@ function setFilter(filterName) {
 async function loadTracks() {
     const tbody = document.getElementById('tracks-tbody');
     if (!tbody) return;
+    document.getElementById('pagination-info').textContent = 'Đang tải danh sách…';
+    document.getElementById('pagination-page-display').textContent = '—';
     tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-muted">Đang tải danh sách bài hát...</td></tr>`;
 
     let url = `/api/tracks?filter=${encodeURIComponent(currentFilter)}&offset=${currentOffset}&limit=${pageLimit}`;
@@ -820,10 +831,12 @@ async function loadTracks() {
 
     try {
         const res = await fetch(url);
+        if (!res.ok) throw new Error('Không tải được danh sách tệp.');
         const data = await res.json();
-        const tracks = data.tracks || [];
+        if (!Array.isArray(data.tracks) || !Number.isInteger(data.total)) throw new Error('Danh sách tệp thiếu dữ liệu.');
+        const tracks = data.tracks;
         libraryTrackDetails = new Map(tracks.map(track => [track.original_path, track]));
-        const total = data.total || 0;
+        const total = data.total;
         currentTotalTracks = total;
 
         const infoEl = document.getElementById('pagination-info');
@@ -993,6 +1006,10 @@ async function loadTracks() {
         });
 
     } catch (e) {
+        document.getElementById('pagination-info').textContent = 'Chưa tải được danh sách';
+        document.getElementById('pagination-page-display').textContent = '—';
+        document.getElementById('btn-prev-page').disabled = true;
+        document.getElementById('btn-next-page').disabled = true;
         tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-rose">Lỗi khi tải dữ liệu bài hát: ${e.message}</td></tr>`;
     }
 }
@@ -1175,26 +1192,27 @@ function renderAudiophileAuditResults(data) {
     document.getElementById('additional-current').textContent = `Chẩn đoán của: ${data.filename || data.filepath}`;
     // 1. Dynamic Range Meter
     const dr = data.dynamic_range || {};
-    const drScore = dr.dr_score || 0;
+    const drScore = dr.dr_score;
     const scoreHuge = document.getElementById('dr-score-huge');
     if (scoreHuge) {
-        scoreHuge.textContent = drScore > 0 ? `DR${drScore}` : 'DR--';
+        scoreHuge.textContent = Number.isFinite(drScore) ? `DR${drScore}` : 'DR--';
         scoreHuge.style.color = dr.badge_color || '#fbbf24';
     }
     const drBadge = document.getElementById('pillar-dr-badge');
     if (drBadge) {
-        drBadge.textContent = dr.dr_badge || `DR${drScore}`;
+        drBadge.textContent = dr.dr_badge || (Number.isFinite(drScore) ? `DR${drScore}` : 'Chưa đo');
         drBadge.style.color = dr.badge_color || '#fff';
     }
     const needle = document.getElementById('dr-needle');
     if (needle) {
         // DR scale 1 to 20 -> 0% to 100%
         const pct = Math.max(0, Math.min(100, ((drScore - 1) / 19.0) * 100));
+        needle.hidden = !Number.isFinite(drScore);
         needle.style.left = `${pct}%`;
     }
-    document.getElementById('dr-stat-peak').textContent = `${dr.peak_db !== undefined ? dr.peak_db : '--'} dB`;
-    document.getElementById('dr-stat-rms').textContent = `${dr.rms_db !== undefined ? dr.rms_db : '--'} dB`;
-    document.getElementById('dr-stat-channels').textContent = `${dr.dr_left || '--'} / ${dr.dr_right || '--'}`;
+    document.getElementById('dr-stat-peak').textContent = formatMeasurement(dr.peak_db, ' dB');
+    document.getElementById('dr-stat-rms').textContent = formatMeasurement(dr.rms_db, ' dB');
+    document.getElementById('dr-stat-channels').textContent = `${formatMeasurement(dr.dr_left)} / ${formatMeasurement(dr.dr_right)}`;
     document.getElementById('dr-verdict-desc').textContent = dr.verdict_text || 'Đã hoàn tất đo đạc Dynamic Range.';
 
     // 2. FLAC Integrity & Bit-Rot
@@ -1211,14 +1229,15 @@ function renderAudiophileAuditResults(data) {
     const bits = data.bit_depth || {};
     const bitBadge = document.getElementById('pillar-bitdepth-badge');
     if (bitBadge) {
-        bitBadge.textContent = bits.badge || `${bits.real_bits}-bit`;
+        bitBadge.textContent = bits.badge || formatMeasurement(bits.real_bits, '-bit');
         bitBadge.style.color = bits.badge_color || '#fff';
     }
-    const entropyPct = bits.lsb_nonzero_pct || 0.0;
-    document.getElementById('lsb-entropy-pct').textContent = `${entropyPct}% non-zero`;
+    const entropyPct = bits.lsb_nonzero_pct;
+    document.getElementById('lsb-entropy-pct').textContent = formatMeasurement(entropyPct, '% non-zero');
     const fill = document.getElementById('lsb-entropy-fill');
     if (fill) {
-        fill.style.width = `${entropyPct}%`;
+        fill.hidden = !Number.isFinite(entropyPct);
+        fill.style.width = Number.isFinite(entropyPct) ? `${entropyPct}%` : '0%';
         fill.style.background = bits.is_fake_24bit ? '#f43f5e' : '#10b981';
     }
     document.getElementById('bitdepth-msg-desc').textContent = bits.explanation || '';
@@ -1241,8 +1260,8 @@ function renderAudiophileAuditResults(data) {
         dsdBadge.textContent = dsd.badge || dsd.purity;
         dsdBadge.style.color = dsd.badge_color || '#fff';
     }
-    document.getElementById('dsd-channels-val').textContent = dsd.channel_type || (dsd.channels ? `${dsd.channels} Channels` : 'Stereo 2.0');
-    document.getElementById('dsd-noise-rise-val').textContent = dsd.noise_shape_rise_db !== undefined ? `+${dsd.noise_shape_rise_db} dB` : 'N/A';
+    document.getElementById('dsd-channels-val').textContent = dsd.channel_type || formatMeasurement(dsd.channels, ' kênh');
+    document.getElementById('dsd-noise-rise-val').textContent = formatMeasurement(dsd.noise_shape_rise_db, ' dB');
     document.getElementById('dsd-msg-desc').textContent = dsd.explanation || '';
 
     // 5. ReplayGain & EBU R128
@@ -1251,23 +1270,23 @@ function renderAudiophileAuditResults(data) {
     if (loudBadge) {
         loudBadge.textContent = loudness.replaygain_track_gain || 'ReplayGain chưa đo được';
     }
-    document.getElementById('loudness-lufs-val').textContent = `${loudness.integrated_lufs !== undefined ? loudness.integrated_lufs + ' LUFS' : '--'}`;
-    document.getElementById('loudness-peak-val').textContent = `${loudness.true_peak_db !== undefined ? loudness.true_peak_db + ' dBTP' : '--'}`;
+    document.getElementById('loudness-lufs-val').textContent = formatMeasurement(loudness.integrated_lufs, ' LUFS');
+    document.getElementById('loudness-peak-val').textContent = formatMeasurement(loudness.true_peak_db, ' dBTP');
     document.getElementById('loudness-rg-val').textContent = loudness.replaygain_track_gain || '--';
-    document.getElementById('loudness-msg-desc').textContent = loudness.error || `Target: -18 LUFS (ReplayGain 2.0) | R128 Gain: ${loudness.r128_track_gain || '--'}. Bit-perfect, không suy hao âm chất.`;
+    document.getElementById('loudness-msg-desc').textContent = loudness.error || `Target: -18 LUFS (ReplayGain 2.0) | R128 Gain: ${loudness.r128_track_gain ?? '—'}. Bit-perfect, không suy hao âm chất.`;
 
     // 6. Gapless Playback
     const gapless = data.gapless || {};
     const gapBadge = document.getElementById('pillar-gapless-badge');
     if (gapBadge) {
-        gapBadge.textContent = gapless.gapless_rating || 'Gapless OK';
+        gapBadge.textContent = gapless.gapless_rating || 'Chưa đo';
         gapBadge.style.color = gapless.rating_color || '#fff';
     }
-    document.getElementById('gapless-intro-val').textContent = `${gapless.intro_silence_ms !== undefined ? gapless.intro_silence_ms + ' ms' : '--'}`;
-    document.getElementById('gapless-outro-val').textContent = `${gapless.outro_silence_ms !== undefined ? gapless.outro_silence_ms + ' ms' : '--'}`;
+    document.getElementById('gapless-intro-val').textContent = formatMeasurement(gapless.intro_silence_ms, ' ms');
+    document.getElementById('gapless-outro-val').textContent = formatMeasurement(gapless.outro_silence_ms, ' ms');
     document.getElementById('gapless-msg-desc').textContent = gapless.is_seamless_live_candidate ?
         '🟢 Phát hiện điểm giao nhau âm lượng cao (> -45dBFS) chuẩn Live/Mix liền mạch!' :
-        `Định dạng hỗ trợ: ${gapless.container_gapless_support ? 'Sample-Accurate Native' : 'Container Padded'}. Boundary: ${gapless.boundary_end_db} dBFS.`;
+        gapless.summary || 'Chưa có đủ dữ liệu đo gapless.';
 
     // 7. Vault Tier Proposal
     const tier = data.vault_tier || {};
@@ -1337,6 +1356,7 @@ function initVaultTiering() {
         if (!currentTieringPlan || !currentTieringPlan.items) {
             showToast('Chưa có dữ liệu kế hoạch phân cấp. Đang tải lại...', 'warning');
             await loadVaultTieringPlan();
+            if (!currentTieringPlan?.items) return;
         }
 
         const modeText = selectedTieringMode === 'symlink' ?
@@ -1415,33 +1435,46 @@ function initVaultTiering() {
 async function loadVaultTieringPlan() {
     const tbody = document.getElementById('tiering-preview-tbody');
     if (!tbody) return;
+    currentTieringPlan = null;
+    document.getElementById('btn-execute-tiering').disabled = true;
+    for (let tier = 1; tier <= 3; tier++) {
+        document.getElementById(`tier${tier}-count`).textContent = '—';
+        document.getElementById(`tier${tier}-size`).textContent = 'Dung lượng: —';
+    }
+    document.getElementById('plan-total-badge').textContent = 'Đang tải…';
     tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-muted">Đang quét và tính toán kế hoạch 3 cấp Vault Tiering...</td></tr>`;
 
     try {
         const res = await fetch('/api/vault/tiering/plan');
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Không tải được kế hoạch phân cấp.');
+        if (!Array.isArray(data.items) || !Number.isInteger(data.total_files) || !Number.isFinite(data.total_size_gb)
+            || !['tier_1', 'tier_2', 'tier_3'].every(key => Number.isInteger(data.summary?.[key]?.count) && Number.isFinite(data.summary?.[key]?.size_gb))) {
+            throw new Error('Kết quả phân nhóm thiếu số liệu.');
+        }
         currentTieringPlan = data;
+        document.getElementById('btn-execute-tiering').disabled = !data.items.length;
 
         const sum = data.summary || {};
         const t1 = sum.tier_1 || {};
         const t2 = sum.tier_2 || {};
         const t3 = sum.tier_3 || {};
 
-        document.getElementById('tier1-count').textContent = `${t1.count || 0} bài`;
-        document.getElementById('tier1-size').textContent = `Dung lượng: ~${t1.size_gb || 0} GB`;
+        document.getElementById('tier1-count').textContent = `${t1.count} bài`;
+        document.getElementById('tier1-size').textContent = `Dung lượng: ~${t1.size_gb} GB`;
 
-        document.getElementById('tier2-count').textContent = `${t2.count || 0} bài`;
-        document.getElementById('tier2-size').textContent = `Dung lượng: ~${t2.size_gb || 0} GB`;
+        document.getElementById('tier2-count').textContent = `${t2.count} bài`;
+        document.getElementById('tier2-size').textContent = `Dung lượng: ~${t2.size_gb} GB`;
 
-        document.getElementById('tier3-count').textContent = `${t3.count || 0} bài`;
-        document.getElementById('tier3-size').textContent = `Dung lượng: ~${t3.size_gb || 0} GB`;
+        document.getElementById('tier3-count').textContent = `${t3.count} bài`;
+        document.getElementById('tier3-size').textContent = `Dung lượng: ~${t3.size_gb} GB`;
 
-        document.getElementById('plan-total-badge').textContent = `${data.total_files || 0} tệp (${data.total_size_gb || 0} GB)`;
+        document.getElementById('plan-total-badge').textContent = `${data.total_files} tệp (${data.total_size_gb} GB)`;
 
         renderVaultTieringPlanTable();
     } catch (e) {
         currentTieringPlan = null;
+        document.getElementById('plan-total-badge').textContent = 'Không tải được dữ liệu';
         tbody.replaceChildren();
         const cell = tbody.insertRow().insertCell(); cell.colSpan = 4;
         cell.className = 'text-center py-6 text-rose';
@@ -1695,12 +1728,21 @@ function scoreAudiophileQuality(f) {
 async function loadDuplicates(refresh = false) {
     const container = document.getElementById('dupes-container');
     if (!container) return;
+    duplicatesData = null;
+    ['dupe-count-byte', 'dupe-count-meta', 'dupe-count-name', 'dupe-subcount-all', 'dupe-subcount-flac', 'dupe-subcount-mixed', 'dupe-subcount-numbered'].forEach(id => {
+        document.getElementById(id).textContent = '—';
+    });
+    document.getElementById('dupe-selection-summary').textContent = 'Đang chờ kết quả quét…';
     container.innerHTML = `<p class="text-center py-6 text-muted">Đang quét tìm tệp trùng lặp (SQLite Cache)...</p>`;
 
     try {
         const res = await fetch(`/api/duplicates?refresh=${refresh}`);
         if (!res.ok) throw new Error('Không tải được kết quả quét trùng lặp');
-        duplicatesData = await res.json();
+        const data = await res.json();
+        if (!['byte_duplicates', 'meta_duplicates', 'name_duplicates'].every(key => Array.isArray(data[key]))) {
+            throw new Error('Kết quả quét trùng lặp thiếu dữ liệu.');
+        }
+        duplicatesData = data;
 
         const byteCount = (duplicatesData.byte_duplicates || []).length;
         const metaCount = (duplicatesData.meta_duplicates || []).length;
@@ -1742,6 +1784,7 @@ async function loadDuplicates(refresh = false) {
 
         renderDuplicates();
     } catch (e) {
+        document.getElementById('dupe-selection-summary').textContent = 'Chưa có kết quả quét';
         container.innerHTML = `<p class="text-center py-6 text-rose">Lỗi khi quét trùng lặp: ${e.message}</p>`;
     }
 }
@@ -1841,7 +1884,7 @@ function renderDuplicates() {
             groupTitle = `📄 ${escapeHtml(item.filename)}`;
             groupBadges += `<span class="stat-tag tag-cyan" style="font-size: 0.74rem;">Khác Thư Mục</span>`;
         } else {
-            groupTitle = `Nhóm #${idx + 1} (${item.size_mb || 0} MB / file)`;
+            groupTitle = `Nhóm #${idx + 1} (${formatMeasurement(item.size_mb)} MB / file)`;
         }
 
         const keptFilename = keptFile.split('/').pop();
@@ -2403,6 +2446,7 @@ function startNavidromeScanMonitor() {
     document.getElementById('navidrome-quick-pill').className = 'navidrome-pill scanning';
     document.getElementById('navi-header-text').textContent = 'Navidrome · Đang cập nhật';
     document.getElementById('navi-scan-progress').style.display = 'block';
+    document.getElementById('navi-scan-count-text').textContent = 'Đang chờ tiến độ từ Navidrome…';
     const check = async () => {
         if (generation !== navidromeMonitorGeneration) return;
         try {
@@ -2414,7 +2458,7 @@ function startNavidromeScanMonitor() {
                 showNavidromeSync('Navidrome đã hoàn tất lượt quét thư viện.');
                 return;
             }
-            document.getElementById('navi-scan-count-text').textContent = `${status.count || 0} bài đã xử lý`;
+            document.getElementById('navi-scan-count-text').textContent = `${formatMeasurement(status.count)} bài đã xử lý`;
             if (Date.now() - started > 10 * 60 * 1000) throw new Error('Navidrome vẫn có thể đang quét. Kiểm tra lại trạng thái khi cần.');
             navidromeScanInterval = setTimeout(check, document.hidden ? 10000 : 2500);
         } catch (error) {
@@ -2906,6 +2950,8 @@ function loadTrackDiagnostics(filepath) {
     document.getElementById('modal-audit-gain').textContent = '-- dB';
     document.getElementById('modal-audit-tier').textContent = '--';
     document.getElementById('modal-dr-badge-header').textContent = 'DR--';
+    document.getElementById('modal-audit-cutoff').textContent = '—';
+    document.getElementById('modal-audit-fp').textContent = '—';
 
     // 1. Phân tích DSP cơ bản
     fetch('/api/analyze', {
@@ -2913,10 +2959,10 @@ function loadTrackDiagnostics(filepath) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filepath })
     })
-    .then(r => r.json())
+    .then(r => { if (!r.ok) throw new Error('Không phân tích được tệp'); return r.json(); })
     .then(data => {
         if (currentSelectedTrack?.path !== filepath) return;
-        const cutoffLabel = data.cutoff_hz ? (data.cutoff_hz > 24000 ? '>24 kHz (Full Range)' : `${(data.cutoff_hz/1000).toFixed(1)} kHz (-${data.cutoff_drop_db || 0}dB)`) : 'Không rõ';
+        const cutoffLabel = data.cutoff_hz ? `${(data.cutoff_hz/1000).toFixed(1)} kHz (${formatMeasurement(data.cutoff_drop_db, ' dB sụt')})` : 'Không rõ';
         dspGrid.innerHTML = `
             <div class="dsp-metric">
                 <span class="dsp-metric-label">Biên phổ (sàng lọc)</span>
@@ -2924,11 +2970,11 @@ function loadTrackDiagnostics(filepath) {
             </div>
             <div class="dsp-metric">
                 <span class="dsp-metric-label">Độ Sụt Tần 22k</span>
-                <span class="dsp-metric-value">${data.drop_at_22k !== null ? data.drop_at_22k + ' dB' : 'N/A'}</span>
+                <span class="dsp-metric-value">${Number.isFinite(data.drop_at_22k) ? data.drop_at_22k + ' dB' : 'N/A'}</span>
             </div>
             <div class="dsp-metric">
                 <span class="dsp-metric-label">Dải Siêu Âm >24k</span>
-                <span class="dsp-metric-value">${data.ultrasonic_db !== null ? data.ultrasonic_db + ' dB' : 'N/A'}</span>
+                <span class="dsp-metric-value">${Number.isFinite(data.ultrasonic_db) ? data.ultrasonic_db + ' dB' : 'N/A'}</span>
             </div>
             <div class="dsp-metric">
                 <span class="dsp-metric-label">Đánh Giá Phổ Âm</span>
@@ -2937,6 +2983,7 @@ function loadTrackDiagnostics(filepath) {
         `;
     })
     .catch(() => {
+        if (currentSelectedTrack?.path !== filepath) return;
         dspGrid.innerHTML = `<div class="text-rose">Lỗi khi phân tích DSP</div>`;
     });
 
@@ -2946,7 +2993,7 @@ function loadTrackDiagnostics(filepath) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filepath })
     })
-    .then(r => r.json())
+    .then(r => { if (!r.ok) throw new Error('Không phân tích được tệp'); return r.json(); })
     .then(data => {
         if (currentSelectedTrack?.path !== filepath) return;
         currentAuditResult = data;
@@ -2959,7 +3006,7 @@ function loadTrackDiagnostics(filepath) {
 
         const drHeader = document.getElementById('modal-dr-badge-header');
         if (drHeader) {
-            drHeader.textContent = dr.dr_badge || `DR${dr.dr_score}`;
+            drHeader.textContent = dr.dr_badge || formatMeasurement(dr.dr_score, ' DR');
             drHeader.className = dr.dr_score >= 12 ? 'dr-score-pill dr-score-high' :
                                  dr.dr_score >= 8 ? 'dr-score-pill dr-score-mid' : 'dr-score-pill dr-score-low';
         }
@@ -2974,11 +3021,16 @@ function loadTrackDiagnostics(filepath) {
         }
         const elFp = document.getElementById('modal-audit-fp');
         if (elFp) {
-            elFp.textContent = fp.is_available ? `Chromaprint (${fp.sample_count}s)` : 'Chưa có';
+            elFp.textContent = fp.is_available ? `Chromaprint (${formatMeasurement(fp.sample_count)} giá trị)` : 'Chưa có';
             elFp.style.color = fp.is_available ? '#34d399' : '#94a3b8';
         }
     })
-    .catch(() => {});
+    .catch(() => {
+        if (currentSelectedTrack?.path !== filepath) return;
+        ['modal-audit-md5', 'modal-audit-gain', 'modal-audit-tier', 'modal-dr-badge-header', 'modal-audit-cutoff', 'modal-audit-fp'].forEach(id => {
+            document.getElementById(id).textContent = 'Không đo được';
+        });
+    });
 
     // 3. Tải ảnh Spectrogram
     img.src = `/api/spectrogram?filepath=${encodeURIComponent(filepath)}`;

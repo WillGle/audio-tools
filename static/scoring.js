@@ -24,6 +24,10 @@
         try {
             const data = await request(`/api/quality-dashboard?category=${dashboardCategory}&offset=${dashboardOffset}&limit=10`);
             if (generation !== dashboardGeneration) return;
+            if (!Number.isInteger(data.total) || !Array.isArray(data.files)
+                || !Object.keys(categoryNames).filter(key => key !== 'all').every(key => Number.isInteger(data.counts?.[key]))) {
+                throw new Error('Kết quả thống kê thiếu số liệu.');
+            }
             Object.entries({all: data.total, ...data.counts}).forEach(([key, value]) => {
                 el(`quality-${key}`).textContent = value.toLocaleString('vi-VN');
             });
@@ -59,7 +63,13 @@
             el('dashboard-prev').disabled = dashboardOffset === 0;
             el('dashboard-next').disabled = dashboardOffset + data.files.length >= data.matched;
         } catch (error) {
-            if (generation === dashboardGeneration) el('dashboard-summary').textContent = `Chưa tải được tổng quan. ${error.message}`;
+            if (generation !== dashboardGeneration) return;
+            Object.keys(categoryNames).forEach(key => { el(`quality-${key}`).textContent = '—'; });
+            el('dashboard-files').replaceChildren();
+            el('dashboard-page').textContent = '—';
+            el('dashboard-prev').disabled = true;
+            el('dashboard-next').disabled = true;
+            el('dashboard-summary').textContent = `Chưa tải được tổng quan. ${error.message}`;
         }
     }
 

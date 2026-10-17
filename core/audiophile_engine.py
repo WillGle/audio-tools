@@ -27,19 +27,19 @@ def check_dsd_purity(filepath: str, specs: Optional[Dict] = None) -> Dict[str, A
         codec = specs['codec']
         sr = specs['sample_rate']
         channels = specs['channels']
-        dur = specs.get('duration') or 180.0
+        dur = specs.get('duration')
     except ToolError:
         return {
             'is_dsd': False, 'purity': 'UNKNOWN', 'codec': ext[1:].upper(),
-            'channels': 0, 'channel_type': 'Unknown', 'channel_badge': '',
+            'channels': None, 'channel_type': 'Chưa rõ', 'channel_badge': '',
             'badge': '⚪ DSD chưa xác thực', 'badge_color': '#94a3b8',
             'explanation': 'Không đọc được thông tin âm thanh; không thể xác thực DSD.'
         }
 
     is_dsd = ('dsd' in codec.lower() or ext in ('.dsf', '.dff'))
 
-    channel_type = 'Multi-channel 5.1 Surround' if channels > 2 else 'Stereo 2.0'
-    channel_badge = '🎧 5.1 Surround' if channels > 2 else '🎵 Stereo 2.0'
+    channel_type = 'Mono' if channels == 1 else 'Stereo 2.0' if channels == 2 else f'{channels} kênh'
+    channel_badge = channel_type
 
     if not is_dsd:
         return {
@@ -55,8 +55,8 @@ def check_dsd_purity(filepath: str, specs: Optional[Dict] = None) -> Dict[str, A
         }
 
     # Phân tích phổ dải siêu âm 30kHz - 80kHz qua PCM 176.4kHz
-    start_sec = min(5.0, max(0.0, dur * 0.25))
-    read_len = min(12.0, max(5.0, dur - start_sec))
+    start_sec = min(5.0, max(0.0, dur * 0.25)) if dur else 0.0
+    read_len = min(12.0, max(5.0, dur - start_sec)) if dur else 12.0
 
     cmd_decode = [
         'ffmpeg', '-v', 'error',
@@ -208,17 +208,18 @@ def check_gapless_attributes(filepath: str, duration: Optional[float] = None) ->
             duration = probe(p)['duration']
         except ToolError:
             duration = None
-    dur = duration or 180.0
-
-    tail_start = max(0.0, dur - 2.0)
+    tail_seek = ['-ss', str(max(0.0, duration - 2.0))] if duration else ['-sseof', '-2.0']
     cmd_end = [
         'ffmpeg', '-v', 'error',
-        '-ss', str(tail_start), '-t', '2.0',
+        *tail_seek, '-t', '2.0',
         '-i', str(p),
         '-f', 'f32le', '-ac', '1', '-ar', '44100', '-'
     ]
     res_end = subprocess.run(cmd_end, capture_output=True)
     raw_end = np.frombuffer(res_end.stdout, dtype=np.float32)
+
+    start_valid = res_start.returncode == 0 and len(raw_start) > 0 and bool(np.all(np.isfinite(raw_start)))
+    end_valid = res_end.returncode == 0 and len(raw_end) > 0 and bool(np.all(np.isfinite(raw_end)))
 
     # Tìm khoảng lặng đầu (silent samples < -60 dBFS = 0.001)
     silence_threshold = 0.001
@@ -229,7 +230,7 @@ def check_gapless_attributes(filepath: str, duration: Optional[float] = None) ->
                 intro_silence_samples += 1
             else:
                 break
-    intro_silence_ms = round((intro_silence_samples / 44100.0) * 1000.0, 1)
+    intro_silence_ms = round((intro_silence_samples / 44100.0) * 1000.0, 1) if start_valid else None
 
     # Tìm khoảng lặng đuôi
     outro_silence_samples = 0
@@ -239,18 +240,21 @@ def check_gapless_attributes(filepath: str, duration: Optional[float] = None) ->
                 outro_silence_samples += 1
             else:
                 break
-    outro_silence_ms = round((outro_silence_samples / 44100.0) * 1000.0, 1)
+    outro_silence_ms = round((outro_silence_samples / 44100.0) * 1000.0, 1) if end_valid else None
 
     # Năng lượng tại 100ms cuối cùng (boundary energy)
     boundary_samples = raw_end[-4410:] if len(raw_end) >= 4410 else raw_end
-    boundary_rms = float(np.sqrt(np.mean(boundary_samples ** 2))) if len(boundary_samples) > 0 else 0.0
-    boundary_db = round(20.0 * np.log10(max(boundary_rms, 1e-9)), 1)
+    boundary_rms = float(np.sqrt(np.mean(boundary_samples ** 2))) if end_valid else None
+    boundary_db = round(20.0 * np.log10(max(boundary_rms, 1e-9)), 1) if boundary_rms is not None else None
 
-    is_seamless_candidate = bool(boundary_db > -45.0)
+    is_seamless_candidate = bool(boundary_db > -45.0) if boundary_db is not None else None
 
     container_gapless_support = bool(ext in ('.flac', '.wav', '.dsf', '.dff', '.ape'))
 
-    if container_gapless_support:
+    if not start_valid or not end_valid:
+        gapless_rating = 'Chưa đủ dữ liệu đo gapless'
+        rating_color = '#94a3b8'
+    elif container_gapless_support:
         gapless_rating = 'Seamless Native Ready'
         rating_color = '#10b981'
     elif intro_silence_ms < 50.0 and outro_silence_ms < 50.0:
@@ -261,14 +265,14 @@ def check_gapless_attributes(filepath: str, duration: Optional[float] = None) ->
         rating_color = '#94a3b8'
 
     return {
-        'intro_silence_ms': float(intro_silence_ms),
-        'outro_silence_ms': float(outro_silence_ms),
-        'boundary_end_db': float(boundary_db),
+        'intro_silence_ms': intro_silence_ms,
+        'outro_silence_ms': outro_silence_ms,
+        'boundary_end_db': boundary_db,
         'is_seamless_live_candidate': is_seamless_candidate,
         'container_gapless_support': container_gapless_support,
         'gapless_rating': gapless_rating,
         'rating_color': rating_color,
-        'summary': f"Intro: {intro_silence_ms}ms | Outro: {outro_silence_ms}ms | Boundary: {boundary_db}dBFS"
+        'summary': f"Intro: {intro_silence_ms}ms | Outro: {outro_silence_ms}ms | Boundary: {boundary_db}dBFS" if start_valid and end_valid else 'Chưa đủ dữ liệu đo khoảng lặng và năng lượng biên.'
     }
 
 
@@ -323,15 +327,15 @@ def run_full_audiophile_audit(filepath: str, scoring: Optional[Dict] = None) -> 
         fp_res = get_audio_fingerprint(filepath)
         fp_data = {
             'is_available': fp_res.get('is_available', False),
-            'duration': fp_res.get('duration', 0.0),
-            'sample_count': fp_res.get('sample_count', 0),
+            'duration': fp_res.get('duration'),
+            'sample_count': fp_res.get('sample_count'),
             'badge': '🟢 Chromaprint OK' if fp_res.get('is_available') else '⚪ Fingerprint N/A'
         }
     except Exception:
         fp_data = {
             'is_available': False,
-            'duration': 0.0,
-            'sample_count': 0,
+            'duration': None,
+            'sample_count': None,
             'badge': '⚪ Fingerprint N/A'
         }
 
@@ -421,24 +425,28 @@ def classify_vault_tier(filepath: str, integrity: Dict, bit_purity: Dict, dsd_pu
         }
 
     # 7. PCM Hi-Res (>24/96k hoặc 24-bit)
-    real_bits = bit_purity.get('real_bits', 16)
+    real_bits = bit_purity.get('real_bits')
+    bits_label = str(real_bits) if real_bits is not None else '—'
 
     sr = specs['sample_rate']
+    if sr is None:
+        return {'tier_id': '03_quarantine', 'tier_name': '03_Quarantine',
+                'sub_category': 'Unverified', 'badge': 'Chưa đủ thông tin định dạng', 'badge_color': '#94a3b8'}
 
-    if sr >= 88200 or (real_bits >= 24 and sr > 48000):
+    if sr >= 88200 or (real_bits is not None and real_bits >= 24 and sr > 48000):
         return {
             'tier_id': '01_hires_dsd',
             'tier_name': '01_DSD & Hi-Res (>24/96k)',
-            'sub_category': f'HiRes_{real_bits}bit_{sr//1000}k',
-            'badge': f'🟢 DSD & Hi-Res ({real_bits}b/{sr//1000}k)',
+            'sub_category': f'HiRes_{bits_label}bit_{sr//1000}k',
+            'badge': f'🟢 DSD & Hi-Res ({bits_label}b/{sr//1000}k)',
             'badge_color': '#10b981'
         }
     else:
         return {
             'tier_id': '02_cd_lossless',
             'tier_name': '02_Lossless CD (16/44.1k)',
-            'sub_category': f'CD_{real_bits}bit_{sr//1000}k',
-            'badge': f'🔵 Lossless CD ({real_bits}b/{sr//1000}k)',
+            'sub_category': f'CD_{bits_label}bit_{sr//1000}k',
+            'badge': f'🔵 Lossless CD ({bits_label}b/{sr//1000}k)',
             'badge_color': '#6366f1'
         }
 
@@ -459,8 +467,8 @@ def audit_album_gapless_and_dr(track_paths: List[str]) -> Dict[str, Any]:
         try:
             audit = run_full_audiophile_audit(tp)
             track_audits.append(audit)
-            score = audit.get('dynamic_range', {}).get('dr_score', 0)
-            if score > 0:
+            score = audit.get('dynamic_range', {}).get('dr_score')
+            if score is not None and score > 0:
                 dr_scores.append(score)
         except Exception as e:
             print(f"Lỗi kiểm định track {tp}: {e}")
@@ -468,8 +476,8 @@ def audit_album_gapless_and_dr(track_paths: List[str]) -> Dict[str, Any]:
     if not track_audits:
         return {'error': 'Không có track nào được phân tích thành công'}
 
-    album_dr = round(float(np.mean(dr_scores))) if dr_scores else 0
-    album_dr_float = round(float(np.mean(dr_scores)), 2) if dr_scores else 0.0
+    album_dr = round(float(np.mean(dr_scores))) if dr_scores else None
+    album_dr_float = round(float(np.mean(dr_scores)), 2) if dr_scores else None
 
     # Phân tích chuyển tiếp Gapless giữa track i và track i+1
     transitions = []
@@ -480,14 +488,19 @@ def audit_album_gapless_and_dr(track_paths: List[str]) -> Dict[str, Any]:
         t1_gapless = t1.get('gapless', {})
         t2_gapless = t2.get('gapless', {})
 
-        t1_outro_silence = t1_gapless.get('outro_silence_ms', 0.0)
-        t2_intro_silence = t2_gapless.get('intro_silence_ms', 0.0)
-        total_silence_gap = round(t1_outro_silence + t2_intro_silence, 1)
+        t1_outro_silence = t1_gapless.get('outro_silence_ms')
+        t2_intro_silence = t2_gapless.get('intro_silence_ms')
+        total_silence_gap = round(t1_outro_silence + t2_intro_silence, 1) if t1_outro_silence is not None and t2_intro_silence is not None else None
 
-        t1_end_db = t1_gapless.get('boundary_end_db', -120.0)
+        t1_end_db = t1_gapless.get('boundary_end_db')
 
         # Đánh giá chuyển tiếp
-        if total_silence_gap == 0.0 and t1_end_db > -45.0:
+        if total_silence_gap is None or t1_end_db is None:
+            status = 'INCONCLUSIVE'
+            status_badge = 'Chưa đủ dữ liệu'
+            status_color = '#94a3b8'
+            note = 'Chưa đo được khoảng lặng hoặc năng lượng biên.'
+        elif total_silence_gap == 0.0 and t1_end_db > -45.0:
             status = 'SEAMLESS_CONTINUOUS'
             status_badge = '🟢 Chuyển Liền Mạch (Live / Mix)'
             status_color = '#10b981'
@@ -518,7 +531,7 @@ def audit_album_gapless_and_dr(track_paths: List[str]) -> Dict[str, Any]:
         'track_count': len(track_audits),
         'album_dr_score': album_dr,
         'album_dr_float': album_dr_float,
-        'album_dr_badge': f"Album DR{album_dr}",
+        'album_dr_badge': f"Album DR{album_dr}" if album_dr is not None else 'Album DR chưa đo được',
         'transitions': transitions,
         'tracks': track_audits
     }
