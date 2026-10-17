@@ -123,8 +123,10 @@ def loudness(path, config, cancel=None):
         m = re.search(pattern, summary)
         value = float(m.group(1)) if m else None
         return value if value is not None and math.isfinite(value) else None
-    return {'available': True, 'integrated_lufs': extract(r'I:\s*([-+\w.]+) LUFS'),
-            'lra_lu': extract(r'LRA:\s*([-+\w.]+) LU'),
-            'true_peak_dbtp': extract(r'Peak:\s*([-+\w.]+) dBFS'),
+    integrated = extract(r'I:\s*([-+\w.]+) LUFS')
+    lra = extract(r'LRA:\s*([-+\w.]+) LU')
+    true_peak = extract(r'Peak:\s*([-+\w.]+) dBFS')
+    return {'available': all(value is not None for value in (integrated, lra, true_peak)),
+            'integrated_lufs': integrated, 'lra_lu': lra, 'true_peak_dbtp': true_peak,
             'method': 'FFmpeg ebur128 (EBU R128 / ITU-R BS.1770); true-peak oversampling',
             'limitations': ['LUFS/LRA của bản rất ngắn hoặc im lặng có thể không có ý nghĩa.']}

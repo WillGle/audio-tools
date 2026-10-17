@@ -94,16 +94,16 @@ def analyze(path, *, mode='BALANCED', expectations=None, reference=None, config=
             raise ToolError('Thiếu FFmpeg/ffprobe; không thể đo âm thanh')
         specs = tools.probe(path, cancel)
         out['claims']['container_assertions'] = specs
-        for key in ['sample_rate', 'channels']:
-            if specs[key] <= 0 or specs[key] > config['limits'][key]:
-                raise ToolError('Thông số âm thanh vượt giới hạn phân tích')
-        if specs['duration'] and specs['duration'] > config['limits']['duration_seconds']:
-            raise ToolError('Thời lượng vượt giới hạn phân tích')
         if specs['codec'].startswith('dsd'):
             # DSD-to-PCM conversion cannot establish integer source resolution.
             rules['bit_depth'] = rule('Bit depth PCM không áp dụng cho DSD.', status='NOT_APPLICABLE')
             rules['sample_rate'] = rule('Phân tích DSD nằm ở mục chẩn đoán riêng.', status='NOT_APPLICABLE')
             raise ToolError('Định dạng DSD: dùng mục DSD riêng; chưa chấm authenticity cho DSD.')
+        for key in ['sample_rate', 'channels']:
+            if specs[key] <= 0 or specs[key] > config['limits'][key]:
+                raise ToolError('Thông số âm thanh vượt giới hạn phân tích')
+        if specs['duration'] and specs['duration'] > config['limits']['duration_seconds']:
+            raise ToolError('Thời lượng vượt giới hạn phân tích')
         metadata = evaluate_metadata(path, specs, claims, config, versions)
         rules['metadata'] = metadata
         flac = tools.flac_integrity(path, config, cancel) if specs['codec'] == 'flac' and mode != 'FAST' else {}

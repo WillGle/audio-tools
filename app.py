@@ -272,22 +272,40 @@ def quality_dashboard(category: str = 'all', offset: int = Query(0, ge=0), limit
             if not current or result.get('engine_signature') != signature or result.get('rule_version') != scoring_service.config['version']:
                 result = None
         group = 'unchecked'
+        format_class = 'unknown'
+        quality_class = 'unchecked'
         if result:
             rules = result['rules']
             specs = result['claims']['container_assertions']
-            if result['critical_failure'] or rules['signal_defects']['status'] == 'SUSPECT' or any(rules[key]['status'] == 'FAIL' for key in rules):
+            lossless = is_lossless(specs.get('codec', ''))
+            if lossless and specs.get('sample_rate', 0) > 48000 and specs.get('bit_depth', 0) > 16:
+                format_class = 'hires'
+            elif lossless:
+                format_class = 'standard'
+            elif specs.get('codec'):
+                format_class = 'lossy'
+            if result.get('score') is None or result.get('verdict') == 'INSUFFICIENT_EVIDENCE':
+                group = 'review'
+                quality_class = 'insufficient_evidence'
+            elif result['critical_failure'] or rules['signal_defects']['status'] == 'SUSPECT' or any(rules[key]['status'] == 'FAIL' for key in rules):
                 group = 'low_quality'
+                quality_class = 'technical_issue'
             elif rules['sample_rate']['measurements'].get('resampling_evidence'):
                 group = 'upsample'
+                quality_class = 'source_review'
             elif specs.get('codec') and not is_lossless(specs['codec']) and specs['codec'] in {'mp3', 'aac', 'opus', 'vorbis', 'wmav1', 'wmav2', 'wmapro', 'ac3', 'eac3'}:
                 group = 'low_quality'
+                quality_class = 'lossy_format'
             elif result['preliminary'] or any(rule['status'] in ('REVIEW', 'SUSPECT') for rule in rules.values()):
                 group = 'review'
+                quality_class = 'source_review'
             else:
-                group = 'hires' if is_lossless(specs.get('codec', '')) and specs.get('sample_rate', 0) > 48000 and specs.get('bit_depth', 0) > 16 else 'standard'
+                group = 'standard'
+                quality_class = 'assessed'
         counts[group] += 1
         if category in ('all', group):
-            rows.append({**item, 'category': group, 'score': result['score'] if result else None})
+            rows.append({**item, 'category': group, 'format_class': format_class,
+                         'quality_class': quality_class, 'score': result['score'] if result else None})
     total = sum(counts.values())
     return {'total': total, 'counts': counts, 'matched': len(rows), 'offset': offset,
             'files': rows[offset:offset + limit]}

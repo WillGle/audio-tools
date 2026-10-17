@@ -4247,5 +4247,30 @@
     "badge_color": "#f59e0b",
     "explanation": "Không thể xác minh nguồn master chỉ từ file này. Điểm là chỉ số bằng chứng, không phải xác suất file thật.",
     "filepath": "/mnt/vault/GleVault/Hires/01 - Shine on you crazy Diamond (Parts 1 - 5)-011.dsf"
+  },
+  {
+    "scoring_version": "1.0.0",
+    "file_stat": {
+      "size_bytes": 2925295,
+      "mtime_ns": 1605270324000000000,
+      "ctime_ns": 1740563292031328307
+    },
+    "engine_signature": "72e2c8bcfaacb9fd9b3b3098bc750ddb258ef74ebb1a8032651165c58faf04c7",
+    "rule_version": "1.0.0",
+    "file_sha256": "da6e49ce1f2a62ba319560aee2615b2049ef83109e7553cf77d498c820d01ece",
+    "filename": "()prod.Noden.mp3",
+    "codec": "MP3",
+    "sample_rate": 44100,
+    "bit_depth": null,
+    "cutoff_hz": 16750,
+    "cutoff_drop_db": 83.85,
+    "drop_at_22k": null,
+    "ultrasonic_db": null,
+    "has_24bit_bits": null,
+    "verdict": "LOSSY",
+    "badge": "Không phát hiện vấn đề đáng kể",
+    "badge_color": "#6366f1",
+    "explanation": "Không thể xác minh nguồn master chỉ từ file này. Điểm là chỉ số bằng chứng, không phải xác suất file thật.",
+    "filepath": "/mnt/vault/GleVault/Hires/()prod.Noden.mp3"
   }
 ]

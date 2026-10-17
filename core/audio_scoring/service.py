@@ -104,10 +104,13 @@ class AnalysisService:
                     conn.execute('INSERT OR REPLACE INTO analysis_cache VALUES (?,?)', (key, json.dumps(data, ensure_ascii=False, allow_nan=False)))
                     conn.commit()
             data['file_stat'] = {'size_bytes': after.st_size, 'mtime_ns': after.st_mtime_ns, 'ctime_ns': after.st_ctime_ns}
-            with closing(self.connect()) as conn:
-                conn.execute('INSERT OR REPLACE INTO analysis_files VALUES (?,?)',
-                             (str(path.relative_to(self.root)), json.dumps(data, ensure_ascii=False, allow_nan=False)))
-                conn.commit()
+            # Keep the dashboard's canonical result independent of FAST scans,
+            # user claims, and reference comparisons.
+            if mode != 'FAST' and not claims and ref is None:
+                with closing(self.connect()) as conn:
+                    conn.execute('INSERT OR REPLACE INTO analysis_files VALUES (?,?)',
+                                 (str(path.relative_to(self.root)), json.dumps(data, ensure_ascii=False, allow_nan=False)))
+                    conn.commit()
             return data
         finally:
             self.slots.release()
