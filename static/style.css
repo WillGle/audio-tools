@@ -2595,3 +2595,100 @@ body { background: #080d18; }
     .batch-actions-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
     body:has(#audio-player-bar[style*="flex"]) .floating-batch-bar { bottom: 180px; }
 }
+
+/* Full UI normalization: the same surface, action, status, and responsive
+   language applies across every tab and shared overlay. */
+.audiophile-banner {
+    margin-bottom: 1rem;
+    padding: 1.15rem 1.35rem;
+    border: 1px solid rgba(107, 137, 188, .2);
+    border-radius: 14px;
+    background: linear-gradient(110deg, rgba(27, 39, 74, .82), rgba(10, 30, 43, .72));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+}
+.audiophile-banner-content { gap: 1rem; }
+.audiophile-banner h2 { font-size: 1.1rem; letter-spacing: -.015em; }
+.audiophile-banner p { max-width: 78ch; font-size: .8rem; line-height: 1.55; }
+
+.pillar-card, .card.glass-card, .scoring-panel {
+    border-color: rgba(116, 145, 190, .16);
+    border-radius: 14px;
+    background: rgba(14, 23, 40, .84);
+    box-shadow: 0 12px 28px rgba(0,0,0,.16);
+}
+.pillar-card { padding: 1.15rem 1.25rem; }
+.pillar-card-header, .card-header { gap: .8rem; padding-bottom: .9rem; border-bottom-color: rgba(122, 150, 194, .13); }
+.pillar-title, .card-header h3 { font-size: .95rem; letter-spacing: -.01em; }
+.pillar-subtitle, .card-body > p, .scoring-panel > p { font-size: .78rem; line-height: 1.55; }
+.pillar-icon-badge { width: 30px; height: 30px; border-radius: 9px; }
+.scoring-panel details > summary { font-size: .88rem; color: #d7e1f1; }
+.scoring-controls { gap: .7rem; }
+.scoring-controls label, .form-group label { color: #aebbd0; font-size: .76rem; }
+.form-input, .scoring-controls input, .scoring-controls select, textarea {
+    min-height: 40px;
+    border-color: rgba(118, 148, 194, .2);
+    border-radius: 8px;
+    background: rgba(5, 12, 25, .7);
+}
+.form-input:focus, .scoring-controls input:focus, .scoring-controls select:focus, textarea:focus { border-color: rgba(93, 205, 226, .75); box-shadow: 0 0 0 3px rgba(40, 171, 195, .12); }
+.btn { min-height: 36px; border-radius: 8px; font-size: .78rem; font-weight: 600; }
+.btn-primary { background: linear-gradient(135deg, #4d59d5, #3945ad); border-color: rgba(130, 142, 255, .4); }
+.btn-secondary { background: rgba(33, 48, 73, .78); border-color: rgba(132, 158, 197, .2); }
+.btn-emerald { background: linear-gradient(135deg, #059a7c, #087e6d); border-color: rgba(65, 222, 185, .35); }
+.btn-outline-rose { background: rgba(124, 27, 59, .2); border-color: rgba(244, 96, 130, .35); }
+.technical-note, .alert-box { border-radius: 10px; border-color: rgba(117, 147, 192, .17); background: rgba(16, 27, 46, .64); }
+
+.vault-tier-cards-grid { gap: .9rem; margin-bottom: 1rem; }
+.vault-tier-card {
+    min-height: 218px;
+    padding: 1.15rem;
+    border-radius: 14px;
+    background: rgba(14, 24, 42, .9);
+    border-color: rgba(119, 147, 193, .17);
+}
+.vault-tier-card:hover { transform: translateY(-2px); border-color: rgba(147, 177, 226, .36); }
+.vault-tier-card h3 { font-size: 1rem; }
+.vault-tier-metric { font-size: 1.8rem; }
+.tiering-controls-bar { gap: .9rem; padding: .85rem 1rem; border-radius: 12px; border-color: rgba(116, 145, 190, .17); background: rgba(14, 23, 40, .78); }
+.tiering-mode-selector { gap: .5rem; }
+.mode-pill { border-radius: 8px; border-color: rgba(120, 151, 198, .2); background: rgba(18, 31, 52, .72); font-size: .75rem; }
+.mode-pill.active { background: rgba(57, 75, 176, .34); border-color: rgba(113, 126, 239, .5); }
+
+.dupe-guide-bar, #dupe-subtoolbar { border-radius: 12px !important; border-color: rgba(116, 145, 190, .17) !important; background: rgba(14, 23, 40, .74) !important; }
+.dupe-card { border-radius: 13px; border-color: rgba(116, 145, 190, .17); background: rgba(14, 23, 40, .86); }
+.dupe-card-header { padding: .9rem 1rem; }
+.dupe-file-row { padding: .75rem .9rem; border-color: rgba(118, 147, 188, .11); }
+.dupe-path-code { font-size: .74rem; color: #aebbd0; }
+
+.modal-backdrop { padding: 1rem; background: rgba(3, 8, 17, .78); backdrop-filter: blur(7px); }
+.modal-card { border-radius: 15px; border-color: rgba(126, 158, 207, .24); background: #0e1728; box-shadow: 0 24px 70px rgba(0,0,0,.48); }
+.modal-header, .modal-footer { border-color: rgba(126, 158, 207, .15); }
+.modal-header h3 { font-size: 1rem; }
+.modal-body { font-size: .82rem; }
+.audio-player-bar { border-top-color: rgba(117, 150, 198, .24); background: rgba(8, 15, 28, .96); box-shadow: 0 -12px 30px rgba(0,0,0,.24); }
+.floating-batch-bar { border-color: rgba(114, 146, 195, .25); border-radius: 12px; background: rgba(14, 24, 42, .96); box-shadow: 0 16px 35px rgba(0,0,0,.3); }
+.toast { border-radius: 10px; border-color: rgba(128, 158, 204, .24); background: rgba(14, 24, 42, .96); box-shadow: 0 12px 28px rgba(0,0,0,.28); }
+
+@media (max-width: 900px) {
+    .audiophile-banner-content, .tiering-controls-bar { align-items: stretch; flex-direction: column; }
+    .tiering-controls-bar .btn-group, .tiering-mode-selector { width: 100%; }
+    .tiering-mode-selector { flex-wrap: wrap; }
+    .mode-pill { flex: 1 1 220px; }
+    .grid-2col { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+    .app-header { min-height: 0; }
+    .brand-text h1 { font-size: 1.1rem; }
+    .brand-subtitle { display: none; }
+    .nav-tabs { width: 100%; }
+    .nav-tab { padding: .5rem .72rem; }
+    .audiophile-banner, .pillar-card, .card.glass-card { padding: .9rem; }
+    .audiophile-banner-content { gap: .7rem; }
+    .audiophile-banner h2 { font-size: 1rem; }
+    .scoring-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .scoring-controls > * { width: 100%; }
+    .vault-tier-card { min-height: 0; }
+    .modal-footer { flex-wrap: wrap; }
+    .modal-footer .btn { flex: 1 1 140px; }
+    .audio-player-bar { padding: .7rem .8rem; }
+}
