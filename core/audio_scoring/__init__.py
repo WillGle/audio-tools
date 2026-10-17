@@ -1,6 +1,7 @@
 """Read-only Audio Authenticity & Integrity engine, independent of the dashboard."""
 from datetime import datetime, timezone
 import copy
+from functools import lru_cache
 import hashlib
 import json
 import logging
@@ -21,6 +22,7 @@ def load_config():
     return json.loads(Path(__file__).with_name('rules.v1.json').read_text(encoding='utf8'))
 
 
+@lru_cache(maxsize=1)
 def engine_signature():
     digest = hashlib.sha256()
     for path in sorted(Path(__file__).parent.glob('*.py')):
@@ -63,7 +65,7 @@ def validate_config(config):
         raise ValueError('Cấu hình coverage/penalty không hợp lệ')
 
 
-def analyze(path, *, mode='BALANCED', expectations=None, reference=None, config=None, cancel=None, versions=None):
+def analyze(path, *, mode='BALANCED', expectations=None, reference=None, config=None, cancel=None, versions=None, file_sha256=None):
     started = time.monotonic()
     checkpoint(cancel)
     path = Path(path).resolve(strict=True)
@@ -77,7 +79,7 @@ def analyze(path, *, mode='BALANCED', expectations=None, reference=None, config=
     before = path.stat()
     claims = Expectations.model_validate(expectations or {}).model_dump(exclude_none=True)
     versions = versions if versions is not None else tools.tool_versions(cancel)
-    sha = tools.file_hash(path, cancel)
+    sha = file_sha256 or tools.file_hash(path, cancel)
     rules = {key: rule('Chưa có đủ dữ liệu đo.', limitations=[NO_PROVENANCE]) for key in config['weights']}
     out = {'schema_version': ENGINE_VERSION, 'rule_version': config['version'],
            'engine_signature': engine_signature(), 'file_sha256': sha, 'filename': path.name,

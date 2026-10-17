@@ -92,24 +92,25 @@ class AnalysisService:
                 data['filename'] = path.name
             else:
                 data = analyze(path, mode=mode, expectations=claims, reference=ref, config=self.config,
-                               cancel=cancel, versions=versions)
+                               cancel=cancel, versions=versions, file_sha256=sha)
                 data['cache_hit'] = False
                 if data['file_sha256'] != sha or (ref_sha and data.get('reference') and data['reference']['file_sha256'] != ref_sha):
                     raise ToolError('Tệp thay đổi trong lúc phân tích')
             after = path.stat()
             if self._changed(before, after) or (ref and self._changed(ref_before, ref.stat())):
                 raise ToolError('Tệp thay đổi trong lúc phân tích')
-            if not row:
-                with closing(self.connect()) as conn:
-                    conn.execute('INSERT OR REPLACE INTO analysis_cache VALUES (?,?)', (key, json.dumps(data, ensure_ascii=False, allow_nan=False)))
-                    conn.commit()
             data['file_stat'] = {'size_bytes': after.st_size, 'mtime_ns': after.st_mtime_ns, 'ctime_ns': after.st_ctime_ns}
             # Keep the dashboard's canonical result independent of FAST scans,
             # user claims, and reference comparisons.
-            if mode != 'FAST' and not claims and ref is None:
+            canonical = mode != 'FAST' and not claims and ref is None
+            if not row or canonical:
                 with closing(self.connect()) as conn:
-                    conn.execute('INSERT OR REPLACE INTO analysis_files VALUES (?,?)',
-                                 (str(path.relative_to(self.root)), json.dumps(data, ensure_ascii=False, allow_nan=False)))
+                    payload = json.dumps(data, ensure_ascii=False, allow_nan=False)
+                    if not row:
+                        conn.execute('INSERT OR REPLACE INTO analysis_cache VALUES (?,?)', (key, payload))
+                    if canonical:
+                        conn.execute('INSERT OR REPLACE INTO analysis_files VALUES (?,?)',
+                                     (str(path.relative_to(self.root)), payload))
                     conn.commit()
             return data
         finally:
@@ -238,9 +239,11 @@ class AnalysisService:
                             data = {'filepath': path, 'result': None, 'error': message}
                         completed += 1
                         with closing(self.connect()) as conn:
-                            conn.execute('INSERT INTO scoring_results(job_id,filepath,payload) VALUES (?,?,?)', (job_id, path, json.dumps(data, ensure_ascii=False, allow_nan=False)))
+                            conn.execute('INSERT INTO scoring_results(job_id,filepath,payload) VALUES (?,?,?)',
+                                         (job_id, path, json.dumps(data, ensure_ascii=False, allow_nan=False)))
+                            conn.execute('UPDATE scoring_jobs SET completed=?, errors=? WHERE id=?',
+                                         (completed, errors, job_id))
                             conn.commit()
-                        self._update(job_id, completed=completed, errors=errors)
                     fill()
             checkpoint(event)
             self._update(job_id, status='COMPLETED')

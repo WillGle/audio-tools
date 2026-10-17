@@ -3431,3 +3431,24 @@ body:has(#audio-player-bar[style*="flex"]) .floating-batch-bar { bottom: 100px; 
     .quality-files { padding: 12px; }
     .quality-files .workspace-heading { flex-direction: row; }
 }
+
+/* Lightweight server-tool mode: reduce paint and animation cost. */
+.app-background { background: #080c14; }
+.sidebar, .topbar, .card, .glass-card, .pillar-card, .table-container,
+.modal-card, .audio-player-bar, .floating-batch-bar, .navidrome-pill,
+.stat-card, .quality-card, .quality-files {
+    backdrop-filter: none;
+    box-shadow: none;
+}
+*, *::before, *::after {
+    transition-duration: 0.08s !important;
+    animation-duration: 0.08s !important;
+}
+.sidebar-nav-item:hover, .btn:hover, .stat-card:hover { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        transition: none !important;
+        animation: none !important;
+        scroll-behavior: auto !important;
+    }
+}
