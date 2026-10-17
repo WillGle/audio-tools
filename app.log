@@ -149,3 +149,11 @@ INFO:     127.0.0.1:43400 - "GET /api/scoring/jobs/a9f1b027ae904670b6b4c016ff086
 INFO:     127.0.0.1:43400 - "GET /api/scoring/jobs/a9f1b027ae904670b6b4c016ff0861e1 HTTP/1.1" 200 OK
 INFO:     127.0.0.1:43400 - "GET /api/scoring/jobs/a9f1b027ae904670b6b4c016ff0861e1/results?offset=0&limit=50&sort=sequence&descending=false HTTP/1.1" 200 OK
 INFO:     127.0.0.1:43400 - "GET /api/scoring/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55254 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55254 - "GET /style.css?v=3.2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55254 - "GET /app.js?v=3.3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55266 - "GET /scoring.js?v=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55274 - "GET /api/scoring/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55274 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55266 - "GET /api/tracks?filter=all&offset=0&limit=50&sort_by=index&sort_dir=asc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55254 - "GET /api/stats HTTP/1.1" 200 OK

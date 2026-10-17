@@ -2473,6 +2473,106 @@ input::placeholder { color: var(--text-muted); opacity: 1; }
 #auth-details .scoring-raw li { margin-bottom: .5rem; line-height: 1.7; }
 .scoring-note { font-size: .85rem; }
 body:has(#audio-player-bar[style*="flex"]) .app-main { padding-bottom: 12rem; }
+
+/* Library cockpit visual treatment. Keep the existing component contracts and
+   interaction states, but give the primary browsing view a tighter hierarchy. */
+:root {
+    --bg-main: #080d18;
+    --bg-card: rgba(14, 22, 39, 0.9);
+    --bg-card-hover: rgba(20, 31, 53, 0.96);
+    --border-color: rgba(125, 151, 190, 0.14);
+    --border-highlight: rgba(147, 172, 211, 0.28);
+    --text-primary: #f4f7fb;
+    --text-secondary: #a8b4c7;
+    --text-muted: #8795aa;
+    --radius-md: 9px;
+    --radius-lg: 14px;
+    --shadow-md: 0 14px 30px rgba(0, 0, 0, 0.25);
+}
+
+body { background: #080d18; }
+.app-background {
+    background:
+        radial-gradient(circle at 8% 0%, rgba(38, 73, 145, 0.16), transparent 34%),
+        radial-gradient(circle at 92% 12%, rgba(0, 143, 145, 0.10), transparent 32%),
+        linear-gradient(180deg, #080d18 0%, #0a111d 58%, #08101b 100%);
+}
+
+.app-header {
+    min-height: 88px;
+    padding: .95rem 2rem;
+    background: rgba(7, 12, 23, 0.94);
+    border-bottom-color: rgba(106, 133, 174, 0.16);
+}
+.brand-container { gap: .85rem; }
+.brand-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    background: linear-gradient(145deg, #5d66e7 0%, #15b8c9 100%);
+    box-shadow: 0 5px 16px rgba(30, 156, 207, .25);
+}
+.brand-text h1 { font-size: 1.25rem; }
+.brand-subtitle { font-size: .75rem; }
+.nav-tabs {
+    gap: .15rem;
+    padding: 3px;
+    border-radius: 16px;
+    background: rgba(15, 24, 42, .78);
+    border-color: rgba(112, 140, 185, .17);
+}
+.nav-tab { padding: .55rem 1rem; font-size: .8rem; }
+.nav-tab.active {
+    background: rgba(81, 88, 191, .34);
+    border-color: rgba(119, 129, 242, .36);
+    box-shadow: 0 3px 12px rgba(54, 62, 157, .22);
+}
+
+.app-main { padding: 1.25rem 2rem 2rem; }
+.stats-grid { gap: .9rem; margin-bottom: 1.35rem; }
+.stat-card {
+    min-height: 160px;
+    padding: 1.05rem 1.15rem;
+    border-radius: 14px;
+    background: rgba(15, 24, 42, .88);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025);
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, .24); }
+.stat-header { margin-bottom: .55rem; }
+.stat-title { font-size: .74rem; letter-spacing: .045em; }
+.stat-value { font-size: 2.35rem; margin-bottom: .35rem; }
+.stat-desc { font-size: .74rem; line-height: 1.45; }
+.stat-tag { font-size: .68rem; padding: .25rem .45rem; }
+.border-emerald, .border-cyan, .border-amber, .border-rose, .border-indigo, .border-slate { border-left-width: 3px; }
+
+.explorer-toolbar { gap: .65rem; margin-bottom: .75rem; }
+.search-box { min-width: 300px; }
+.search-box input { padding: .7rem 1rem .7rem 2.45rem; border-radius: 9px; background: rgba(15, 24, 42, .84); }
+.filter-pills { gap: .4rem; }
+.filter-pill { padding: .53rem .82rem; border-radius: 8px; font-size: .76rem; background: rgba(15, 24, 42, .8); }
+.filter-pill.active { background: rgba(70, 76, 174, .38); border-color: rgba(113, 124, 235, .55); }
+.table-hint { margin: .15rem 0 .65rem; font-size: .77rem; }
+.table-container { border-radius: 14px; background: rgba(13, 21, 37, .92); box-shadow: 0 16px 34px rgba(0, 0, 0, .24); }
+.tracks-table { font-size: .82rem; }
+.tracks-table th { padding: .78rem .85rem; font-size: .72rem; background: rgba(16, 26, 46, .96); color: #a7b4c8; }
+.tracks-table td { padding: .82rem .85rem; line-height: 1.5; }
+.tracks-table tr:hover td { background: rgba(86, 112, 163, .07); }
+.track-title { font-size: .84rem; }
+.track-artist, .track-path { font-size: .74rem; }
+.track-specs-badge { font-size: .7rem; padding: 3px 7px; }
+
+@media (max-width: 960px) {
+    .app-header { padding: .9rem 1rem; }
+    .app-main { padding: 1rem; }
+}
+@media (max-width: 600px) {
+    .app-main { padding: .8rem; }
+    .stats-grid { gap: .65rem; }
+    .stat-card { min-height: 138px; padding: .85rem; }
+    .stat-value { font-size: 2rem; }
+    .search-box { min-width: 100%; }
+}
+
 @media (max-width: 768px) {
     .app-header { position: static; }
     .app-main { padding: 1rem; }
