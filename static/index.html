@@ -4,916 +4,882 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hi-Res Vault Companion — Audiophile 7-Pillar Studio</title>
+    <meta name="description" content="Công cụ kiểm tra chất lượng âm thanh, tổ chức thư viện và tích hợp Navidrome cho audiophile.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=3.2">
-    <style>
-        .stat-card.clickable {
-            cursor: pointer;
-            transition: transform 0.15s ease, border-color 0.15s ease;
-        }
-        .stat-card.clickable:hover {
-            transform: translateY(-2px);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-        .stat-card.active-filter {
-            border-color: #6366f1 !important;
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
-        }
-        .cache-badge {
-            font-size: 0.75rem;
-            color: #10b981;
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.25);
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-family: 'JetBrains Mono', monospace;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .audiophile-nav-badge {
-            font-size: 0.7rem;
-            background: rgba(99, 102, 241, 0.2);
-            color: #a5b4fc;
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin-left: 4px;
-            font-weight: 600;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css?v=4.0">
 </head>
 <body>
     <div class="app-background"></div>
-    
-    <!-- Top Navigation Header -->
-    <header class="app-header">
-        <div class="brand-container">
-            <div class="brand-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2 10v4"></path>
-                    <path d="M6 7v10"></path>
-                    <path d="M10 4v16"></path>
-                    <path d="M14 8v8"></path>
-                    <path d="M18 6v12"></path>
-                    <path d="M22 10v4"></path>
-                </svg>
-            </div>
-            <div class="brand-text">
-                <h1>Hi-Res Vault <span>Companion</span></h1>
-                <p class="brand-subtitle">
-                    Audiophile Audio Engine &bull; 
-                    <span class="cache-badge"><span class="status-dot-emerald"></span> 7 Tiêu Chuẩn Audiophile</span>
-                </p>
-            </div>
-        </div>
 
-        <nav class="nav-tabs">
-            <button class="nav-tab active" data-tab="tab-library" id="btn-tab-library">
-                Kho nhạc
-            </button>
-            <button class="nav-tab" data-tab="tab-organize" id="btn-tab-organize">
-                Sắp xếp
-            </button>
-            <button class="nav-tab" data-tab="tab-audiophile" id="btn-tab-audiophile">
-                Kiểm tra âm thanh
-            </button>
-            <button class="nav-tab" data-tab="tab-vault" id="btn-tab-vault">
-                Cấu Trúc Kho 3 Cấp
-                <span class="tab-badge" id="vault-badge-tier">3 Tiers</span>
-            </button>
-            <button class="nav-tab" data-tab="tab-duplicates" id="btn-tab-duplicates">
-                Trùng Lặp
-                <span id="dupe-badge-count" class="tab-badge" title="Chưa tải kết quả quét trùng lặp">—</span>
-            </button>
-            <button class="nav-tab" data-tab="tab-navidrome" id="btn-tab-navidrome">
-                Navidrome &amp; Thư Viện
-                <span class="nav-badge" id="navidrome-status-dot"></span>
-            </button>
-        </nav>
-    </header>
+    <!-- ===== APP SHELL ===== -->
+    <div class="app-shell">
 
-    <!-- Main Container -->
-    <main class="app-main">
-        
-        <!-- Metadata organization stays separate from browsing the library. -->
-        <section class="tab-content" id="tab-organize">
-            <div class="pillar-card scoring-panel" id="metadata-organizer">
-                <h2>Sắp xếp nhạc từ metadata</h2>
-                <p>Quét cả thư mục con → đọc tag → xem tên và vị trí mới. Không cần kiểm định âm thanh trước.</p>
-                <form id="metadata-organize-form" class="scoring-controls">
-                    <label>Thư mục tải mới trong kho <input id="metadata-organize-folder" placeholder="Để trống để duyệt toàn bộ kho"></label>
-                    <label class="organize-pattern-field">Mẫu tên file <input id="metadata-organize-format" value="{track} - {title}" list="metadata-organize-formats" maxlength="240" aria-describedby="metadata-organize-format-help" required></label>
-                    <datalist id="metadata-organize-formats"><option value="{track} - {title}"><option value="{artist} - {title}"><option value="{title}"><option value="{disc}-{track} - {title}"></datalist>
-                    <button class="btn btn-primary" id="metadata-organize-preview" type="submit">Đọc metadata &amp; xem trước</button>
-                </form>
-                <p id="metadata-organize-format-help" class="text-secondary">Sửa mẫu hoặc chọn gợi ý. Biến: {track} số bài, {title} tên bài, {artist} nghệ sĩ, {album} album, {disc} số đĩa. Đuôi file giữ tự động; số bài/đĩa có 2 chữ số.</p>
-                <p class="text-secondary">Thư mục đích: Nghệ sĩ / Album. Thiếu tên hoặc nghệ sĩ: giữ nguyên. Không ghi đè tệp trùng hay sửa nội dung audio/tag.</p>
-                <p id="metadata-organize-status" role="status" aria-live="polite"></p>
-                <div id="metadata-organize-results" hidden>
-                    <div class="scoring-controls">
-                        <label class="organize-search-field">Tìm bài <input type="search" id="metadata-organize-search" placeholder="Tên file, nghệ sĩ, album, thư mục…"></label>
-                        <label>Nhóm <select id="metadata-organize-filter"><option value="all">Tất cả</option><option value="READY">Sẵn sàng đổi tên</option><option value="REVIEW">Thiếu metadata / cần kiểm tra</option><option value="CONFLICT">Trùng đường dẫn đích</option><option value="UNCHANGED">Đã đúng vị trí</option></select></label>
-                        <label>Thay đổi <select id="metadata-organize-change"><option value="all">Tất cả thay đổi</option><option value="rename">Có đổi tên</option><option value="move">Chỉ chuyển thư mục</option></select></label>
-                        <button type="button" class="btn btn-primary" id="metadata-organize-apply" disabled>Áp dụng đổi tên &amp; di chuyển</button>
-                    </div>
-                    <p class="table-hint">Phần tô màu là ký tự thay đổi. Thư mục nằm dưới tên file; mở Chi tiết để xem metadata. Áp dụng cho tất cả bài sẵn sàng, kể cả ngoài bộ lọc.</p>
-                    <div class="organize-table-scroll" tabindex="0" role="region" aria-label="So sánh tên file"><table class="organize-table"><thead><tr><th scope="col">Tên / thư mục hiện tại</th><th scope="col">Tên / thư mục đề xuất</th><th scope="col">Trạng thái / Chi tiết</th></tr></thead><tbody id="metadata-organize-rows"></tbody></table></div>
-                    <p id="metadata-organize-count" role="status"></p>
+        <!-- ===== LEFT SIDEBAR ===== -->
+        <aside class="sidebar" id="sidebar">
+            <!-- Brand -->
+            <div class="sidebar-brand">
+                <div class="brand-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 10v4"></path><path d="M6 7v10"></path><path d="M10 4v16"></path>
+                        <path d="M14 8v8"></path><path d="M18 6v12"></path><path d="M22 10v4"></path>
+                    </svg>
                 </div>
-                <details class="scoring-detail"><summary>Hoàn tác sắp xếp</summary>
-                    <p>Khôi phục vị trí trước các lần sắp xếp metadata đã áp dụng. Không xóa thư mục rỗng hoặc ghi đè file.</p>
-                    <button type="button" class="btn btn-secondary" id="metadata-organize-undo">Khôi phục vị trí cũ</button>
-                </details>
-            </div>
-        </section>
-
-        <!-- Tab 1: Library & Quality Explorer -->
-        <section class="tab-content active" id="tab-library">
-            <!-- Compact Interactive Quality Cards -->
-            <div class="stats-grid mb-6">
-                <div class="stat-card border-emerald clickable" data-filter="true_hires" title="Bấm để lọc PCM sample rate cao">
-                    <div class="stat-header">
-                        <span class="stat-title">PCM sample rate cao</span>
-                        <span class="stat-tag tag-emerald">24/96k+</span>
-                    </div>
-                    <div class="stat-value text-emerald" id="stat-true-hires">—</div>
-                    <p class="stat-desc">Nhóm định dạng; nguồn master chưa xác thực.</p>
-                </div>
-
-                <div class="stat-card border-cyan clickable" data-filter="dsd" title="Bấm để lọc Định dạng DSD">
-                    <div class="stat-header">
-                        <span class="stat-title">Định dạng DSD</span>
-                        <span class="stat-tag tag-cyan">Super Audio</span>
-                    </div>
-                    <div class="stat-value text-cyan" id="stat-true-dsd">—</div>
-                    <p class="stat-desc">DSD; không chứng minh nguồn SACD/native.</p>
-                </div>
-
-                <div class="stat-card border-amber clickable" data-filter="studio_master" title="Bấm để lọc Cần xem xét">
-                    <div class="stat-header">
-                        <span class="stat-title">Cần xem xét</span>
-                        <span class="stat-tag tag-amber">24-bit</span>
-                    </div>
-                    <div class="stat-value text-amber" id="stat-studio-master">—</div>
-                    <p class="stat-desc">Có bằng chứng cần kiểm tra chi tiết.</p>
-                </div>
-
-                <div class="stat-card border-rose highlight-warning clickable" data-filter="fake_hires" title="Bấm để lọc Lỗi toàn vẹn">
-                    <div class="stat-header">
-                        <span class="stat-title">Lỗi toàn vẹn</span>
-                        <span class="stat-tag tag-rose">Cần Chú Ý</span>
-                    </div>
-                    <div class="stat-value text-rose" id="stat-fake-hires">—</div>
-                    <p class="stat-desc">Lỗi giải mã/frame/checksum đã phát hiện.</p>
-                </div>
-
-                <div class="stat-card border-indigo clickable" data-filter="cd_lossless" title="Bấm để lọc CD Lossless">
-                    <div class="stat-header">
-                        <span class="stat-title">CD Lossless</span>
-                        <span class="stat-tag tag-indigo">16/44.1k</span>
-                    </div>
-                    <div class="stat-value text-indigo" id="stat-cd-lossless">—</div>
-                    <p class="stat-desc">Nhóm định dạng lossless, chưa xác thực nguồn.</p>
-                </div>
-
-                <div class="stat-card border-slate clickable" data-filter="lossy" title="Bấm để lọc MP3/AAC">
-                    <div class="stat-header">
-                        <span class="stat-title">Nhạc Nén (Lossy)</span>
-                        <span class="stat-tag tag-slate">MP3 / AAC</span>
-                    </div>
-                    <div class="stat-value text-slate" id="stat-lossy">—</div>
-                    <p class="stat-desc">Định dạng nén tổn hao thông thường.</p>
+                <div class="sidebar-brand-text">
+                    <span class="sidebar-brand-name">Hi-Res Vault</span>
+                    <span class="sidebar-brand-sub">Audiophile Studio</span>
                 </div>
             </div>
 
-            <!-- Toolbar & Filter Pills -->
-            <div class="explorer-toolbar mb-3">
-                <div class="search-box">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input type="text" id="track-search-input" placeholder="Tìm kiếm bài hát, ca sĩ, album, tên file...">
-                </div>
-
-                <div class="filter-pills" id="filter-pills">
-                    <button class="filter-pill active" data-filter="all">Tất cả (<span id="stat-total-pill">—</span>)</button>
-                    <button class="filter-pill pill-dot-emerald" data-filter="true_hires">PCM sample rate cao</button>
-                    <button class="filter-pill pill-dot-rose" data-filter="fake_hires">Lỗi toàn vẹn</button>
-                    <button class="filter-pill pill-dot-amber" data-filter="studio_master">Cần xem xét</button>
-                    <button class="filter-pill pill-dot-indigo" data-filter="cd_lossless">CD Lossless</button>
-                    <button class="filter-pill pill-dot-slate" data-filter="lossy">Lossy MP3</button>
-                    <button class="filter-pill pill-dot-rose" data-filter="duplicate_meta" id="pill-filter-dupe-meta" title="Lọc các bài hát bị trùng lặp metadata trong kho nhạc">
-                        ⚠️ Trùng Metadata (<span id="stat-dupe-meta-pill">0</span>)
-                    </button>
-                </div>
-
-                <button class="btn btn-secondary btn-sm" id="btn-toggle-col-filters" title="Bật/Tắt thanh tìm kiếm &amp; lọc chi tiết theo cột">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-                    <span>Lọc Cột</span>
-                    <span class="badge" id="col-filter-badge" style="display:none; font-size:0.7rem; background: var(--accent-indigo);">0</span>
+            <!-- Nav Items -->
+            <nav class="sidebar-nav" role="navigation" aria-label="Điều hướng chính">
+                <button class="sidebar-nav-item active" data-tab="tab-library" id="btn-tab-library" aria-current="page">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle>
+                    </svg>
+                    <span class="nav-label">Kho nhạc</span>
                 </button>
-            </div>
 
-            <!-- Active Column Filters Bar (Shown when column filters are in effect) -->
-            <div class="active-filters-bar mb-3" id="active-col-filters-bar" style="display: none;">
-                <span class="active-filters-label">Đang lọc theo cột:</span>
-                <div class="active-filter-chips" id="active-filter-chips"></div>
-                <button class="btn btn-xs btn-outline-rose" id="btn-clear-all-col-filters">Xóa tất cả lọc</button>
-            </div>
+                <button class="sidebar-nav-item" data-tab="tab-organize" id="btn-tab-organize">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span class="nav-label">Sắp xếp</span>
+                </button>
 
-            <!-- Tracks Table with Column Search & Filtering -->
-            <p class="table-hint" id="library-table-hint">Mỗi hàng là một bài hát; đường dẫn gốc nằm dưới tên bài. Cuộn ngang bảng nếu chưa thấy đủ cột và nút thao tác.</p>
-            <div class="table-container" tabindex="0" role="region" aria-label="Danh sách nhạc" aria-describedby="library-table-hint">
-                <table class="tracks-table" id="tracks-table">
-                    <colgroup><col><col><col><col><col><col><col><col></colgroup>
-                    <thead>
-                        <tr class="table-header-row">
-                            <th class="th-checkbox">
-                                <input type="checkbox" id="check-all-tracks" class="track-checkbox" title="Chọn / Bỏ chọn tất cả bài trên trang này">
-                            </th>
-                            <th style="width: 48px; text-align: center;" class="sortable-th" data-sort="index" title="Bấm để sắp xếp theo thứ tự số #">
-                                <div class="th-content"><span>#</span> <span class="sort-icon" id="sort-icon-index">↕</span></div>
-                            </th>
-                            <th class="sortable-th" data-sort="title" title="Bấm để sắp xếp theo Tên bài hát">
-                                <div class="th-content"><span>Bài Hát &bull; Tên Tệp</span> <span class="sort-icon" id="sort-icon-title">↕</span></div>
-                            </th>
-                            <th class="sortable-th" data-sort="artist" title="Bấm để sắp xếp theo Nghệ sĩ">
-                                <div class="th-content"><span>Nghệ Sĩ</span> <span class="sort-icon" id="sort-icon-artist">↕</span></div>
-                            </th>
-                            <th class="sortable-th" data-sort="album" title="Bấm để sắp xếp theo Album">
-                                <div class="th-content"><span>Album</span> <span class="sort-icon" id="sort-icon-album">↕</span></div>
-                            </th>
-                            <th class="sortable-th" data-sort="format" style="width: 170px;" title="Bấm để sắp xếp theo Định dạng">
-                                <div class="th-content"><span>Định Dạng</span> <span class="sort-icon" id="sort-icon-format">↕</span></div>
-                            </th>
-                            <th class="sortable-th" data-sort="verdict" style="width: 150px;" title="Bấm để sắp xếp theo Đánh giá chất lượng">
-                                <div class="th-content"><span>Đánh Giá</span> <span class="sort-icon" id="sort-icon-verdict">↕</span></div>
-                            </th>
-                            <th style="width: 220px; text-align: right;">Thao Tác</th>
-                        </tr>
-                        <!-- Interactive Column Filter Row -->
-                        <tr class="col-filter-row" id="col-filter-row">
-                            <th style="text-align: center; padding: 4px;">
-                                <button id="btn-reset-col-filters" class="btn btn-xs btn-outline" title="Đặt lại bộ lọc cột" style="padding: 2px 5px; font-size: 0.72rem;">✕</button>
-                            </th>
-                            <th style="text-align: center; font-size: 0.7rem; color: var(--text-muted);">#</th>
-                            <th style="padding: 4px 8px;">
-                                <input type="text" id="col-filter-title" class="col-filter-input" placeholder="🔍 Tìm bài / tệp...">
-                            </th>
-                            <th style="padding: 4px 8px;">
-                                <input type="text" id="col-filter-artist" class="col-filter-input" placeholder="🔍 Tìm ca sĩ...">
-                            </th>
-                            <th style="padding: 4px 8px;">
-                                <input type="text" id="col-filter-album" class="col-filter-input" placeholder="🔍 Tìm album...">
-                            </th>
-                            <th style="padding: 4px 8px;">
-                                <select id="col-filter-format" class="col-filter-select">
-                                    <option value="">Tất cả định dạng</option>
-                                    <option value="flac">FLAC Lossless</option>
-                                    <option value="dsd">DSD / DSF (SACD)</option>
-                                    <option value="24bit">24-bit Hi-Res</option>
-                                    <option value="16bit">16-bit CD</option>
-                                    <option value="mp3">MP3 Lossy</option>
-                                    <option value="m4a">AAC / M4A</option>
-                                    <option value="wav">WAV</option>
-                                </select>
-                            </th>
-                            <th style="padding: 4px 8px;">
-                                <select id="col-filter-verdict" class="col-filter-select">
-                                    <option value="">Tất cả đánh giá</option>
-                                    <option value="duplicate_meta">⚠️ Trùng Metadata (Cùng bài hát)</option>
-                                    <option value="true_hires">🟢 PCM sample rate cao</option>
-                                    <option value="true_dsd">🔵 Định dạng DSD</option>
-                                    <option value="studio_master">🟡 Cần xem xét</option>
-                                    <option value="cd_lossless">🟣 CD Lossless</option>
-                                    <option value="fake_hires">🔴 Lỗi toàn vẹn</option>
-                                    <option value="lossy">⚪ Lossy MP3</option>
-                                </select>
-                            </th>
-                            <th style="text-align: right; padding: 4px 12px;">
-                                <span class="col-filter-hint text-muted" style="font-size: 0.72rem;">Lọc thời gian thực</span>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody id="tracks-tbody">
-                        <tr>
-                            <td colspan="8" class="text-center py-6 text-muted">Đang tải danh sách bài hát...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                <button class="sidebar-nav-item" data-tab="tab-audiophile" id="btn-tab-audiophile">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    <span class="nav-label">Kiểm tra âm thanh</span>
+                </button>
 
-            <!-- Floating Batch Action Bar -->
-            <div class="floating-batch-bar" id="floating-batch-bar" style="display: none;">
-                <div class="batch-count-group">
-                    <span class="batch-selected-dot"></span>
-                    <span>Đã chọn <strong id="batch-selected-count">0</strong> bài hát</span>
-                </div>
-                <div class="batch-actions-group">
-                    <button class="btn btn-sm btn-primary" id="btn-batch-score">Kiểm tra đã chọn</button>
-                    <button class="btn btn-sm btn-emerald" id="btn-batch-tag" title="Ghi tag chuẩn chất lượng vào các bài đã chọn">
-                        🏷️ Ghi Tag Metadata
-                    </button>
-                    <button class="btn btn-sm btn-primary" id="btn-batch-audiophile-tag" title="Chạy kiểm định và gắn tag 7 chuẩn cho các bài đã chọn">
-                        🔬 Ghi Tag 7 Chuẩn
-                    </button>
-                    <button class="btn btn-sm btn-outline-rose" id="btn-batch-clear-selection">
-                        ✕ Bỏ Chọn
-                    </button>
+                <button class="sidebar-nav-item" data-tab="tab-vault" id="btn-tab-vault">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                    <span class="nav-label">Kho 3 Cấp</span>
+                    <span class="nav-badge-chip" id="vault-badge-tier">3 Tiers</span>
+                </button>
+
+                <button class="sidebar-nav-item" data-tab="tab-duplicates" id="btn-tab-duplicates">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span class="nav-label">Trùng lặp</span>
+                    <span id="dupe-badge-count" class="nav-badge-chip" title="Chưa tải kết quả quét trùng lặp">—</span>
+                </button>
+
+                <button class="sidebar-nav-item" data-tab="tab-navidrome" id="btn-tab-navidrome">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    <span class="nav-label">Navidrome</span>
+                    <span class="nav-badge" id="navidrome-status-dot"></span>
+                </button>
+            </nav>
+
+            <!-- Sidebar Footer: vault path -->
+            <div class="sidebar-footer">
+                <div class="sidebar-vault-info" id="sidebar-vault-info">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                    <span id="sidebar-root-label" class="sidebar-vault-path">Kho nhạc</span>
                 </div>
             </div>
+        </aside>
 
-            <!-- Enhanced Pagination Bar -->
-            <div class="pagination-bar mt-4">
-                <div class="pagination-left">
-                    <span class="pagination-info" id="pagination-info">Hiển thị 0 - 0 trong tổng số 0 bài</span>
-                    <div class="page-size-selector">
-                        <span>Hiển thị:</span>
-                        <select id="select-page-size" class="page-size-select">
-                            <option value="25">25 bài / trang</option>
-                            <option value="50" selected>50 bài / trang</option>
-                            <option value="100">100 bài / trang</option>
-                            <option value="200">200 bài / trang</option>
-                        </select>
+        <!-- ===== MAIN CONTENT AREA ===== -->
+        <div class="main-content-area">
+            <!-- Top bar (mobile + page title + seamless Navidrome status) -->
+            <header class="topbar">
+                <button class="sidebar-toggle" id="sidebar-toggle" title="Mở/đóng menu hoặc thu gọn thanh điều hướng (Ctrl+B)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
+                <div class="topbar-title-group">
+                    <h1 class="topbar-title" id="topbar-page-title">Kho nhạc</h1>
+                </div>
+                <div class="topbar-status">
+                    <!-- Seamless Navidrome Quick Pill -->
+                    <div class="navidrome-pill" id="navidrome-quick-pill" title="Trạng thái kết nối Navidrome. Bấm để chuyển tab cài đặt.">
+                        <span class="status-pulse-dot" id="navi-header-dot"></span>
+                        <span class="navidrome-pill-text" id="navi-header-text">Navidrome: Đang kiểm tra...</span>
+                        <div class="navidrome-pill-actions">
+                            <button class="btn-icon-xs" id="btn-quick-rescan" title="Kích hoạt quét nhanh thư viện Navidrome" type="button">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                            </button>
+                            <a href="#" target="_blank" rel="noopener noreferrer" class="btn-icon-xs" id="btn-open-navidrome" title="Mở Web UI Navidrome" style="display: none;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                            </a>
+                        </div>
                     </div>
+                    <span class="cache-badge"><span class="status-dot-emerald"></span> 7 Tiêu Chuẩn Audiophile</span>
                 </div>
-                <div class="pagination-actions">
-                    <button class="btn btn-sm btn-secondary" id="btn-prev-page" disabled>Trang Trước</button>
-                    <span class="pagination-current-page" id="pagination-page-display">Trang 1 / 1</span>
-                    <button class="btn btn-sm btn-secondary" id="btn-next-page">Trang Tiếp</button>
-                </div>
-            </div>
-        </section>
+            </header>
 
-        <!-- Tab 2: Audiophile 7-Pillar Studio Lab -->
-        <section class="tab-content" id="tab-audiophile">
-            <div class="audiophile-banner">
-                <div class="audiophile-banner-content">
-                    <div>
-                        <h2>Kiểm tra âm thanh</h2>
-                        <p>Chọn nhạc → kiểm tra → xem bằng chứng. Phân tích cục bộ, không thay đổi tệp nhạc.</p>
-                    </div>
-                    <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-                        <button class="btn btn-emerald" id="btn-audiophile-tag-now" style="display: none;">
-                            Ghi Toàn Bộ Tag Vào Metadata
-                        </button>
-                        <button class="btn btn-outline-rose" id="btn-audiophile-untag-now" style="display: none;" title="Hoàn tác và gỡ sạch Audiophile Tags khỏi file">
-                            ↩️ Hoàn Tác / Gỡ Tag
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <!-- Tab sections -->
+            <main class="page-content" id="page-content">
 
-            <section class="pillar-card border-indigo scoring-panel" aria-labelledby="scoring-heading">
-                <details id="scoring-setup" open>
-                    <summary id="scoring-heading">Thiết lập kiểm tra · chọn nhạc và chế độ</summary>
-                <form id="scoring-form">
-                    <div class="scoring-controls">
-                        <label>Phạm vi <select id="scoring-target"><option value="single">Một bài hát</option><option value="selected">Các bài đã chọn trong Kho nhạc</option><option value="folder">Thư mục / toàn bộ kho</option></select></label>
+                <!-- ===== TAB: Organize ===== -->
+                <section class="tab-content" id="tab-organize">
+                    <div class="pillar-card scoring-panel" id="metadata-organizer">
+                        <h2>Sắp xếp nhạc từ metadata</h2>
+                        <p>Quét cả thư mục con → đọc tag → xem tên và vị trí mới. Không cần kiểm định âm thanh trước.</p>
+                        <form id="metadata-organize-form" class="scoring-controls">
+                            <label>Thư mục tải mới trong kho <input id="metadata-organize-folder" placeholder="Để trống để duyệt toàn bộ kho"></label>
+                            <label class="organize-pattern-field">Mẫu tên file <input id="metadata-organize-format" value="{track} - {title}" list="metadata-organize-formats" maxlength="240" aria-describedby="metadata-organize-format-help" required></label>
+                            <datalist id="metadata-organize-formats"><option value="{track} - {title}"><option value="{artist} - {title}"><option value="{title}"><option value="{disc}-{track} - {title}"></datalist>
+                            <button class="btn btn-primary" id="metadata-organize-preview" type="submit">Đọc metadata &amp; xem trước</button>
+                        </form>
+                        <p id="metadata-organize-format-help" class="text-secondary">Sửa mẫu hoặc chọn gợi ý. Biến: {track} số bài, {title} tên bài, {artist} nghệ sĩ, {album} album, {disc} số đĩa. Đuôi file giữ tự động; số bài/đĩa có 2 chữ số.</p>
+                        <p class="text-secondary">Thư mục đích: Nghệ sĩ / Album. Thiếu tên hoặc nghệ sĩ: giữ nguyên. Không ghi đè tệp trùng hay sửa nội dung audio/tag.</p>
+                        <p id="metadata-organize-status" role="status" aria-live="polite"></p>
+                        <div id="metadata-organize-results" hidden>
+                            <div class="scoring-controls">
+                                <label class="organize-search-field">Tìm bài <input type="search" id="metadata-organize-search" placeholder="Tên file, nghệ sĩ, album, thư mục…"></label>
+                                <label>Nhóm <select id="metadata-organize-filter"><option value="all">Tất cả</option><option value="READY">Sẵn sàng đổi tên</option><option value="REVIEW">Thiếu metadata / cần kiểm tra</option><option value="CONFLICT">Trùng đường dẫn đích</option><option value="UNCHANGED">Đã đúng vị trí</option></select></label>
+                                <label>Thay đổi <select id="metadata-organize-change"><option value="all">Tất cả thay đổi</option><option value="rename">Có đổi tên</option><option value="move">Chỉ chuyển thư mục</option></select></label>
+                                <button type="button" class="btn btn-primary" id="metadata-organize-apply" disabled>Áp dụng đổi tên &amp; di chuyển</button>
+                            </div>
+                            <p class="table-hint">Phần tô màu là ký tự thay đổi. Thư mục nằm dưới tên file; mở Chi tiết để xem metadata. Áp dụng cho tất cả bài sẵn sàng, kể cả ngoài bộ lọc.</p>
+                            <div class="organize-table-scroll" tabindex="0" role="region" aria-label="So sánh tên file"><table class="organize-table"><thead><tr><th scope="col">Tên / thư mục hiện tại</th><th scope="col">Tên / thư mục đề xuất</th><th scope="col">Trạng thái / Chi tiết</th></tr></thead><tbody id="metadata-organize-rows"></tbody></table></div>
+                            <p id="metadata-organize-count" role="status"></p>
+                        </div>
+                        <details class="scoring-detail"><summary>Hoàn tác sắp xếp</summary>
+                            <p>Khôi phục vị trí trước các lần sắp xếp metadata đã áp dụng. Không xóa thư mục rỗng hoặc ghi đè file.</p>
+                            <button type="button" class="btn btn-secondary" id="metadata-organize-undo">Khôi phục vị trí cũ</button>
+                        </details>
                     </div>
-            <div class="track-picker-card" data-scan-scope="single">
-                <div style="flex: 1; position: relative;">
-                    <div class="combobox-input-box">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" id="lab-combobox-input" class="combobox-input" placeholder="Tìm tên bài, nghệ sĩ hoặc đường dẫn…" autocomplete="off" role="combobox" aria-label="Tìm bài trong kho nhạc" aria-autocomplete="list" aria-expanded="false" aria-controls="lab-combobox-dropdown">
-                        <button type="button" id="lab-combobox-clear" class="combobox-clear-btn" style="display:none;" title="Xóa tìm kiếm">✕</button>
-                    </div>
-                    <div id="lab-combobox-dropdown" class="combobox-dropdown-menu" role="listbox" aria-label="Bài hát phù hợp" style="display: none;"></div>
-                    <input type="hidden" id="lab-selected-path" value="">
-                </div>
-            </div>
-
-                    <p id="scoring-selection" data-scan-scope="selected" hidden>Đã chọn <strong id="scoring-selected-count">0</strong> bài. <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('tab-library')">Chọn bài trong Kho nhạc</button></p>
-                    <div class="scoring-controls" data-scan-scope="folder" hidden>
-                        <label>Thư mục trong kho <input id="scoring-folder" placeholder="Để trống để quét toàn bộ kho"></label>
-                        <p>Quét cả thư mục con. Đường dẫn tính từ thư mục kho nhạc.</p>
-                    </div>
-                    <div class="scoring-controls">
-                        <label>Chế độ <select id="scoring-mode" aria-describedby="scoring-mode-help"><option value="FAST">Nhanh · sơ bộ</option><option value="BALANCED" selected>Cân bằng · khuyên dùng</option><option value="DEEP">Chuyên sâu · lâu hơn</option></select></label>
-                        <button type="submit" class="btn btn-primary" id="scoring-single" disabled>Bắt đầu kiểm tra</button>
-                    </div>
-                    <p id="scoring-mode-help" class="text-secondary">Giải mã toàn tệp, kiểm tra toàn vẹn và đo nhiều vùng phổ.</p>
-                <details class="scoring-detail"><summary>Tùy chọn nâng cao · kỳ vọng nguồn và tệp tham chiếu</summary>
-                    <p>Áp dụng cho mọi bài trong lượt quét. Đường dẫn tham chiếu phải nằm trong kho nhạc; mức tin cậy do bạn xác nhận.</p>
-                    <div class="scoring-controls">
-                        <label>Số tệp song song <input id="scoring-workers" type="number" min="1" max="4" value="2"></label>
-                        <label>Codec <input id="claim-codec" placeholder="flac / alac / pcm_s24le"></label>
-                        <label>Container <input id="claim-container" placeholder="flac / wav / m4a"></label>
-                        <label>Sample rate (Hz) <input id="claim-rate" type="number" min="1" placeholder="96000"></label>
-                        <label>Bit depth <input id="claim-depth" type="number" min="1" max="64" placeholder="24"></label>
-                        <label>Lossless <select id="claim-lossless"><option value="">Không có kỳ vọng</option><option value="true">Có</option><option value="false">Không</option></select></label>
-                        <label>Nguồn <input id="claim-source" maxlength="1000"></label>
-                        <label>Bản phát hành <input id="claim-release" maxlength="1000"></label>
-                        <label>Tệp tham chiếu <input id="claim-reference" placeholder="album/reference.flac"></label>
-                    </div>
-                </details>
-                </form>
-                </details>
-                <p id="scoring-error" role="alert" tabindex="-1" hidden></p>
-                <progress id="scoring-meter" aria-label="Tiến độ kiểm tra" hidden></progress>
-                <p id="scoring-progress" role="status" aria-live="polite"></p>
-                <div class="scoring-controls">
-                    <button class="btn btn-outline-rose" id="scoring-cancel" type="button" hidden disabled>Hủy lượt quét</button>
-                    <label>Lượt quét đã lưu <select id="scoring-history"><option value="">Chọn lượt quét</option></select></label>
-                    <details class="scoring-exports"><summary>Xuất kết quả</summary>
-                        <a id="scoring-export-json" class="btn btn-secondary" hidden>JSON</a>
-                        <a id="scoring-export-jsonl" class="btn btn-secondary" hidden>JSONL tăng dần</a>
-                        <a id="scoring-export-csv" class="btn btn-secondary" hidden>CSV</a>
-                    </details>
-                </div>
-                <details class="scoring-detail" id="scoring-comparison" hidden><summary id="scoring-comparison-title">Kết quả các tệp</summary>
-                <p class="text-secondary">Bấm tiêu đề cột để sắp xếp toàn bộ lượt quét sau khi hoàn tất. Bấm lần nữa để đảo chiều; N/A luôn ở cuối cột số.</p>
-                <details class="scoring-raw"><summary>Ngưỡng cảnh báo</summary><p id="scoring-thresholds" class="text-secondary scoring-thresholds"></p></details>
-                <p class="scoring-legend"><span data-level="good">Xanh: không cảnh báo</span><span data-level="review">Vàng: cần xem xét / độ phủ hạn chế</span><span data-level="suspect">Cam: đáng ngờ</span><span data-level="danger">Đỏ: lỗi / sai lệch đáng kể</span><span data-level="unknown">Xám: chưa đủ bằng chứng</span></p>
-                <div class="table-container scoring-comparison"><table class="tracks-table"><thead><tr><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="filepath" disabled>Tệp <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="score" disabled>Điểm <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="coverage" disabled>Coverage <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="warning" disabled>Kết quả <span aria-hidden="true">↕</span></button></th><th scope="col" aria-label="Chi tiết"></th></tr></thead><tbody id="scoring-results"></tbody></table></div>
-                <button id="scoring-more" class="btn btn-secondary" hidden>Xem thêm kết quả</button>
-                </details>
-                <section id="scoring-result" aria-labelledby="scoring-result-heading" tabindex="-1" hidden>
-                <p class="text-secondary">Chi tiết bài đang chọn</p>
-                <h2 id="auth-filename"></h2>
-                <div class="scoring-score-header"><h3 id="scoring-result-heading">Authenticity &amp; Integrity Score</h3><span id="auth-score">N/A</span></div>
-                <p id="auth-verdict" role="status">Chọn một bài ở bên dưới hoặc quét thư mục để đo.</p>
-                <p id="auth-confidence">Độ tin cậy: chưa đo · Coverage: chưa đo</p>
-                <p class="text-secondary scoring-note">Điểm không đánh giá chất lượng nghe. Độ phân giải cao không bảo đảm âm thanh hay.</p>
-                <div id="auth-warnings" role="alert"></div>
-                <details class="scoring-detail" id="auth-properties-panel"><summary>Đối chiếu thông số · khai báo và đo được</summary><div id="auth-properties"></div></details>
-                <div id="auth-details"></div>
-                <details class="scoring-detail"><summary>Phổ theo cửa sổ và từng kênh</summary>
-                    <p>Phổ từ các cửa sổ đã đo, không nội suy qua phần chưa đo. Đường màu hồng đánh dấu biên phổ cần xem xét; không tự xác định nguồn lossy.</p>
-                    <canvas id="auth-spectrum" width="960" height="360" aria-label="Phổ theo cửa sổ đo và kênh"></canvas>
-                    <p id="auth-spectrum-note"></p>
-                </details>
                 </section>
-            </section>
 
-            <details class="scoring-detail" id="additional-diagnostics">
-                <summary>Chẩn đoán bổ sung · ReplayGain, Gapless, DSD và ghi tag</summary>
-                <p>Áp dụng cho bài đang chọn. Chạy chẩn đoán không thay đổi tệp; ghi tag là thao tác riêng.</p>
-                <button class="btn btn-secondary" id="btn-run-audiophile-audit" disabled>Đo chẩn đoán bổ sung</button>
-                <p id="additional-current" role="status">Chưa đo chẩn đoán bổ sung cho bài đang chọn.</p>
-            <div id="audiophile-loading-box" style="display: none;" class="technical-note mb-4 text-center py-6">
-                <span class="text-secondary">Đang tính toán DR Meter, đối chiếu STREAMINFO MD5, phân tích LSB 24-bit và đo EBU R128...</span>
-            </div>
-
-            <!-- 7 Pillars Container -->
-            <div class="audiophile-pillars-grid" id="audiophile-pillars-grid" hidden>
-                <!-- Pillar 1: Dynamic Range -->
-                <div class="pillar-card border-amber" id="pillar-dr-card">
-                    <div class="pillar-card-header">
-                        <div class="pillar-title-group">
-                            <div class="pillar-icon-badge">🎚️</div>
-                            <div>
-                                <h3 class="pillar-title">1. Dynamic Range (DR Meter)</h3>
-                                <p class="pillar-subtitle">Ước lượng DR; không chấm authenticity</p>
+                <!-- ===== TAB: Library ===== -->
+                <section class="tab-content active" id="tab-library">
+                    <!-- Stat Cards -->
+                    <div class="stats-grid mb-6">
+                        <div class="stat-card border-emerald clickable" data-filter="true_hires" title="Bấm để lọc PCM sample rate cao">
+                            <div class="stat-header">
+                                <span class="stat-title">PCM sample rate cao</span>
+                                <span class="stat-tag tag-emerald">24/96k+</span>
                             </div>
+                            <div class="stat-value text-emerald" id="stat-true-hires">—</div>
+                            <p class="stat-desc">Nhóm định dạng; nguồn master chưa xác thực.</p>
                         </div>
-                        <span class="stat-tag tag-amber" id="pillar-dr-badge">Chưa đo</span>
-                    </div>
 
-                    <div class="dr-meter-box">
-                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">Thang Điểm DR1 &rarr; DR20</span>
-                            <span id="dr-score-huge" style="font-size: 1.5rem; font-family: 'Outfit', sans-serif; font-weight: 700; color: #fbbf24;">DR--</span>
-                        </div>
-                        <div class="dr-meter-scale-bar" title="Thang đo dải động: Đỏ (Nén gắt) - Vàng (Trung bình) - Xanh lục (Audiophile) - Xanh dương (Dải động cực rộng)">
-                            <div class="dr-needle-indicator" id="dr-needle" style="left: 50%;"></div>
-                        </div>
-                        <div class="dr-scale-labels">
-                            <span style="color: #ef4444;">DR1 (Nén Nặng)</span>
-                            <span style="color: #f59e0b;">DR8</span>
-                            <span style="color: #10b981;">DR12 (Audiophile)</span>
-                            <span style="color: #06b6d4;">DR15+</span>
-                        </div>
-                    </div>
-
-                    <div class="dr-stats-row">
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Peak dBFS</div>
-                            <div class="dr-stat-val" id="dr-stat-peak">-- dB</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">RMS Top 20%</div>
-                            <div class="dr-stat-val" id="dr-stat-rms">-- dB</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">DR L / R</div>
-                            <div class="dr-stat-val" id="dr-stat-channels">-- / --</div>
-                        </div>
-                    </div>
-                    <p class="mt-3 text-secondary" style="font-size: 0.82rem;" id="dr-verdict-desc">
-                        Chưa chọn bài hát để đo Dynamic Range.
-                    </p>
-                </div>
-
-                <!-- Pillar 2: Bit-Perfect & FLAC MD5 -->
-                <div class="pillar-card border-emerald" id="pillar-integrity-card">
-                    <div class="pillar-card-header">
-                        <div class="pillar-title-group">
-                            <div class="pillar-icon-badge">🛡️</div>
-                            <div>
-                                <h3 class="pillar-title">2. Toàn vẹn dữ liệu &amp; checksum</h3>
-                                <p class="pillar-subtitle">FLAC Audio MD5 &amp; Frame CRC Integrity</p>
+                        <div class="stat-card border-cyan clickable" data-filter="dsd" title="Bấm để lọc Định dạng DSD">
+                            <div class="stat-header">
+                                <span class="stat-title">Định dạng DSD</span>
+                                <span class="stat-tag tag-cyan">Super Audio</span>
                             </div>
+                            <div class="stat-value text-cyan" id="stat-true-dsd">—</div>
+                            <p class="stat-desc">DSD; không chứng minh nguồn SACD/native.</p>
                         </div>
-                        <span class="stat-tag tag-emerald" id="pillar-integrity-badge">Chờ quét</span>
-                    </div>
 
-                    <div style="background: rgba(0,0,0,0.3); padding: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin: 0.5rem 0;">
-                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;">STREAMINFO AUDIO MD5:</div>
-                        <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #34d399;" id="md5-streaminfo-hex">00000000000000000000000000000000</code>
-                    </div>
-
-                    <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="integrity-msg-desc">
-                        Decode toàn file và kiểm tra frame/STREAMINFO MD5 khi có. Checksum không xác minh playback hay nguồn master.
-                    </p>
-                </div>
-
-                <!-- Pillar 3: Fake 24-bit -->
-                <div class="pillar-card border-rose" id="pillar-bitdepth-card">
-                    <div class="pillar-card-header">
-                        <div class="pillar-title-group">
-                            <div class="pillar-icon-badge">🔬</div>
-                            <div>
-                                <h3 class="pillar-title">3. Bit usage &amp; giới hạn phổ</h3>
-                                <p class="pillar-subtitle">Padding chính xác toàn file, theo từng kênh</p>
+                        <div class="stat-card border-amber clickable" data-filter="studio_master" title="Bấm để lọc Cần xem xét">
+                            <div class="stat-header">
+                                <span class="stat-title">Cần xem xét</span>
+                                <span class="stat-tag tag-amber">24-bit</span>
                             </div>
+                            <div class="stat-value text-amber" id="stat-studio-master">—</div>
+                            <p class="stat-desc">Có bằng chứng cần kiểm tra chi tiết.</p>
                         </div>
-                        <span class="stat-tag tag-rose" id="pillar-bitdepth-badge">Chờ quét</span>
-                    </div>
 
-                    <div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
-                            <span class="text-muted">Mật Độ Entropy 8 Bit Cuối (LSB):</span>
-                            <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600;" id="lsb-entropy-pct">0.0%</span>
-                        </div>
-                        <div class="entropy-bar-container">
-                            <div class="entropy-bar-fill" id="lsb-entropy-fill" style="width: 0%; background: #f43f5e;"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
-                            <span>0% (Độn Bit 0 Giả)</span>
-                            <span>&gt;90% (Bit thấp có dữ liệu)</span>
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem;">
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Biên phổ (sàng lọc)</div>
-                            <div class="dr-stat-val" id="pillar-cutoff-hz">-- Hz</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Độ Sụt Năng Lượng</div>
-                            <div class="dr-stat-val" id="pillar-cutoff-drop">-- dB</div>
-                        </div>
-                    </div>
-
-                    <p class="mt-3 text-secondary" style="font-size: 0.82rem;" id="bitdepth-msg-desc">
-                        Bit thấp luôn bằng 0 có thể xác lập padding PCM. Cutoff phổ chỉ là bằng chứng cần xem xét; không xác định codec hoặc bitrate nguồn.
-                    </p>
-                </div>
-
-                <!-- Pillar 4: DSD / SACD Purity -->
-                <div class="pillar-card border-cyan" id="pillar-dsd-card">
-                    <div class="pillar-card-header">
-                        <div class="pillar-title-group">
-                            <div class="pillar-icon-badge">💿</div>
-                            <div>
-                                <h3 class="pillar-title">4. DSD: định dạng &amp; phổ nhiễu</h3>
-                                <p class="pillar-subtitle">Sigma-Delta Noise Shaping &gt;30kHz &amp; Surround</p>
+                        <div class="stat-card border-rose highlight-warning clickable" data-filter="fake_hires" title="Bấm để lọc Lỗi toàn vẹn">
+                            <div class="stat-header">
+                                <span class="stat-title">Lỗi toàn vẹn</span>
+                                <span class="stat-tag tag-rose">Cần Chú Ý</span>
                             </div>
+                            <div class="stat-value text-rose" id="stat-fake-hires">—</div>
+                            <p class="stat-desc">Lỗi giải mã/frame/checksum đã phát hiện.</p>
                         </div>
-                        <span class="stat-tag tag-cyan" id="pillar-dsd-badge">Chờ quét</span>
-                    </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.5rem 0;">
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Cấu Hình Kênh</div>
-                            <div class="dr-stat-val" id="dsd-channels-val">Stereo 2.0</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Độ Tăng Noise Shaping</div>
-                            <div class="dr-stat-val" id="dsd-noise-rise-val">+0 dB</div>
-                        </div>
-                    </div>
-
-                    <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="dsd-msg-desc">
-                        Quan sát nhiễu siêu âm DSD; không thể xác lập nguồn SACD/native hoặc lịch sử chuyển đổi từ PCM.
-                    </p>
-                </div>
-
-                <!-- Pillar 5: ReplayGain 2.0 & EBU R128 -->
-                <div class="pillar-card border-indigo" id="pillar-loudness-card">
-                    <div class="pillar-card-header">
-                        <div class="pillar-title-group">
-                            <div class="pillar-icon-badge">🔊</div>
-                            <div>
-                                <h3 class="pillar-title">5. ReplayGain 2.0 &amp; EBU R128</h3>
-                                <p class="pillar-subtitle">Cân bằng âm lượng không suy hao bit</p>
+                        <div class="stat-card border-indigo clickable" data-filter="cd_lossless" title="Bấm để lọc CD Lossless">
+                            <div class="stat-header">
+                                <span class="stat-title">CD Lossless</span>
+                                <span class="stat-tag tag-indigo">16/44.1k</span>
                             </div>
+                            <div class="stat-value text-indigo" id="stat-cd-lossless">—</div>
+                            <p class="stat-desc">Nhóm định dạng lossless, chưa xác thực nguồn.</p>
                         </div>
-                        <span class="stat-tag tag-indigo" id="pillar-loudness-badge">Chờ đo</span>
-                    </div>
 
-                    <div class="dr-stats-row" style="margin: 0.5rem 0;">
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Integrated LUFS</div>
-                            <div class="dr-stat-val" id="loudness-lufs-val">-- LUFS</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">True Peak</div>
-                            <div class="dr-stat-val" id="loudness-peak-val">-- dBTP</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">ReplayGain 2.0</div>
-                            <div class="dr-stat-val" id="loudness-rg-val">-- dB</div>
-                        </div>
-                    </div>
-
-                    <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="loudness-msg-desc">
-                        Ghi tag ReplayGain 2.0 (-18 LUFS) &amp; EBU R128 để Navidrome và DAC cân bằng âm lượng thông minh mà bit gốc nguyên vẹn 100%.
-                    </p>
-                </div>
-
-                <!-- Pillar 6: Gapless Playback -->
-                <div class="pillar-card border-slate" id="pillar-gapless-card">
-                    <div class="pillar-card-header">
-                        <div class="pillar-title-group">
-                            <div class="pillar-icon-badge">🎼</div>
-                            <div>
-                                <h3 class="pillar-title">6. Gapless Playback</h3>
-                                <p class="pillar-subtitle">Seamless Transitions &amp; Boundary Samples</p>
+                        <div class="stat-card border-slate clickable" data-filter="lossy" title="Bấm để lọc MP3/AAC">
+                            <div class="stat-header">
+                                <span class="stat-title">Nhạc Nén (Lossy)</span>
+                                <span class="stat-tag tag-slate">MP3 / AAC</span>
                             </div>
-                        </div>
-                        <span class="stat-tag tag-slate" id="pillar-gapless-badge">Chờ rà soát</span>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.5rem 0;">
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Khoảng Lặng Mở Đầu</div>
-                            <div class="dr-stat-val" id="gapless-intro-val">-- ms</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Khoảng Lặng Kết Thúc</div>
-                            <div class="dr-stat-val" id="gapless-outro-val">-- ms</div>
+                            <div class="stat-value text-slate" id="stat-lossy">—</div>
+                            <p class="stat-desc">Định dạng nén tổn hao thông thường.</p>
                         </div>
                     </div>
 
-                    <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="gapless-msg-desc">
-                        Rà soát mẫu âm thanh biên giới (boundary samples) để đảm bảo không bị chèn khoảng lặng 2 giây vô nghĩa giữa các track hòa nhạc / live album.
-                    </p>
-                </div>
-
-                <!-- Pillar 7: Vault Tiering Proposal -->
-                <div class="pillar-card border-emerald" id="pillar-tier-card" style="grid-column: 1 / -1;">
-                    <div class="pillar-card-header">
-                        <div class="pillar-title-group">
-                            <div class="pillar-icon-badge">🏛️</div>
-                            <div>
-                                <h3 class="pillar-title">7. Đề Xuất Phân Cấp Kho Nhạc (Vault Tiering)</h3>
-                                <p class="pillar-subtitle">Tự động phân nhóm vào 3 phân cấp lưu trữ Audiophile</p>
-                            </div>
+                    <!-- Toolbar & Filter Pills -->
+                    <div class="explorer-toolbar mb-3">
+                        <div class="search-box">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="track-search-input" placeholder="Tìm kiếm bài hát, ca sĩ, album, tên file...">
                         </div>
-                        <span class="stat-tag tag-emerald" id="pillar-tier-badge">Chờ phân loại</span>
-                    </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: rgba(0,0,0,0.3); padding: 1rem 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                        <div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">Phân Cấp Đích Được Chỉ Định:</div>
-                            <div style="font-size: 1.15rem; font-weight: 700; color: white;" id="pillar-tier-dest">--</div>
+                        <div class="filter-pills" id="filter-pills">
+                            <button class="filter-pill active" data-filter="all">Tất cả (<span id="stat-total-pill">—</span>)</button>
+                            <button class="filter-pill pill-dot-emerald" data-filter="true_hires">PCM sample rate cao</button>
+                            <button class="filter-pill pill-dot-rose" data-filter="fake_hires">Lỗi toàn vẹn</button>
+                            <button class="filter-pill pill-dot-amber" data-filter="studio_master">Cần xem xét</button>
+                            <button class="filter-pill pill-dot-indigo" data-filter="cd_lossless">CD Lossless</button>
+                            <button class="filter-pill pill-dot-slate" data-filter="lossy">Lossy MP3</button>
+                            <button class="filter-pill pill-dot-rose" data-filter="duplicate_meta" id="pill-filter-dupe-meta" title="Lọc các bài hát bị trùng lặp metadata trong kho nhạc">
+                                ⚠️ Trùng Metadata (<span id="stat-dupe-meta-pill">0</span>)
+                            </button>
                         </div>
-                        <button class="btn btn-secondary" onclick="switchTab('tab-vault')">
-                            Xem Kế Hoạch Toàn Bộ Kho Nhạc 3 Cấp &rarr;
+
+                        <button class="btn btn-secondary btn-sm" id="btn-toggle-col-filters" title="Bật/Tắt thanh tìm kiếm & lọc chi tiết theo cột">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                            <span>Lọc Cột</span>
+                            <span class="badge" id="col-filter-badge" style="display:none; font-size:0.7rem; background: var(--accent-indigo);">0</span>
                         </button>
                     </div>
-                </div>
-            </div>
-            </details>
-        </section>
 
-        <!-- Tab 3: 3-Tier Vault Storage Organization -->
-        <section class="tab-content" id="tab-vault">
-            <div class="audiophile-banner">
-                <div class="audiophile-banner-content">
-                    <div>
-                        <h2>Tự Động Xuất Cấu Trúc Kho Nhạc 3 Cấp (Vault Tiering)</h2>
-                        <p>1-Click tổ chức toàn bộ thư viện thành 3 tầng chuẩn Audiophile: DSD &amp; PCM sample rate cao, định dạng Lossless, và Cách ly (Quarantine) các tệp Lỗi toàn vẹn, MP3, Bit-Rot lỗi.</p>
+                    <!-- Active Column Filters Bar -->
+                    <div class="active-filters-bar mb-3" id="active-col-filters-bar" style="display: none;">
+                        <span class="active-filters-label">Đang lọc theo cột:</span>
+                        <div class="active-filter-chips" id="active-filter-chips"></div>
+                        <button class="btn btn-xs btn-outline-rose" id="btn-clear-all-col-filters">Xóa tất cả lọc</button>
                     </div>
-                </div>
-            </div>
 
-            <!-- 3 Neon Tier Cards -->
-            <div class="vault-tier-cards-grid">
-                <div class="vault-tier-card tier-1 clickable-tier" data-tier="01_Hi-Res & DSD" style="cursor: pointer;" title="Bấm để lọc bảng kế hoạch theo Tầng 1">
-                    <span class="tier-header-badge">TẦNG 1 &bull; HI-RES</span>
-                    <h3>01_DSD &amp; Hi-Res</h3>
-                    <p class="text-muted" style="font-size: 0.78rem;">Chuẩn &gt;24-bit / 96kHz &amp; Native DSD</p>
-                    <div class="vault-tier-metric" id="tier1-count">67 bài</div>
-                    <p class="vault-tier-desc">Phân nhóm theo định dạng DSD hoặc sample rate PCM cao; không xác thực nguồn master.</p>
-                    <div class="text-secondary" style="font-size: 0.8rem;" id="tier1-size">Dung lượng: ~11.4 GB</div>
-                </div>
-
-                <div class="vault-tier-card tier-2 clickable-tier" data-tier="02_Lossless_CD" style="cursor: pointer;" title="Bấm để lọc bảng kế hoạch theo Tầng 2">
-                    <span class="tier-header-badge">TẦNG 2 &bull; LOSSLESS</span>
-                    <h3>02_Lossless CD</h3>
-                    <p class="text-muted" style="font-size: 0.78rem;">Chuẩn Red Book 16/44.1k &amp; Studio 24/44-48k</p>
-                    <div class="vault-tier-metric" id="tier2-count">649 bài</div>
-                    <p class="vault-tier-desc">Nhóm định dạng lossless theo header; độ phân giải nguồn và master chưa xác thực.</p>
-                    <div class="text-secondary" style="font-size: 0.8rem;" id="tier2-size">Dung lượng: ~18.9 GB</div>
-                </div>
-
-                <div class="vault-tier-card tier-3 clickable-tier" data-tier="03_Quarantine" style="cursor: pointer;" title="Bấm để lọc bảng kế hoạch theo Tầng 3">
-                    <span class="tier-header-badge">TẦNG 3 &bull; CÁCH LY</span>
-                    <h3>03_Quarantine</h3>
-                    <p class="text-muted" style="font-size: 0.78rem;">Lỗi toàn vẹn, Fake 24-bit, MP3, File Lỗi</p>
-                    <div class="vault-tier-metric" id="tier3-count">928 bài</div>
-                    <p class="vault-tier-desc">Phân nhóm quản lý tệp lỗi, padding đã đo hoặc định dạng lossy; phân nhóm không chứng minh gian lận.</p>
-                    <div class="text-secondary" style="font-size: 0.8rem;" id="tier3-size">Dung lượng: ~7.4 GB</div>
-                </div>
-            </div>
-
-            <!-- Tiering Toolbar & Actions -->
-            <div class="tiering-controls-bar">
-                <div class="tiering-mode-selector">
-                    <span style="font-size: 0.85rem; font-weight: 600; color: #e2e8f0;">Chế Độ Xuất:</span>
-                    <button class="mode-pill active" id="btn-mode-symlink" data-mode="symlink">
-                        🔗 Symlink (An Toàn Tuyệt Đối - Không Di Chuyển File Gốc)
-                    </button>
-                    <button class="mode-pill" id="btn-mode-move" data-mode="move">
-                        📦 Di Chuyển Thật (Có Rollback Khôi Phục)
-                    </button>
-                </div>
-
-                <div class="btn-group">
-                    <button class="btn btn-secondary" id="btn-rollback-tiering" title="Khôi phục lại vị trí cũ nếu đã chọn Move">
-                        Khôi Phục (Rollback)
-                    </button>
-                    <button class="btn btn-emerald" id="btn-execute-tiering">
-                        1-Click Thực Thi Phân Cấp Kho Nhạc
-                    </button>
-                </div>
-            </div>
-
-            <div id="tiering-status-box" class="technical-note mb-4" style="display: none;">
-                <h4 id="tiering-status-title">Trạng Thái Thực Thi</h4>
-                <p id="tiering-status-msg" class="text-secondary">Đang tải...</p>
-            </div>
-
-            <!-- Plan Table Preview -->
-            <div class="card glass-card">
-                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
-                    <div>
-                        <h3>Bảng Kế Hoạch Phân Cấp Chi Tiết</h3>
-                        <span class="stat-tag tag-indigo" id="plan-total-badge">1.644 tệp (37.7 GB)</span>
-                        <span class="stat-tag tag-emerald" id="plan-filter-active-badge" style="display: none; margin-left: 6px;">Đang lọc tầng</span>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="text" id="tiering-search-input" class="form-input" placeholder="🔍 Lọc theo tệp / thư mục..." style="padding: 4px 10px; font-size: 0.82rem; width: 220px;">
-                        <button class="btn btn-xs btn-outline" id="btn-tier-filter-all">Tất cả tầng</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="table-container" style="max-height: 480px; overflow-y: auto;">
-                        <table class="tracks-table">
+                    <!-- Tracks Table -->
+                    <p class="table-hint" id="library-table-hint">Mỗi hàng là một bài hát; đường dẫn gốc nằm dưới tên bài. Cuộn ngang bảng nếu chưa thấy đủ cột và nút thao tác.</p>
+                    <div class="table-container" tabindex="0" role="region" aria-label="Danh sách nhạc" aria-describedby="library-table-hint">
+                        <table class="tracks-table" id="tracks-table">
+                            <colgroup><col><col><col><col><col><col><col><col></colgroup>
                             <thead>
-                                <tr>
-                                    <th>Tên Tệp / Đường Dẫn Gốc</th>
-                                    <th>Cấp Chỉ Định</th>
-                                    <th>Lý Do Phân Loại</th>
-                                    <th>Đường Dẫn Đích</th>
+                                <tr class="table-header-row">
+                                    <th class="th-checkbox">
+                                        <input type="checkbox" id="check-all-tracks" class="track-checkbox" title="Chọn / Bỏ chọn tất cả bài trên trang này">
+                                    </th>
+                                    <th style="width: 48px; text-align: center;" class="sortable-th" data-sort="index" title="Bấm để sắp xếp theo thứ tự số #">
+                                        <div class="th-content"><span>#</span> <span class="sort-icon" id="sort-icon-index">↕</span></div>
+                                    </th>
+                                    <th class="sortable-th" data-sort="title" title="Bấm để sắp xếp theo Tên bài hát">
+                                        <div class="th-content"><span>Bài Hát • Tên Tệp</span> <span class="sort-icon" id="sort-icon-title">↕</span></div>
+                                    </th>
+                                    <th class="sortable-th" data-sort="artist" title="Bấm để sắp xếp theo Nghệ sĩ">
+                                        <div class="th-content"><span>Nghệ Sĩ</span> <span class="sort-icon" id="sort-icon-artist">↕</span></div>
+                                    </th>
+                                    <th class="sortable-th" data-sort="album" title="Bấm để sắp xếp theo Album">
+                                        <div class="th-content"><span>Album</span> <span class="sort-icon" id="sort-icon-album">↕</span></div>
+                                    </th>
+                                    <th class="sortable-th" data-sort="format" style="width: 170px;" title="Bấm để sắp xếp theo Định dạng">
+                                        <div class="th-content"><span>Định Dạng</span> <span class="sort-icon" id="sort-icon-format">↕</span></div>
+                                    </th>
+                                    <th class="sortable-th" data-sort="verdict" style="width: 150px;" title="Bấm để sắp xếp theo Đánh giá chất lượng">
+                                        <div class="th-content"><span>Đánh Giá</span> <span class="sort-icon" id="sort-icon-verdict">↕</span></div>
+                                    </th>
+                                    <th style="width: 220px; text-align: right;">Thao Tác</th>
+                                </tr>
+                                <!-- Interactive Column Filter Row -->
+                                <tr class="col-filter-row" id="col-filter-row">
+                                    <th style="text-align: center; padding: 4px;">
+                                        <button id="btn-reset-col-filters" class="btn btn-xs btn-outline" title="Đặt lại bộ lọc cột" style="padding: 2px 5px; font-size: 0.72rem;">✕</button>
+                                    </th>
+                                    <th style="text-align: center; font-size: 0.7rem; color: var(--text-muted);">#</th>
+                                    <th style="padding: 4px 8px;">
+                                        <input type="text" id="col-filter-title" class="col-filter-input" placeholder="🔍 Tìm bài / tệp...">
+                                    </th>
+                                    <th style="padding: 4px 8px;">
+                                        <input type="text" id="col-filter-artist" class="col-filter-input" placeholder="🔍 Tìm ca sĩ...">
+                                    </th>
+                                    <th style="padding: 4px 8px;">
+                                        <input type="text" id="col-filter-album" class="col-filter-input" placeholder="🔍 Tìm album...">
+                                    </th>
+                                    <th style="padding: 4px 8px;">
+                                        <select id="col-filter-format" class="col-filter-select">
+                                            <option value="">Tất cả định dạng</option>
+                                            <option value="flac">FLAC Lossless</option>
+                                            <option value="dsd">DSD / DSF (SACD)</option>
+                                            <option value="24bit">24-bit Hi-Res</option>
+                                            <option value="16bit">16-bit CD</option>
+                                            <option value="mp3">MP3 Lossy</option>
+                                            <option value="m4a">AAC / M4A</option>
+                                            <option value="wav">WAV</option>
+                                        </select>
+                                    </th>
+                                    <th style="padding: 4px 8px;">
+                                        <select id="col-filter-verdict" class="col-filter-select">
+                                            <option value="">Tất cả đánh giá</option>
+                                            <option value="duplicate_meta">⚠️ Trùng Metadata (Cùng bài hát)</option>
+                                            <option value="true_hires">🟢 PCM sample rate cao</option>
+                                            <option value="true_dsd">🔵 Định dạng DSD</option>
+                                            <option value="studio_master">🟡 Cần xem xét</option>
+                                            <option value="cd_lossless">🟣 CD Lossless</option>
+                                            <option value="fake_hires">🔴 Lỗi toàn vẹn</option>
+                                            <option value="lossy">⚪ Lossy MP3</option>
+                                        </select>
+                                    </th>
+                                    <th style="text-align: right; padding: 4px 12px;">
+                                        <span class="col-filter-hint text-muted" style="font-size: 0.72rem;">Lọc thời gian thực</span>
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody id="tiering-preview-tbody">
+                            <tbody id="tracks-tbody">
                                 <tr>
-                                    <td colspan="4" class="text-center py-6 text-muted">Đang tạo kế hoạch phân cấp...</td>
+                                    <td colspan="8" class="text-center py-6 text-muted">Đang tải danh sách bài hát...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </div>
-        </section>
 
-        <!-- Tab 4: Duplicates Tab -->
-        <section class="tab-content" id="tab-duplicates">
-            <div class="explorer-toolbar mb-4">
-                <div class="filter-pills" id="dupe-filter-pills" style="gap: 0.85rem;">
-                    <button class="filter-pill active" data-dupetype="byte">Trùng Byte 100% (<span id="dupe-count-byte">0</span>)</button>
-                    <button class="filter-pill" data-dupetype="meta">Trùng Metadata (<span id="dupe-count-meta">0</span>)</button>
-                    <button class="filter-pill" data-dupetype="name">Trùng Tên Tệp (<span id="dupe-count-name">0</span>)</button>
-                </div>
-                
-                <div class="btn-group" style="margin-left: auto; gap: 0.85rem; flex-wrap: wrap;">
-                    <button class="btn btn-secondary" id="btn-refresh-dupes" title="Quét lại toàn bộ thư mục">
-                        Quét Lại
-                    </button>
-                    <button class="btn btn-emerald" id="btn-auto-pick-best-dupes" title="Tự động chọn bản Lossless / Bitrate cao nhất làm bản giữ lại cho mọi nhóm">
-                        ⚡ Chọn Bản Tốt Nhất
-                    </button>
-                    <button class="btn btn-primary" id="btn-archive-byte-dupes">
-                        Di Chuyển Bản Phụ Vào Archive
-                    </button>
-                </div>
-            </div>
-
-            <!-- Search & Sub-filter bar for duplicates -->
-            <div class="explorer-toolbar mb-4" id="dupe-subtoolbar" style="background: rgba(15, 23, 42, 0.65); padding: 1.25rem 1.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.25rem;">
-                <div class="search-box" style="flex: 1; min-width: 250px; max-width: 420px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input type="text" id="dupe-search-input" placeholder="Lọc theo ca sĩ, bài hát, tên file (vd: LOSER, Orion, Aimer)...">
-                </div>
-
-                <div class="filter-pills" id="dupe-subfilter-pills" style="gap: 0.85rem;">
-                    <button class="filter-pill active" data-subfilter="all">Tất Cả (<span id="dupe-subcount-all">0</span>)</button>
-                    <button class="filter-pill pill-dot-emerald" data-subfilter="flac_vs_lossy">Có FLAC vs MP3 (<span id="dupe-subcount-flac">0</span>)</button>
-                    <button class="filter-pill pill-dot-indigo" data-subfilter="mixed_formats">Khác Định Dạng (<span id="dupe-subcount-mixed">0</span>)</button>
-                    <button class="filter-pill pill-dot-amber" data-subfilter="numbered">Tên Có Đuôi (1) (<span id="dupe-subcount-numbered">0</span>)</button>
-                </div>
-            </div>
-
-            <div class="technical-note mb-4" style="padding: 1.35rem 1.65rem;">
-                <div class="tech-note-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.4rem;">
-                    <h4 id="dupe-title-text" style="font-size: 0.95rem;">Trùng 100% Byte (An toàn tuyệt đối)</h4>
-                    <span id="dupe-selection-summary" class="stat-tag tag-emerald" style="padding: 3px 10px;">Đang giữ 0 bài gốc, chọn 0 bản phụ để lưu trữ</span>
-                </div>
-                <p id="dupe-desc-text" style="line-height: 1.5;">
-                    Các file có cùng mã băm MD5 tuyệt đối. Có thể di chuyển các bản thừa vào thư mục <code>_Duplicates_Archive/</code> để giải phóng dung lượng đĩa mà không hề làm mất bài hát gốc.
-                </p>
-            </div>
-
-            <div id="dupes-container">
-                <p class="text-center py-6 text-muted">Đang tải danh sách bài trùng lặp...</p>
-            </div>
-        </section>
-
-        <!-- Tab 5: Navidrome & Organize -->
-        <section class="tab-content" id="tab-navidrome">
-            <div class="grid-2col">
-                <!-- Navidrome Card -->
-                <div class="card glass-card">
-                    <div class="card-header">
-                        <h3>Kết Nối Navidrome Subsonic API</h3>
-                        <span class="badge" id="navidrome-badge">Chưa kết nối</span>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted mb-4">Kết nối qua Subsonic REST API để kích hoạt quét kho nhạc và đồng bộ chất lượng.</p>
-                        
-                        <div class="form-group">
-                            <label for="navi-url">Navidrome URL (LXC Server IP)</label>
-                            <input type="text" id="navi-url" class="form-input" placeholder="http://192.168.1.x:4533" value="http://localhost:4533">
+                    <!-- Floating Batch Action Bar -->
+                    <div class="floating-batch-bar" id="floating-batch-bar" style="display: none;">
+                        <div class="batch-count-group">
+                            <span class="batch-selected-dot"></span>
+                            <span>Đã chọn <strong id="batch-selected-count">0</strong> bài hát</span>
                         </div>
+                        <div class="batch-actions-group">
+                            <button class="btn btn-sm btn-primary" id="btn-batch-score">Kiểm tra đã chọn</button>
+                            <button class="btn btn-sm btn-emerald" id="btn-batch-tag" title="Ghi tag chuẩn chất lượng vào các bài đã chọn">🏷️ Ghi Tag Metadata</button>
+                            <button class="btn btn-sm btn-primary" id="btn-batch-audiophile-tag" title="Chạy kiểm định và gắn tag 7 chuẩn cho các bài đã chọn">🔬 Ghi Tag 7 Chuẩn</button>
+                            <button class="btn btn-sm btn-outline-rose" id="btn-batch-clear-selection">✕ Bỏ Chọn</button>
+                        </div>
+                    </div>
 
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="navi-user">Username</label>
-                                <input type="text" id="navi-user" class="form-input" placeholder="admin">
+                    <!-- Pagination -->
+                    <div class="pagination-bar mt-4">
+                        <div class="pagination-left">
+                            <span class="pagination-info" id="pagination-info">Hiển thị 0 - 0 trong tổng số 0 bài</span>
+                            <div class="page-size-selector">
+                                <span>Hiển thị:</span>
+                                <select id="select-page-size" class="page-size-select">
+                                    <option value="25">25 bài / trang</option>
+                                    <option value="50" selected>50 bài / trang</option>
+                                    <option value="100">100 bài / trang</option>
+                                    <option value="200">200 bài / trang</option>
+                                </select>
                             </div>
-                            <div class="form-group">
-                                <label for="navi-pass">Password</label>
-                                <input type="password" id="navi-pass" class="form-input" placeholder="••••••••">
+                        </div>
+                        <div class="pagination-actions">
+                            <button class="btn btn-sm btn-secondary" id="btn-prev-page" disabled>Trang Trước</button>
+                            <span class="pagination-current-page" id="pagination-page-display">Trang 1 / 1</span>
+                            <button class="btn btn-sm btn-secondary" id="btn-next-page">Trang Tiếp</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== TAB: Audiophile Studio ===== -->
+                <section class="tab-content" id="tab-audiophile">
+                    <div class="audiophile-banner">
+                        <div class="audiophile-banner-content">
+                            <div>
+                                <h2>Kiểm tra âm thanh</h2>
+                                <p>Chọn nhạc → kiểm tra → xem bằng chứng. Phân tích cục bộ, không thay đổi tệp nhạc.</p>
+                            </div>
+                            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                                <button class="btn btn-emerald" id="btn-audiophile-tag-now" style="display: none;">Ghi Toàn Bộ Tag Vào Metadata</button>
+                                <button class="btn btn-outline-rose" id="btn-audiophile-untag-now" style="display: none;" title="Hoàn tác và gỡ sạch Audiophile Tags khỏi file">↩️ Hoàn Tác / Gỡ Tag</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <section class="pillar-card border-indigo scoring-panel" aria-labelledby="scoring-heading">
+                        <details id="scoring-setup" open>
+                            <summary id="scoring-heading">Thiết lập kiểm tra · chọn nhạc và chế độ</summary>
+                        <form id="scoring-form">
+                            <div class="scoring-controls">
+                                <label>Phạm vi <select id="scoring-target"><option value="single">Một bài hát</option><option value="selected">Các bài đã chọn trong Kho nhạc</option><option value="folder">Thư mục / toàn bộ kho</option></select></label>
+                            </div>
+                        <div class="track-picker-card" data-scan-scope="single">
+                            <div style="flex: 1; position: relative;">
+                                <div class="combobox-input-box">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    <input type="text" id="lab-combobox-input" class="combobox-input" placeholder="Tìm tên bài, nghệ sĩ hoặc đường dẫn…" autocomplete="off" role="combobox" aria-label="Tìm bài trong kho nhạc" aria-autocomplete="list" aria-expanded="false" aria-controls="lab-combobox-dropdown">
+                                    <button type="button" id="lab-combobox-clear" class="combobox-clear-btn" style="display:none;" title="Xóa tìm kiếm">✕</button>
+                                </div>
+                                <div id="lab-combobox-dropdown" class="combobox-dropdown-menu" role="listbox" aria-label="Bài hát phù hợp" style="display: none;"></div>
+                                <input type="hidden" id="lab-selected-path" value="">
                             </div>
                         </div>
 
-                        <div class="btn-group mt-4">
-                            <button class="btn btn-primary" id="btn-test-navidrome">Kiểm Tra Kết Nối (Ping)</button>
-                            <button class="btn btn-secondary" id="btn-trigger-navidrome-scan">Kích Hoạt Rescan Kho Nhạc</button>
+                            <p id="scoring-selection" data-scan-scope="selected" hidden>Đã chọn <strong id="scoring-selected-count">0</strong> bài. <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('tab-library')">Chọn bài trong Kho nhạc</button></p>
+                            <div class="scoring-controls" data-scan-scope="folder" hidden>
+                                <label>Thư mục trong kho <input id="scoring-folder" placeholder="Để trống để quét toàn bộ kho"></label>
+                                <p>Quét cả thư mục con. Đường dẫn tính từ thư mục kho nhạc.</p>
+                            </div>
+                            <div class="scoring-controls">
+                                <label>Chế độ <select id="scoring-mode" aria-describedby="scoring-mode-help"><option value="FAST">Nhanh · sơ bộ</option><option value="BALANCED" selected>Cân bằng · khuyên dùng</option><option value="DEEP">Chuyên sâu · lâu hơn</option></select></label>
+                                <button type="submit" class="btn btn-primary" id="scoring-single" disabled>Bắt đầu kiểm tra</button>
+                            </div>
+                            <p id="scoring-mode-help" class="text-secondary">Giải mã toàn tệp, kiểm tra toàn vẹn và đo nhiều vùng phổ.</p>
+                        <details class="scoring-detail"><summary>Tùy chọn nâng cao · kỳ vọng nguồn và tệp tham chiếu</summary>
+                            <p>Áp dụng cho mọi bài trong lượt quét. Đường dẫn tham chiếu phải nằm trong kho nhạc; mức tin cậy do bạn xác nhận.</p>
+                            <div class="scoring-controls">
+                                <label>Số tệp song song <input id="scoring-workers" type="number" min="1" max="4" value="2"></label>
+                                <label>Codec <input id="claim-codec" placeholder="flac / alac / pcm_s24le"></label>
+                                <label>Container <input id="claim-container" placeholder="flac / wav / m4a"></label>
+                                <label>Sample rate (Hz) <input id="claim-rate" type="number" min="1" placeholder="96000"></label>
+                                <label>Bit depth <input id="claim-depth" type="number" min="1" max="64" placeholder="24"></label>
+                                <label>Lossless <select id="claim-lossless"><option value="">Không có kỳ vọng</option><option value="true">Có</option><option value="false">Không</option></select></label>
+                                <label>Nguồn <input id="claim-source" maxlength="1000"></label>
+                                <label>Bản phát hành <input id="claim-release" maxlength="1000"></label>
+                                <label>Tệp tham chiếu <input id="claim-reference" placeholder="album/reference.flac"></label>
+                            </div>
+                        </details>
+                        </form>
+                        </details>
+                        <p id="scoring-error" role="alert" tabindex="-1" hidden></p>
+                        <progress id="scoring-meter" aria-label="Tiến độ kiểm tra" hidden></progress>
+                        <p id="scoring-progress" role="status" aria-live="polite"></p>
+                        <div class="scoring-controls">
+                            <button class="btn btn-outline-rose" id="scoring-cancel" type="button" hidden disabled>Hủy lượt quét</button>
+                            <label>Lượt quét đã lưu <select id="scoring-history"><option value="">Chọn lượt quét</option></select></label>
+                            <details class="scoring-exports"><summary>Xuất kết quả</summary>
+                                <a id="scoring-export-json" class="btn btn-secondary" hidden>JSON</a>
+                                <a id="scoring-export-jsonl" class="btn btn-secondary" hidden>JSONL tăng dần</a>
+                                <a id="scoring-export-csv" class="btn btn-secondary" hidden>CSV</a>
+                            </details>
                         </div>
-                        <div id="navi-result-msg" class="mt-4"></div>
-                    </div>
-                </div>
+                        <details class="scoring-detail" id="scoring-comparison" hidden><summary id="scoring-comparison-title">Kết quả các tệp</summary>
+                        <p class="text-secondary">Bấm tiêu đề cột để sắp xếp toàn bộ lượt quét sau khi hoàn tất. Bấm lần nữa để đảo chiều; N/A luôn ở cuối cột số.</p>
+                        <details class="scoring-raw"><summary>Ngưỡng cảnh báo</summary><p id="scoring-thresholds" class="text-secondary scoring-thresholds"></p></details>
+                        <p class="scoring-legend"><span data-level="good">Xanh: không cảnh báo</span><span data-level="review">Vàng: cần xem xét / độ phủ hạn chế</span><span data-level="suspect">Cam: đáng ngờ</span><span data-level="danger">Đỏ: lỗi / sai lệch đáng kể</span><span data-level="unknown">Xám: chưa đủ bằng chứng</span></p>
+                        <div class="table-container scoring-comparison"><table class="tracks-table"><thead><tr><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="filepath" disabled>Tệp <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="score" disabled>Điểm <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="coverage" disabled>Coverage <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="scoring-sort" data-sort="warning" disabled>Kết quả <span aria-hidden="true">↕</span></button></th><th scope="col" aria-label="Chi tiết"></th></tr></thead><tbody id="scoring-results"></tbody></table></div>
+                        <button id="scoring-more" class="btn btn-secondary" hidden>Xem thêm kết quả</button>
+                        </details>
+                        <section id="scoring-result" aria-labelledby="scoring-result-heading" tabindex="-1" hidden>
+                        <p class="text-secondary">Chi tiết bài đang chọn</p>
+                        <h2 id="auth-filename"></h2>
+                        <div class="scoring-score-header"><h3 id="scoring-result-heading">Authenticity &amp; Integrity Score</h3><span id="auth-score">N/A</span></div>
+                        <p id="auth-verdict" role="status">Chọn một bài ở bên dưới hoặc quét thư mục để đo.</p>
+                        <p id="auth-confidence">Độ tin cậy: chưa đo · Coverage: chưa đo</p>
+                        <p class="text-secondary scoring-note">Điểm không đánh giá chất lượng nghe. Độ phân giải cao không bảo đảm âm thanh hay.</p>
+                        <div id="auth-warnings" role="alert"></div>
+                        <details class="scoring-detail" id="auth-properties-panel"><summary>Đối chiếu thông số · khai báo và đo được</summary><div id="auth-properties"></div></details>
+                        <div id="auth-details"></div>
+                        <details class="scoring-detail"><summary>Phổ theo cửa sổ và từng kênh</summary>
+                            <p>Phổ từ các cửa sổ đã đo, không nội suy qua phần chưa đo. Đường màu hồng đánh dấu biên phổ cần xem xét; không tự xác định nguồn lossy.</p>
+                            <canvas id="auth-spectrum" width="960" height="360" aria-label="Phổ theo cửa sổ đo và kênh"></canvas>
+                            <p id="auth-spectrum-note"></p>
+                        </details>
+                        </section>
+                    </section>
 
-                <!-- Quality Tagging & Organization -->
-                <div class="card glass-card">
-                    <div class="card-header">
-                        <h3>Gắn Tag Quality &amp; Phân Loại</h3>
-                        <span class="stat-tag tag-emerald">Audiophile Ready</span>
+                    <details class="scoring-detail" id="additional-diagnostics">
+                        <summary>Chẩn đoán bổ sung · ReplayGain, Gapless, DSD và ghi tag</summary>
+                        <p>Áp dụng cho bài đang chọn. Chạy chẩn đoán không thay đổi tệp; ghi tag là thao tác riêng.</p>
+                        <button class="btn btn-secondary" id="btn-run-audiophile-audit" disabled>Đo chẩn đoán bổ sung</button>
+                        <p id="additional-current" role="status">Chưa đo chẩn đoán bổ sung cho bài đang chọn.</p>
+                    <div id="audiophile-loading-box" style="display: none;" class="technical-note mb-4 text-center py-6">
+                        <span class="text-secondary">Đang tính toán DR Meter, đối chiếu STREAMINFO MD5, phân tích LSB 24-bit và đo EBU R128...</span>
                     </div>
-                    <div class="card-body">
-                        <p class="text-muted mb-3">
-                            Ghi tag <code>[PCM sample rate cao]</code> hoặc <code>[Lỗi toàn vẹn]</code> vào trường <code>COMMENT</code> của file nhạc để tạo <strong>Smart Playlist</strong> tự động trên Navidrome.
-                        </p>
-                        <div class="alert-box alert-indigo mb-4">
-                            <div class="alert-content">
-                                <strong>Tiêu chí Smart Playlist:</strong>
-                                <code>comment contains "[PCM sample rate cao]"</code>
+
+                    <!-- 7 Pillars Grid -->
+                    <div class="audiophile-pillars-grid" id="audiophile-pillars-grid" hidden>
+                        <!-- Pillar 1: Dynamic Range -->
+                        <div class="pillar-card border-amber" id="pillar-dr-card">
+                            <div class="pillar-card-header">
+                                <div class="pillar-title-group">
+                                    <div class="pillar-icon-badge">🎚️</div>
+                                    <div>
+                                        <h3 class="pillar-title">1. Dynamic Range (DR Meter)</h3>
+                                        <p class="pillar-subtitle">Ước lượng DR; không chấm authenticity</p>
+                                    </div>
+                                </div>
+                                <span class="stat-tag tag-amber" id="pillar-dr-badge">Chưa đo</span>
+                            </div>
+                            <div class="dr-meter-box">
+                                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Thang Điểm DR1 &rarr; DR20</span>
+                                    <span id="dr-score-huge" style="font-size: 1.5rem; font-family: 'Outfit', sans-serif; font-weight: 700; color: #fbbf24;">DR--</span>
+                                </div>
+                                <div class="dr-meter-scale-bar" title="Thang đo dải động: Đỏ (Nén gắt) - Vàng (Trung bình) - Xanh lục (Audiophile) - Xanh dương (Dải động cực rộng)">
+                                    <div class="dr-needle-indicator" id="dr-needle" style="left: 50%;"></div>
+                                </div>
+                                <div class="dr-scale-labels">
+                                    <span style="color: #ef4444;">DR1 (Nén Nặng)</span>
+                                    <span style="color: #f59e0b;">DR8</span>
+                                    <span style="color: #10b981;">DR12 (Audiophile)</span>
+                                    <span style="color: #06b6d4;">DR15+</span>
+                                </div>
+                            </div>
+                            <div class="dr-stats-row">
+                                <div class="dr-stat-mini"><div class="dr-stat-label">Peak dBFS</div><div class="dr-stat-val" id="dr-stat-peak">-- dB</div></div>
+                                <div class="dr-stat-mini"><div class="dr-stat-label">RMS Top 20%</div><div class="dr-stat-val" id="dr-stat-rms">-- dB</div></div>
+                                <div class="dr-stat-mini"><div class="dr-stat-label">DR L / R</div><div class="dr-stat-val" id="dr-stat-channels">-- / --</div></div>
+                            </div>
+                            <p class="mt-3 text-secondary" style="font-size: 0.82rem;" id="dr-verdict-desc">Chưa chọn bài hát để đo Dynamic Range.</p>
+                        </div>
+
+                        <!-- Pillar 2: Bit-Perfect & FLAC MD5 -->
+                        <div class="pillar-card border-emerald" id="pillar-integrity-card">
+                            <div class="pillar-card-header">
+                                <div class="pillar-title-group">
+                                    <div class="pillar-icon-badge">🛡️</div>
+                                    <div>
+                                        <h3 class="pillar-title">2. Toàn vẹn dữ liệu &amp; checksum</h3>
+                                        <p class="pillar-subtitle">FLAC Audio MD5 &amp; Frame CRC Integrity</p>
+                                    </div>
+                                </div>
+                                <span class="stat-tag tag-emerald" id="pillar-integrity-badge">Chờ quét</span>
+                            </div>
+                            <div style="background: rgba(0,0,0,0.3); padding: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin: 0.5rem 0;">
+                                <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;">STREAMINFO AUDIO MD5:</div>
+                                <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #34d399;" id="md5-streaminfo-hex">00000000000000000000000000000000</code>
+                            </div>
+                            <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="integrity-msg-desc">Decode toàn file và kiểm tra frame/STREAMINFO MD5 khi có. Checksum không xác minh playback hay nguồn master.</p>
+                        </div>
+
+                        <!-- Pillar 3: Fake 24-bit -->
+                        <div class="pillar-card border-rose" id="pillar-bitdepth-card">
+                            <div class="pillar-card-header">
+                                <div class="pillar-title-group">
+                                    <div class="pillar-icon-badge">🔬</div>
+                                    <div>
+                                        <h3 class="pillar-title">3. Bit usage &amp; giới hạn phổ</h3>
+                                        <p class="pillar-subtitle">Padding chính xác toàn file, theo từng kênh</p>
+                                    </div>
+                                </div>
+                                <span class="stat-tag tag-rose" id="pillar-bitdepth-badge">Chờ quét</span>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
+                                    <span class="text-muted">Mật Độ Entropy 8 Bit Cuối (LSB):</span>
+                                    <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600;" id="lsb-entropy-pct">0.0%</span>
+                                </div>
+                                <div class="entropy-bar-container">
+                                    <div class="entropy-bar-fill" id="lsb-entropy-fill" style="width: 0%; background: #f43f5e;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
+                                    <span>0% (Độn Bit 0 Giả)</span>
+                                    <span>&gt;90% (Bit thấp có dữ liệu)</span>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem;">
+                                <div class="dr-stat-mini"><div class="dr-stat-label">Biên phổ (sàng lọc)</div><div class="dr-stat-val" id="pillar-cutoff-hz">-- Hz</div></div>
+                                <div class="dr-stat-mini"><div class="dr-stat-label">Độ Sụt Năng Lượng</div><div class="dr-stat-val" id="pillar-cutoff-drop">-- dB</div></div>
+                            </div>
+                            <p class="mt-3 text-secondary" style="font-size: 0.82rem;" id="bitdepth-msg-desc">Bit thấp luôn bằng 0 có thể xác lập padding PCM. Cutoff phổ chỉ là bằng chứng cần xem xét; không xác định codec hoặc bitrate nguồn.</p>
+                        </div>
+
+                        <!-- Pillar 4: DSD / SACD Purity -->
+                        <div class="pillar-card border-cyan" id="pillar-dsd-card">
+                            <div class="pillar-card-header">
+                                <div class="pillar-title-group">
+                                    <div class="pillar-icon-badge">💿</div>
+                                    <div>
+                                        <h3 class="pillar-title">4. DSD: định dạng &amp; phổ nhiễu</h3>
+                                        <p class="pillar-subtitle">Sigma-Delta Noise Shaping &gt;30kHz &amp; Surround</p>
+                                    </div>
+                                </div>
+                                <span class="stat-tag tag-cyan" id="pillar-dsd-badge">Chờ quét</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.5rem 0;">
+                                <div class="dr-stat-mini"><div class="dr-stat-label">Cấu Hình Kênh</div><div class="dr-stat-val" id="dsd-channels-val">Stereo 2.0</div></div>
+                                <div class="dr-stat-mini"><div class="dr-stat-label">Độ Tăng Noise Shaping</div><div class="dr-stat-val" id="dsd-noise-rise-val">+0 dB</div></div>
+                            </div>
+                            <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="dsd-msg-desc">Quan sát nhiễu siêu âm DSD; không thể xác lập nguồn SACD/native hoặc lịch sử chuyển đổi từ PCM.</p>
+                        </div>
+
+                        <!-- Pillar 5: ReplayGain -->
+                        <div class="pillar-card border-indigo" id="pillar-loudness-card">
+                            <div class="pillar-card-header">
+                                <div class="pillar-title-group">
+                                    <div class="pillar-icon-badge">🔊</div>
+                                    <div>
+                                        <h3 class="pillar-title">5. ReplayGain 2.0 &amp; EBU R128</h3>
+                                        <p class="pillar-subtitle">Cân bằng âm lượng không suy hao bit</p>
+                                    </div>
+                                </div>
+                                <span class="stat-tag tag-indigo" id="pillar-loudness-badge">Chờ đo</span>
+                            </div>
+                            <div class="dr-stats-row" style="margin: 0.5rem 0;">
+                                <div class="dr-stat-mini"><div class="dr-stat-label">Integrated LUFS</div><div class="dr-stat-val" id="loudness-lufs-val">-- LUFS</div></div>
+                                <div class="dr-stat-mini"><div class="dr-stat-label">True Peak</div><div class="dr-stat-val" id="loudness-peak-val">-- dBTP</div></div>
+                                <div class="dr-stat-mini"><div class="dr-stat-label">ReplayGain 2.0</div><div class="dr-stat-val" id="loudness-rg-val">-- dB</div></div>
+                            </div>
+                            <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="loudness-msg-desc">Ghi tag ReplayGain 2.0 (-18 LUFS) &amp; EBU R128 để Navidrome và DAC cân bằng âm lượng thông minh mà bit gốc nguyên vẹn 100%.</p>
+                        </div>
+
+                        <!-- Pillar 6: Gapless Playback -->
+                        <div class="pillar-card border-slate" id="pillar-gapless-card">
+                            <div class="pillar-card-header">
+                                <div class="pillar-title-group">
+                                    <div class="pillar-icon-badge">🎼</div>
+                                    <div>
+                                        <h3 class="pillar-title">6. Gapless Playback</h3>
+                                        <p class="pillar-subtitle">Seamless Transitions &amp; Boundary Samples</p>
+                                    </div>
+                                </div>
+                                <span class="stat-tag tag-slate" id="pillar-gapless-badge">Chờ rà soát</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.5rem 0;">
+                                <div class="dr-stat-mini"><div class="dr-stat-label">Khoảng Lặng Mở Đầu</div><div class="dr-stat-val" id="gapless-intro-val">-- ms</div></div>
+                                <div class="dr-stat-mini"><div class="dr-stat-label">Khoảng Lặng Kết Thúc</div><div class="dr-stat-val" id="gapless-outro-val">-- ms</div></div>
+                            </div>
+                            <p class="mt-2 text-secondary" style="font-size: 0.82rem;" id="gapless-msg-desc">Rà soát mẫu âm thanh biên giới (boundary samples) để đảm bảo không bị chèn khoảng lặng 2 giây vô nghĩa giữa các track hòa nhạc / live album.</p>
+                        </div>
+
+                        <!-- Pillar 7: Vault Tiering -->
+                        <div class="pillar-card border-emerald" id="pillar-tier-card" style="grid-column: 1 / -1;">
+                            <div class="pillar-card-header">
+                                <div class="pillar-title-group">
+                                    <div class="pillar-icon-badge">🏛️</div>
+                                    <div>
+                                        <h3 class="pillar-title">7. Đề Xuất Phân Cấp Kho Nhạc (Vault Tiering)</h3>
+                                        <p class="pillar-subtitle">Tự động phân nhóm vào 3 phân cấp lưu trữ Audiophile</p>
+                                    </div>
+                                </div>
+                                <span class="stat-tag tag-emerald" id="pillar-tier-badge">Chờ phân loại</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: rgba(0,0,0,0.3); padding: 1rem 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                                <div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted);">Phân Cấp Đích Được Chỉ Định:</div>
+                                    <div style="font-size: 1.15rem; font-weight: 700; color: white;" id="pillar-tier-dest">--</div>
+                                </div>
+                                <button class="btn btn-secondary" onclick="switchTab('tab-vault')">Xem Kế Hoạch Toàn Bộ Kho Nhạc 3 Cấp &rarr;</button>
+                            </div>
+                        </div>
+                    </div>
+                    </details>
+                </section>
+
+                <!-- ===== TAB: Vault Tiers ===== -->
+                <section class="tab-content" id="tab-vault">
+                    <div class="audiophile-banner">
+                        <div class="audiophile-banner-content">
+                            <div>
+                                <h2>Tự Động Xuất Cấu Trúc Kho Nhạc 3 Cấp (Vault Tiering)</h2>
+                                <p>1-Click tổ chức toàn bộ thư viện thành 3 tầng chuẩn Audiophile: DSD &amp; PCM sample rate cao, định dạng Lossless, và Cách ly (Quarantine) các tệp Lỗi toàn vẹn, MP3, Bit-Rot lỗi.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3 Tier Cards -->
+                    <div class="vault-tier-cards-grid">
+                        <div class="vault-tier-card tier-1 clickable-tier" data-tier="01_Hi-Res &amp; DSD" style="cursor: pointer;" title="Bấm để lọc bảng kế hoạch theo Tầng 1">
+                            <span class="tier-header-badge">TẦNG 1 &bull; HI-RES</span>
+                            <h3>01_DSD &amp; Hi-Res</h3>
+                            <p class="text-muted" style="font-size: 0.78rem;">Chuẩn &gt;24-bit / 96kHz &amp; Native DSD</p>
+                            <div class="vault-tier-metric" id="tier1-count">67 bài</div>
+                            <p class="vault-tier-desc">Phân nhóm theo định dạng DSD hoặc sample rate PCM cao; không xác thực nguồn master.</p>
+                            <div class="text-secondary" style="font-size: 0.8rem;" id="tier1-size">Dung lượng: ~11.4 GB</div>
+                        </div>
+
+                        <div class="vault-tier-card tier-2 clickable-tier" data-tier="02_Lossless_CD" style="cursor: pointer;" title="Bấm để lọc bảng kế hoạch theo Tầng 2">
+                            <span class="tier-header-badge">TẦNG 2 &bull; LOSSLESS</span>
+                            <h3>02_Lossless CD</h3>
+                            <p class="text-muted" style="font-size: 0.78rem;">Chuẩn Red Book 16/44.1k &amp; Studio 24/44-48k</p>
+                            <div class="vault-tier-metric" id="tier2-count">649 bài</div>
+                            <p class="vault-tier-desc">Nhóm định dạng lossless theo header; độ phân giải nguồn và master chưa xác thực.</p>
+                            <div class="text-secondary" style="font-size: 0.8rem;" id="tier2-size">Dung lượng: ~18.9 GB</div>
+                        </div>
+
+                        <div class="vault-tier-card tier-3 clickable-tier" data-tier="03_Quarantine" style="cursor: pointer;" title="Bấm để lọc bảng kế hoạch theo Tầng 3">
+                            <span class="tier-header-badge">TẦNG 3 &bull; CÁCH LY</span>
+                            <h3>03_Quarantine</h3>
+                            <p class="text-muted" style="font-size: 0.78rem;">Lỗi toàn vẹn, Fake 24-bit, MP3, File Lỗi</p>
+                            <div class="vault-tier-metric" id="tier3-count">928 bài</div>
+                            <p class="vault-tier-desc">Phân nhóm quản lý tệp lỗi, padding đã đo hoặc định dạng lossy; phân nhóm không chứng minh gian lận.</p>
+                            <div class="text-secondary" style="font-size: 0.8rem;" id="tier3-size">Dung lượng: ~7.4 GB</div>
+                        </div>
+                    </div>
+
+                    <!-- Tiering Controls -->
+                    <div class="tiering-controls-bar">
+                        <div class="tiering-mode-selector">
+                            <span style="font-size: 0.85rem; font-weight: 600; color: #e2e8f0;">Chế Độ Xuất:</span>
+                            <button class="mode-pill active" id="btn-mode-symlink" data-mode="symlink">🔗 Symlink (An Toàn Tuyệt Đối - Không Di Chuyển File Gốc)</button>
+                            <button class="mode-pill" id="btn-mode-move" data-mode="move">📦 Di Chuyển Thật (Có Rollback Khôi Phục)</button>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-secondary" id="btn-rollback-tiering" title="Khôi phục lại vị trí cũ nếu đã chọn Move">Khôi Phục (Rollback)</button>
+                            <button class="btn btn-emerald" id="btn-execute-tiering">1-Click Thực Thi Phân Cấp Kho Nhạc</button>
+                        </div>
+                    </div>
+
+                    <div id="tiering-status-box" class="technical-note mb-4" style="display: none;">
+                        <h4 id="tiering-status-title">Trạng Thái Thực Thi</h4>
+                        <p id="tiering-status-msg" class="text-secondary">Đang tải...</p>
+                    </div>
+
+                    <!-- Plan Table -->
+                    <div class="card glass-card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                            <div>
+                                <h3>Bảng Kế Hoạch Phân Cấp Chi Tiết</h3>
+                                <span class="stat-tag tag-indigo" id="plan-total-badge">1.644 tệp (37.7 GB)</span>
+                                <span class="stat-tag tag-emerald" id="plan-filter-active-badge" style="display: none; margin-left: 6px;">Đang lọc tầng</span>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="text" id="tiering-search-input" class="form-input" placeholder="🔍 Lọc theo tệp / thư mục..." style="padding: 4px 10px; font-size: 0.82rem; width: 220px;">
+                                <button class="btn btn-xs btn-outline" id="btn-tier-filter-all">Tất cả tầng</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-container" style="max-height: 480px; overflow-y: auto;">
+                                <table class="tracks-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Tên Tệp / Đường Dẫn Gốc</th>
+                                            <th>Cấp Chỉ Định</th>
+                                            <th>Lý Do Phân Loại</th>
+                                            <th>Đường Dẫn Đích</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tiering-preview-tbody">
+                                        <tr><td colspan="4" class="text-center py-6 text-muted">Đang tạo kế hoạch phân cấp...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== TAB: Duplicates ===== -->
+                <section class="tab-content" id="tab-duplicates">
+                    <div class="explorer-toolbar mb-4">
+                        <div class="filter-pills" id="dupe-filter-pills" style="gap: 0.85rem;">
+                            <button class="filter-pill active" data-dupetype="byte">Trùng Byte 100% (<span id="dupe-count-byte">0</span>)</button>
+                            <button class="filter-pill" data-dupetype="meta">Trùng Metadata (<span id="dupe-count-meta">0</span>)</button>
+                            <button class="filter-pill" data-dupetype="name">Trùng Tên Tệp (<span id="dupe-count-name">0</span>)</button>
+                        </div>
+                        <div class="btn-group" style="margin-left: auto; gap: 0.85rem; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" id="btn-refresh-dupes" title="Quét lại toàn bộ thư mục">Quét Lại</button>
+                            <button class="btn btn-emerald" id="btn-auto-pick-best-dupes" title="Tự động chọn bản Lossless / Bitrate cao nhất làm bản giữ lại cho mọi nhóm">⚡ Chọn Bản Tốt Nhất</button>
+                            <button class="btn btn-primary" id="btn-archive-byte-dupes">Di Chuyển Bản Phụ Vào Archive</button>
+                        </div>
+                    </div>
+
+                    <!-- Search & Sub-filter -->
+                    <div class="explorer-toolbar mb-4" id="dupe-subtoolbar" style="background: rgba(15, 23, 42, 0.65); padding: 1.25rem 1.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.25rem;">
+                        <div class="search-box" style="flex: 1; min-width: 250px; max-width: 420px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="dupe-search-input" placeholder="Lọc theo ca sĩ, bài hát, tên file (vd: LOSER, Orion, Aimer)...">
+                        </div>
+                        <div class="filter-pills" id="dupe-subfilter-pills" style="gap: 0.85rem;">
+                            <button class="filter-pill active" data-subfilter="all">Tất Cả (<span id="dupe-subcount-all">0</span>)</button>
+                            <button class="filter-pill pill-dot-emerald" data-subfilter="flac_vs_lossy">Có FLAC vs MP3 (<span id="dupe-subcount-flac">0</span>)</button>
+                            <button class="filter-pill pill-dot-indigo" data-subfilter="mixed_formats">Khác Định Dạng (<span id="dupe-subcount-mixed">0</span>)</button>
+                            <button class="filter-pill pill-dot-amber" data-subfilter="numbered">Tên Có Đuôi (1) (<span id="dupe-subcount-numbered">0</span>)</button>
+                        </div>
+                    </div>
+
+                    <div class="technical-note mb-4" style="padding: 1.35rem 1.65rem;">
+                        <div class="tech-note-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.4rem;">
+                            <h4 id="dupe-title-text" style="font-size: 0.95rem;">Trùng 100% Byte (An toàn tuyệt đối)</h4>
+                            <span id="dupe-selection-summary" class="stat-tag tag-emerald" style="padding: 3px 10px;">Đang giữ 0 bài gốc, chọn 0 bản phụ để lưu trữ</span>
+                        </div>
+                        <p id="dupe-desc-text" style="line-height: 1.5;">Các file có cùng mã băm MD5 tuyệt đối. Có thể di chuyển các bản thừa vào thư mục <code>_Duplicates_Archive/</code> để giải phóng dung lượng đĩa mà không hề làm mất bài hát gốc.</p>
+                    </div>
+
+                    <div id="dupes-container">
+                        <p class="text-center py-6 text-muted">Đang tải danh sách bài trùng lặp...</p>
+                    </div>
+                </section>
+
+                <!-- ===== TAB: Navidrome ===== -->
+                <section class="tab-content" id="tab-navidrome">
+                    <!-- Navidrome Hero Banner -->
+                    <div class="navidrome-hero-card glass-card mb-6">
+                        <div class="navidrome-hero-content">
+                            <div class="navidrome-hero-badge">
+                                <span class="status-pulse-dot" id="navi-hero-dot"></span>
+                                <span id="navi-hero-status-label">Đang kiểm tra kết nối...</span>
+                            </div>
+                            <h2>Tích Hợp Máy Chủ Nghe Nhạc Navidrome</h2>
+                            <p class="text-secondary">Kết nối đồng bộ 2 chiều qua Subsonic REST API: tự động cập nhật thư viện, hiển thị tag kiểm định và tạo Smart Playlists theo chuẩn Audiophile.</p>
+                        </div>
+                        <div class="navidrome-hero-actions">
+                            <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="btn-hero-open-navidrome" style="display: none;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                Mở Web UI Navidrome
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="grid-2col mb-6">
+                        <!-- Card 1: Subsonic REST API Config -->
+                        <div class="card glass-card">
+                            <div class="card-header">
+                                <h3>Cấu Hình Subsonic REST API</h3>
+                                <span class="badge" id="navidrome-badge">Chưa kết nối</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-4">Nhập thông tin máy chủ Navidrome (LXC IP hoặc localhost) để đồng bộ tự động khi phân loại hoặc đổi tag.</p>
+                                <div class="form-group">
+                                    <label for="navi-url">Navidrome URL (LXC Container IP / Host)</label>
+                                    <input type="text" id="navi-url" class="form-input" placeholder="http://192.168.1.x:4533" value="http://localhost:4533">
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="navi-user">Username</label>
+                                        <input type="text" id="navi-user" class="form-input" placeholder="admin">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="navi-pass">Password</label>
+                                        <input type="password" id="navi-pass" class="form-input" placeholder="••••••••">
+                                    </div>
+                                </div>
+                                <div class="btn-group mt-4">
+                                    <button class="btn btn-primary" id="btn-test-navidrome">Kiểm Tra Kết Nối (Ping)</button>
+                                    <button class="btn btn-secondary" id="btn-trigger-navidrome-scan">Kích Hoạt Quét Kho Nhạc</button>
+                                </div>
+                                <div id="navi-result-msg" class="mt-4"></div>
+
+                                <!-- Live Scan Monitor -->
+                                <div id="navi-scan-progress" class="navi-scan-monitor mt-4" style="display: none;">
+                                    <div class="scan-monitor-header">
+                                        <span class="spinner-small"></span>
+                                        <span id="navi-scan-status-text">Navidrome đang quét thư viện...</span>
+                                    </div>
+                                    <div class="scan-monitor-sub" id="navi-scan-count-text">Đã phát hiện 0 bài hát</div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="btn-group" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <button class="btn btn-emerald w-full" id="btn-tag-navidrome-all">
-                                Ghi Metadata Tag Vào File Âm Thanh
-                            </button>
-                            <button class="btn btn-outline-rose w-full" id="btn-rollback-all-tags" title="Hoàn tác toàn bộ các file đã gắn tag về lại metadata gốc">
-                                ↩️ Hoàn Tác Toàn Bộ Tag Đã Ghi (Khôi phục Metadata gốc)
-                            </button>
-                            <button class="btn btn-secondary w-full" id="btn-run-dryrun">
-                                Xem Mô Phỏng Phân Loại Thư Mục (Dry-Run)
-                            </button>
+                        <!-- Card 2: Smart Playlists (.nsp) -->
+                        <div class="card glass-card">
+                            <div class="card-header">
+                                <h3>Bộ Smart Playlists (.nsp) Cho Navidrome</h3>
+                                <button class="btn btn-xs btn-emerald" id="btn-install-all-playlists">⚡ Cài Đặt Tất Cả &amp; Quét</button>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">Navidrome tự động đọc các tệp <code>.nsp</code> đặt trong kho nhạc để tạo danh sách phát thông minh phân loại chất lượng mà không cần tạo thủ công.</p>
+                                <div id="smart-playlists-container" class="smart-playlists-grid">
+                                    <p class="text-muted text-center py-4">Đang tải danh sách Smart Playlists...</p>
+                                </div>
+                            </div>
                         </div>
-                        <div id="organize-status-box" class="mt-4"></div>
                     </div>
-                </div>
-            </div>
-        </section>
-    </main>
+
+                    <!-- Card 3: Quality Tagging -->
+                    <div class="card glass-card">
+                        <div class="card-header">
+                            <h3>Gắn Tag Phân Loại Chất Lượng Vào File Nhạc</h3>
+                            <span class="stat-tag tag-emerald">Audiophile Ready</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">Ghi nhãn tiêu chuẩn <code>[PCM sample rate cao]</code>, <code>[Studio Master]</code> hoặc <code>[Lỗi toàn vẹn]</code> vào trường metadata <code>COMMENT</code> để Navidrome lọc và tạo Smart Playlist.</p>
+                            <div class="alert-box alert-indigo mb-4">
+                                <div class="alert-content">
+                                    <strong>Tiêu chuẩn tích hợp:</strong> Khi bạn bấm ghi tag hoặc sắp xếp thư mục, ứng dụng sẽ <em>tự động gọi Navidrome Rescan</em> ngay sau đó để máy chủ cập nhật bài hát lập tức.
+                                </div>
+                            </div>
+                            <div class="btn-group" style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                                <button class="btn btn-emerald" id="btn-tag-navidrome-all">Ghi Metadata Tag Vào File Âm Thanh</button>
+                                <button class="btn btn-outline-rose" id="btn-rollback-all-tags" title="Hoàn tác toàn bộ các file đã gắn tag về lại metadata gốc">↩️ Hoàn Tác Toàn Bộ Tag Đã Ghi</button>
+                                <button class="btn btn-secondary" id="btn-run-dryrun">Xem Mô Phỏng Phân Loại Thư Mục (Dry-Run)</button>
+                            </div>
+                            <div id="organize-status-box" class="mt-4"></div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- ===== MODALS ===== -->
 
     <!-- Spectrogram & Full Audiophile Audit Modal -->
     <div class="modal-backdrop" id="spectrogram-modal">
@@ -924,9 +890,8 @@
                     <p class="modal-track-path" id="modal-track-path">đường_dẫn_tệp.flac</p>
                 </div>
                 <div class="modal-header-actions">
-                    <button class="btn btn-emerald btn-sm" id="modal-btn-play-preview" title="Phát nghe thử file âm thanh này">
-                        ▶ Nghe Thử
-                    </button>
+                    <button class="btn btn-emerald btn-sm" id="modal-btn-play-preview" title="Phát nghe thử file âm thanh này">▶ Nghe Thử</button>
+                    <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modal-btn-open-navidrome" title="Tìm và phát bài này trên Navidrome Web UI" style="display: none;">↗ Navidrome</a>
                 </div>
                 <button class="btn-close" id="modal-close-btn" aria-label="Đóng chi tiết bài hát">&times;</button>
             </div>
@@ -934,38 +899,20 @@
                 <div class="spectrogram-image-container" id="spectrogram-img-container">
                     <img id="spectrogram-img" src="" alt="Spectrogram">
                 </div>
-                
-                <!-- Quick Audiophile Summary in Modal -->
                 <div class="dsp-analysis-card mt-4" id="dsp-analysis-card">
                     <div class="dsp-grid" id="dsp-metrics-grid"></div>
                 </div>
-
                 <div id="modal-audiophile-details" class="mt-4" style="background: rgba(0,0,0,0.3); border-radius: var(--radius-md); padding: 1rem; border: 1px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                         <span style="font-weight: 600; color: #e2e8f0; font-size: 0.9rem;">Thông Số Audiophile Chi Tiết:</span>
                         <span id="modal-dr-badge-header" class="dr-score-pill dr-score-mid">DR--</span>
                     </div>
                     <div id="modal-audiophile-metrics-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; font-size: 0.82rem;">
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Audio MD5 Streaminfo</div>
-                            <div class="dr-stat-val" id="modal-audit-md5" style="font-size: 0.75rem;">Đang đọc...</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">ReplayGain 2.0 Gain</div>
-                            <div class="dr-stat-val" id="modal-audit-gain">-- dB</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Biên phổ (sàng lọc)</div>
-                            <div class="dr-stat-val" id="modal-audit-cutoff">-- kHz</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Vân Tay Âm Học</div>
-                            <div class="dr-stat-val" id="modal-audit-fp" style="font-size: 0.75rem;">Đang đọc...</div>
-                        </div>
-                        <div class="dr-stat-mini">
-                            <div class="dr-stat-label">Phân Cấp Vault</div>
-                            <div class="dr-stat-val" id="modal-audit-tier" style="font-size: 0.78rem;">--</div>
-                        </div>
+                        <div class="dr-stat-mini"><div class="dr-stat-label">Audio MD5 Streaminfo</div><div class="dr-stat-val" id="modal-audit-md5" style="font-size: 0.75rem;">Đang đọc...</div></div>
+                        <div class="dr-stat-mini"><div class="dr-stat-label">ReplayGain 2.0 Gain</div><div class="dr-stat-val" id="modal-audit-gain">-- dB</div></div>
+                        <div class="dr-stat-mini"><div class="dr-stat-label">Biên phổ (sàng lọc)</div><div class="dr-stat-val" id="modal-audit-cutoff">-- kHz</div></div>
+                        <div class="dr-stat-mini"><div class="dr-stat-label">Vân Tay Âm Học</div><div class="dr-stat-val" id="modal-audit-fp" style="font-size: 0.75rem;">Đang đọc...</div></div>
+                        <div class="dr-stat-mini"><div class="dr-stat-label">Phân Cấp Vault</div><div class="dr-stat-val" id="modal-audit-tier" style="font-size: 0.78rem;">--</div></div>
                     </div>
                 </div>
             </div>
@@ -978,10 +925,9 @@
         </div>
     </div>
 
-    <!-- Persistent Floating Audiophile Player Bar -->
+    <!-- Persistent Floating Player Bar -->
     <div class="audio-player-bar" id="audio-player-bar" style="display: none;">
         <audio id="global-audio-element" preload="metadata"></audio>
-        
         <div class="player-track-info">
             <button class="player-play-btn" id="player-btn-play-pause" title="Play / Pause (Phím Space)">
                 <svg id="player-icon-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -992,15 +938,12 @@
                 <div class="player-subtitle" id="player-track-subtitle">--</div>
             </div>
             <span class="player-spec-badge" id="player-track-spec">PCM</span>
-            
-            <!-- A/B Comparison Toggle Controls -->
             <div id="player-ab-box" class="player-ab-box" style="display: none;">
                 <span class="ab-label">A/B:</span>
                 <button class="ab-btn active" id="btn-ab-a" data-channel="A" title="Nghe bản A (Bản giữ lại)">A</button>
                 <button class="ab-btn" id="btn-ab-b" data-channel="B" title="Nghe bản B (Bản phụ trùng lặp)">B</button>
             </div>
         </div>
-
         <div class="player-controls">
             <span class="player-time" id="player-current-time">0:00</span>
             <div class="player-scrubber-container">
@@ -1009,7 +952,6 @@
             </div>
             <span class="player-time" id="player-duration-time">0:00</span>
         </div>
-
         <div class="player-extra-actions">
             <div class="player-volume-group">
                 <button class="btn-icon" id="player-btn-volume" title="Bật / Tắt tiếng (Mute)">
@@ -1021,10 +963,10 @@
         </div>
     </div>
 
-    <!-- Toast Notification Container -->
+    <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
-    <!-- Custom Modern Confirmation Modal -->
+    <!-- Confirmation Modal -->
     <div class="modal-backdrop" id="confirm-modal" style="display: none;">
         <div class="modal-card modal-confirm-card">
             <div class="modal-header">
@@ -1043,5 +985,54 @@
 
     <script src="app.js?v=3.3"></script>
     <script src="scoring.js?v=1"></script>
+
+    <!-- Sidebar toggle & topbar title update -->
+    <script>
+    (function() {
+        // Sidebar toggle for mobile
+        const toggleBtn = document.getElementById('sidebar-toggle');
+        const sidebar = document.getElementById('sidebar');
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+            });
+        }
+
+        // Update topbar title when tab changes
+        const titles = {
+            'tab-library': 'Kho nhạc',
+            'tab-organize': 'Sắp xếp',
+            'tab-audiophile': 'Kiểm tra âm thanh',
+            'tab-vault': 'Kho 3 Cấp',
+            'tab-duplicates': 'Trùng lặp',
+            'tab-navidrome': 'Navidrome'
+        };
+        const titleEl = document.getElementById('topbar-page-title');
+        const navItems = document.querySelectorAll('.sidebar-nav-item');
+        navItems.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                if (titleEl && titles[tab]) titleEl.textContent = titles[tab];
+                navItems.forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
+                btn.classList.add('active');
+                btn.setAttribute('aria-current', 'page');
+                // Close sidebar on mobile after click
+                if (window.innerWidth < 900 && sidebar) {
+                    sidebar.classList.add('collapsed');
+                }
+            });
+        });
+
+        // Update sidebar root label from stats API
+        fetch('/api/stats').then(r => r.json()).then(d => {
+            const el = document.getElementById('sidebar-root-label');
+            if (el && d.root_directory) {
+                const parts = d.root_directory.split('/');
+                el.textContent = parts[parts.length - 1] || d.root_directory;
+                el.title = d.root_directory;
+            }
+        }).catch(() => {});
+    })();
+    </script>
 </body>
 </html>

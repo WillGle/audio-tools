@@ -301,6 +301,7 @@ function playTrack(path, title, artist, specs, abData = null) {
 
 // DOM Initialization
 document.addEventListener('DOMContentLoaded', () => {
+    initSidebar();
     initTabs();
     initStats();
     initExplorer();
@@ -319,15 +320,53 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTracks();
 });
 
+// Sidebar Collapsible & Mobile Management
+function initSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('sidebar-toggle');
+    if (!sidebar || !toggle) return;
+
+    // Restore desktop collapsed preference
+    if (window.innerWidth > 900 && localStorage.getItem('sidebar_collapsed') === 'true') {
+        sidebar.classList.add('collapsed');
+    }
+
+    toggle.addEventListener('click', () => {
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        if (window.innerWidth > 900) {
+            localStorage.setItem('sidebar_collapsed', isCollapsed);
+        }
+    });
+}
+
 // 1. Tab Navigation
+const TAB_TITLES = {
+    'tab-library': 'Kho nhạc',
+    'tab-organize': 'Sắp xếp thư viện',
+    'tab-audiophile': 'Kiểm tra chất lượng âm thanh',
+    'tab-vault': 'Cấu trúc kho 3 cấp',
+    'tab-duplicates': 'Quản lý trùng lặp',
+    'tab-navidrome': 'Tích hợp máy chủ Navidrome'
+};
+
 function initTabs() {
-    const tabs = document.querySelectorAll('.nav-tab');
+    // Support both old .nav-tab and new .sidebar-nav-item selectors
+    const tabs = document.querySelectorAll('.nav-tab, .sidebar-nav-item');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const target = tab.dataset.tab;
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
+            if (!target) return;
+            // Update active state on all nav elements
+            tabs.forEach(t => {
+                t.classList.remove('active');
+                t.removeAttribute('aria-current');
+            });
+            // Mark all elements for this tab as active (sidebar + any legacy tabs)
+            document.querySelectorAll(`[data-tab="${target}"]`).forEach(el => {
+                el.classList.add('active');
+                el.setAttribute('aria-current', 'page');
+            });
+
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             const targetContent = document.getElementById(target);
             if (targetContent) {
@@ -335,12 +374,25 @@ function initTabs() {
             }
             currentTab = target;
 
+            // Dynamically update topbar title
+            const topbarTitle = document.getElementById('topbar-page-title');
+            if (topbarTitle && TAB_TITLES[target]) {
+                topbarTitle.textContent = TAB_TITLES[target];
+            }
+
+            // Close mobile sidebar on navigation
+            if (window.innerWidth <= 900) {
+                document.getElementById('sidebar')?.classList.add('collapsed');
+            }
+
             if (target === 'tab-library') {
                 loadTracks();
             } else if (target === 'tab-vault') {
                 loadVaultTieringPlan();
             } else if (target === 'tab-duplicates') {
                 loadDuplicates(false);
+            } else if (target === 'tab-navidrome') {
+                loadSmartPlaylists();
             }
         });
     });
@@ -2219,8 +2271,10 @@ async function executeBatchArchiveDuplicates() {
 }
 
 // ==============================================================================
-// 7. NAVIDROME INTEGRATION
+// 7. NAVIDROME INTEGRATION & SEAMLESS SYNC
 // ==============================================================================
+let navidromeScanInterval = null;
+
 function initNavidrome() {
     const savedUrl = localStorage.getItem('navi_url') || 'http://localhost:4533';
     const savedUser = localStorage.getItem('navi_user') || '';
@@ -2234,64 +2288,312 @@ function initNavidrome() {
     if (elUser) elUser.value = savedUser;
     if (elPass) elPass.value = savedPass;
 
+    // Auto-ping in background on startup
+    checkNavidromeHealth(true);
+
+    // Topbar Quick Pill Click -> jump to Navidrome Tab
+    const pill = document.getElementById('navidrome-quick-pill');
+    pill?.addEventListener('click', (e) => {
+        // If clicking action buttons inside the pill, don't switch tab
+        if (e.target.closest('.navidrome-pill-actions')) return;
+        switchTab('tab-navidrome');
+    });
+
+    // Topbar Quick Rescan Button
+    document.getElementById('btn-quick-rescan')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        triggerNavidromeRescan(false);
+    });
+
+    // Navidrome Tab: Ping Button
     document.getElementById('btn-test-navidrome')?.addEventListener('click', async () => {
         const cfg = getNavidromeConfigFromInputs();
         saveNavidromeConfig(cfg);
         const box = document.getElementById('navi-result-msg');
-        box.innerHTML = `<span class="text-muted">Đang kết nối Navidrome...</span>`;
+        if (box) box.innerHTML = `<span class="text-muted">Đang kết nối Navidrome Subsonic API...</span>`;
+        await checkNavidromeHealth(false);
+    });
 
-        try {
-            const res = await fetch('/api/navidrome/test', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(cfg)
-            });
-            const data = await res.json();
+    // Navidrome Tab: Trigger Scan Button
+    document.getElementById('btn-trigger-navidrome-scan')?.addEventListener('click', async () => {
+        await triggerNavidromeRescan(true);
+    });
+
+    // Smart Playlists: Install All Button
+    document.getElementById('btn-install-all-playlists')?.addEventListener('click', async () => {
+        await installAllSmartPlaylists();
+    });
+}
+
+async function checkNavidromeHealth(silent = false) {
+    const cfg = getNavidromeConfigFromInputs();
+    saveNavidromeConfig(cfg);
+    const box = document.getElementById('navi-result-msg');
+
+    try {
+        const res = await fetch('/api/navidrome/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cfg)
+        });
+        const data = await res.json();
+        updateNavidromeUIStatus(data.success, data.message || '', cfg.server_url);
+
+        if (!silent && box) {
             if (data.success) {
                 box.innerHTML = `<div class="alert-box alert-indigo mt-2"><div class="alert-content"><strong>✅ ${data.message}</strong></div></div>`;
-                document.getElementById('navidrome-badge').textContent = 'Đã kết nối';
-                document.getElementById('navidrome-badge').className = 'stat-tag tag-emerald';
-                document.getElementById('navidrome-status-dot').className = 'nav-badge online';
             } else {
                 box.innerHTML = `<div class="alert-box alert-rose mt-2"><div class="alert-content"><strong>❌ ${data.message}</strong></div></div>`;
-                document.getElementById('navidrome-badge').textContent = 'Mất kết nối';
-                document.getElementById('navidrome-badge').className = 'stat-tag tag-rose';
-                document.getElementById('navidrome-status-dot').className = 'nav-badge';
             }
-        } catch (e) {
+        }
+        return data.success;
+    } catch (e) {
+        updateNavidromeUIStatus(false, e.message, cfg.server_url);
+        if (!silent && box) {
             box.innerHTML = `<div class="alert-box alert-rose mt-2"><div class="alert-content"><strong>❌ Lỗi kết nối: ${e.message}</strong></div></div>`;
         }
-    });
+        return false;
+    }
+}
 
-    document.getElementById('btn-trigger-navidrome-scan')?.addEventListener('click', async () => {
-        const cfg = getNavidromeConfigFromInputs();
-        saveNavidromeConfig(cfg);
-        const box = document.getElementById('navi-result-msg');
-        box.innerHTML = `<span class="text-muted">Đang gửi yêu cầu quét kho nhạc...</span>`;
+function updateNavidromeUIStatus(isOnline, message = '', serverUrl = '') {
+    // Topbar quick pill
+    const pill = document.getElementById('navidrome-quick-pill');
+    const dot = document.getElementById('navi-header-dot');
+    const text = document.getElementById('navi-header-text');
+    const openBtn = document.getElementById('btn-open-navidrome');
+    const heroDot = document.getElementById('navi-hero-dot');
+    const heroLabel = document.getElementById('navi-hero-status-label');
+    const heroOpen = document.getElementById('btn-hero-open-navidrome');
+    const badge = document.getElementById('navidrome-badge');
+    const sideDot = document.getElementById('navidrome-status-dot');
 
-        try {
-            const res = await fetch('/api/navidrome/scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(cfg)
-            });
-            const data = await res.json();
-            if (data.success) {
+    const cleanUrl = (serverUrl || '').replace(/\/+$/, '');
+
+    if (isOnline) {
+        pill?.classList.remove('scanning', 'offline');
+        pill?.classList.add('online');
+        if (dot) dot.className = 'status-pulse-dot online';
+        if (text) text.textContent = 'Navidrome: Sẵn sàng';
+        if (openBtn) {
+            openBtn.href = cleanUrl || '#';
+            openBtn.style.display = cleanUrl ? 'inline-flex' : 'none';
+        }
+
+        if (heroDot) heroDot.className = 'status-pulse-dot online';
+        if (heroLabel) heroLabel.textContent = 'Đã kết nối Navidrome (Subsonic API)';
+        if (heroOpen && cleanUrl) {
+            heroOpen.href = cleanUrl;
+            heroOpen.style.display = 'inline-flex';
+        }
+
+        if (badge) {
+            badge.textContent = 'Đã kết nối';
+            badge.className = 'stat-tag tag-emerald';
+        }
+        if (sideDot) sideDot.className = 'nav-badge online';
+    } else {
+        pill?.classList.remove('scanning', 'online');
+        pill?.classList.add('offline');
+        if (dot) dot.className = 'status-pulse-dot offline';
+        if (text) text.textContent = 'Navidrome: Ngoại tuyến';
+        if (openBtn) openBtn.style.display = 'none';
+
+        if (heroDot) heroDot.className = 'status-pulse-dot offline';
+        if (heroLabel) heroLabel.textContent = 'Chưa kết nối Navidrome';
+        if (heroOpen) heroOpen.style.display = 'none';
+
+        if (badge) {
+            badge.textContent = 'Chưa kết nối';
+            badge.className = 'stat-tag tag-rose';
+        }
+        if (sideDot) sideDot.className = 'nav-badge';
+    }
+}
+
+async function triggerNavidromeRescan(fromTab = true) {
+    const cfg = getNavidromeConfigFromStorage() || getNavidromeConfigFromInputs();
+    if (!cfg || !cfg.server_url) {
+        showToast('⚠️ Vui lòng cấu hình URL máy chủ Navidrome trước!', 'warning');
+        switchTab('tab-navidrome');
+        return;
+    }
+
+    const box = document.getElementById('navi-result-msg');
+    if (fromTab && box) {
+        box.innerHTML = `<span class="text-muted">Đang gửi yêu cầu quét kho nhạc đến Navidrome...</span>`;
+    }
+    showToast('📡 Đang kích hoạt quét kho nhạc trên Navidrome...', 'info');
+
+    try {
+        const res = await fetch('/api/navidrome/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cfg)
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (fromTab && box) {
                 box.innerHTML = `<div class="alert-box alert-indigo mt-2"><div class="alert-content"><strong>📡 ${data.message}</strong></div></div>`;
-            } else {
+            }
+            showToast('🔄 Navidrome đang quét cập nhật thư viện...', 'info');
+            startNavidromeScanMonitor(cfg);
+        } else {
+            if (fromTab && box) {
                 box.innerHTML = `<div class="alert-box alert-rose mt-2"><div class="alert-content"><strong>❌ ${data.message}</strong></div></div>`;
             }
-        } catch (e) {
-            box.innerHTML = `<div class="alert-box alert-rose mt-2"><div class="alert-content"><strong>❌ Lỗi: ${e.message}</strong></div></div>`;
+            showToast(`❌ Lỗi quét Navidrome: ${data.message}`, 'error');
         }
-    });
+    } catch (e) {
+        showToast(`❌ Lỗi kết nối: ${e.message}`, 'error');
+    }
+}
+
+function startNavidromeScanMonitor(cfg) {
+    if (navidromeScanInterval) clearInterval(navidromeScanInterval);
+
+    // Update UI to scanning state
+    const pill = document.getElementById('navidrome-quick-pill');
+    const dot = document.getElementById('navi-header-dot');
+    const text = document.getElementById('navi-header-text');
+    const monitor = document.getElementById('navi-scan-progress');
+    const monitorText = document.getElementById('navi-scan-status-text');
+    const monitorCount = document.getElementById('navi-scan-count-text');
+    const sideDot = document.getElementById('navidrome-status-dot');
+
+    pill?.classList.remove('online', 'offline');
+    pill?.classList.add('scanning');
+    if (dot) dot.className = 'status-pulse-dot scanning';
+    if (text) text.textContent = 'Navidrome: Đang quét...';
+    if (sideDot) sideDot.className = 'nav-badge online';
+    if (monitor) monitor.style.display = 'block';
+
+    const checkStatus = async () => {
+        try {
+            const params = new URLSearchParams({
+                server_url: cfg.server_url || '',
+                username: cfg.username || '',
+                password: cfg.password || ''
+            });
+            const res = await fetch(`/api/navidrome/scan-status?${params.toString()}`);
+            const data = await res.json();
+
+            if (data.success) {
+                if (data.scanning) {
+                    const count = data.count || 0;
+                    if (text) text.textContent = `Navidrome: Đang quét (${count})`;
+                    if (monitorText) monitorText.textContent = `Navidrome đang quét thư viện...`;
+                    if (monitorCount) monitorCount.textContent = `Đã phát hiện ${count} bài hát`;
+                } else {
+                    // Scanning finished!
+                    clearInterval(navidromeScanInterval);
+                    navidromeScanInterval = null;
+
+                    updateNavidromeUIStatus(true, 'Hoàn tất quét', cfg.server_url);
+                    if (monitor) monitor.style.display = 'none';
+                    showToast(`✅ Navidrome đã hoàn tất quét thư viện! (${data.count || 0} bài hát)`, 'success', 4000);
+
+                    // If currently on library tab, reload tracks & stats
+                    if (currentTab === 'tab-library') {
+                        initStats();
+                        loadTracks();
+                    }
+                }
+            }
+        } catch (e) {
+            // Stop polling on error
+            clearInterval(navidromeScanInterval);
+            navidromeScanInterval = null;
+        }
+    };
+
+    navidromeScanInterval = setInterval(checkStatus, 2500);
+    // Run immediately once
+    setTimeout(checkStatus, 600);
+}
+
+// Smart Playlists Management
+async function loadSmartPlaylists() {
+    const container = document.getElementById('smart-playlists-container');
+    if (!container) return;
+
+    try {
+        const res = await fetch('/api/navidrome/smart-playlists');
+        const data = await res.json();
+        if (!data.success || !data.playlists) {
+            container.innerHTML = `<p class="text-rose text-center py-3">Không thể tải danh sách Smart Playlists</p>`;
+            return;
+        }
+
+        container.innerHTML = data.playlists.map(pl => `
+            <div class="smart-playlist-item">
+                <div class="smart-playlist-info">
+                    <h4>
+                        ${escapeHtml(pl.name)}
+                        ${pl.installed 
+                            ? '<span class="stat-tag tag-emerald" style="font-size: 0.65rem; padding: 1px 6px;">✓ Đã cài đặt</span>' 
+                            : '<span class="stat-tag" style="font-size: 0.65rem; padding: 1px 6px; background: rgba(255,255,255,0.08); color: var(--text-muted);">Chưa có tệp</span>'
+                        }
+                    </h4>
+                    <p>${escapeHtml(pl.description)} &bull; <code>${escapeHtml(pl.filename)}</code></p>
+                </div>
+                <div class="smart-playlist-actions">
+                    <button class="btn btn-xs ${pl.installed ? 'btn-secondary' : 'btn-primary'} btn-install-single-pl" data-filename="${escapeHtml(pl.filename)}">
+                        ${pl.installed ? 'Ghi đè lại' : 'Cài đặt'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        // Wire single install buttons
+        container.querySelectorAll('.btn-install-single-pl').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const filename = btn.dataset.filename;
+                await installSmartPlaylists([filename]);
+            });
+        });
+    } catch (e) {
+        container.innerHTML = `<p class="text-rose text-center py-3">Lỗi: ${e.message}</p>`;
+    }
+}
+
+async function installAllSmartPlaylists() {
+    await installSmartPlaylists(null);
+}
+
+async function installSmartPlaylists(playlistKeys = null) {
+    const cfg = getNavidromeConfigFromStorage() || getNavidromeConfigFromInputs();
+    showToast('⚙️ Đang ghi file .nsp vào kho nhạc...', 'info');
+
+    try {
+        const res = await fetch('/api/navidrome/smart-playlists/install', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                playlists: playlistKeys,
+                navidrome_config: cfg
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`✅ ${data.message}`, 'success', 4000);
+            loadSmartPlaylists();
+            if (cfg && cfg.server_url) {
+                startNavidromeScanMonitor(cfg);
+            }
+        } else {
+            showToast(`❌ Lỗi: ${data.message}`, 'error');
+        }
+    } catch (e) {
+        showToast(`❌ Lỗi: ${e.message}`, 'error');
+    }
 }
 
 function getNavidromeConfigFromInputs() {
     return {
-        server_url: document.getElementById('navi-url').value.trim(),
-        username: document.getElementById('navi-user').value.trim(),
-        password: document.getElementById('navi-pass').value.trim()
+        server_url: document.getElementById('navi-url')?.value.trim() || '',
+        username: document.getElementById('navi-user')?.value.trim() || '',
+        password: document.getElementById('navi-pass')?.value.trim() || ''
     };
 }
 
@@ -2306,9 +2608,10 @@ function getNavidromeConfigFromStorage() {
 }
 
 function saveNavidromeConfig(cfg) {
-    localStorage.setItem('navi_url', cfg.server_url);
-    localStorage.setItem('navi_user', cfg.username);
-    localStorage.setItem('navi_pass', cfg.password);
+    if (!cfg) return;
+    localStorage.setItem('navi_url', cfg.server_url || '');
+    localStorage.setItem('navi_user', cfg.username || '');
+    localStorage.setItem('navi_pass', cfg.password || '');
 }
 
 // 8. Organize Dry-run & Batch Operations
@@ -2656,6 +2959,20 @@ async function openSpectrogramModal(filepath, title, specs) {
     document.getElementById('modal-track-title').textContent = title || filepath;
     document.getElementById('modal-track-path').textContent = filepath;
 
+    // Update Navidrome direct search button in modal
+    const naviBtn = document.getElementById('modal-btn-open-navidrome');
+    if (naviBtn) {
+        const naviCfg = getNavidromeConfigFromStorage() || getNavidromeConfigFromInputs();
+        if (naviCfg && naviCfg.server_url) {
+            const query = (title || filepath.split('/').pop() || '').replace(/\.[^/.]+$/, "");
+            const naviUrl = naviCfg.server_url.replace(/\/+$/, '');
+            naviBtn.href = `${naviUrl}/#/search?q=${encodeURIComponent(query)}`;
+            naviBtn.style.display = 'inline-flex';
+        } else {
+            naviBtn.style.display = 'none';
+        }
+    }
+
     const img = document.getElementById('spectrogram-img');
     const dspGrid = document.getElementById('dsp-metrics-grid');
     img.src = '';
@@ -2851,6 +3168,30 @@ function initKeyboardShortcuts() {
         const activeTag = document.activeElement ? document.activeElement.tagName : '';
         const isEditing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) ||
                           (document.activeElement && document.activeElement.isContentEditable);
+
+        // Quick Tab switching shortcuts: keys 1 to 6
+        if (!isEditing && !e.ctrlKey && !e.metaKey && !e.altKey && e.key >= '1' && e.key <= '6') {
+            const tabMap = {
+                '1': 'tab-library',
+                '2': 'tab-organize',
+                '3': 'tab-audiophile',
+                '4': 'tab-vault',
+                '5': 'tab-duplicates',
+                '6': 'tab-navidrome'
+            };
+            if (tabMap[e.key]) {
+                e.preventDefault();
+                switchTab(tabMap[e.key]);
+                return;
+            }
+        }
+
+        // Sidebar toggle shortcut: Ctrl+B or '['
+        if (((e.ctrlKey && e.key.toLowerCase() === 'b') || (!isEditing && e.key === '['))) {
+            e.preventDefault();
+            document.getElementById('sidebar-toggle')?.click();
+            return;
+        }
 
         // Escape: close modals / dropdowns
         if (e.key === 'Escape') {

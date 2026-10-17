@@ -14,8 +14,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from core.analyzer import analyze_audio_file, generate_spectrogram_image
 from core.paths import vault_path
 from core.tagger import apply_quality_tag
-from core.navidrome import test_navidrome_connection, trigger_navidrome_scan, get_navidrome_scan_status
 from core.dedup import scan_duplicates, get_metadata_duplicates_map
+from core.navidrome import (
+    test_navidrome_connection,
+    trigger_navidrome_scan,
+    get_navidrome_scan_status,
+    get_available_smart_playlists,
+    create_smart_playlists
+)
 import time
 from threading import Lock
 
@@ -90,6 +96,10 @@ class AnalyzeRequest(BaseModel):
 class TagRequest(BaseModel):
     filepath: Optional[str] = None
     tag_all: Optional[bool] = False
+    navidrome_config: Optional[NavidromeConfig] = None
+
+class SmartPlaylistsRequest(BaseModel):
+    playlists: Optional[List[str]] = None
     navidrome_config: Optional[NavidromeConfig] = None
 
 VERDICT_FILTERS = {
@@ -419,6 +429,21 @@ def trigger_scan(cfg: NavidromeConfig):
 @app.get("/api/navidrome/scan-status")
 def scan_status(server_url: str, username: str, password: str):
     res = get_navidrome_scan_status(server_url, username, password)
+    return res
+
+@app.get("/api/navidrome/smart-playlists")
+def get_smart_playlists():
+    return get_available_smart_playlists(ROOT_DIR)
+
+@app.post("/api/navidrome/smart-playlists/install")
+def install_smart_playlists(req: Optional[SmartPlaylistsRequest] = None):
+    keys = req.playlists if req else None
+    res = create_smart_playlists(ROOT_DIR, keys)
+    scan_res = None
+    if res.get('success') and req and req.navidrome_config and req.navidrome_config.server_url:
+        cfg = req.navidrome_config
+        scan_res = trigger_navidrome_scan(cfg.server_url, cfg.username, cfg.password)
+    res['navidrome_scan'] = scan_res
     return res
 
 @app.post("/api/tag/single")
