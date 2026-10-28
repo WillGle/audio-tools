@@ -40,6 +40,17 @@ Trên NixOS, có thể chạy với các tiện ích trong môi trường tạm:
 nix-shell -p ffmpeg flac chromaprint rsgain --run './start.sh'
 ```
 
+Hoặc cài `rsgain` vào profile người dùng để các lần khởi động thông thường cũng
+có công cụ này trong `PATH`:
+
+```bash
+nix profile add nixpkgs#rsgain
+rsgain --version # yêu cầu >= 3.6
+```
+
+`rsgain` là yêu cầu hệ thống cho đo và ghi ReplayGain; `pip install` không cài
+công cụ này. Khởi động lại ứng dụng sau khi cài để tiến trình nhận `PATH` mới.
+
 Các công cụ phải có trong `PATH` của tiến trình chạy ứng dụng. Thiếu rsgain hoặc đo lỗi sẽ báo lỗi, không ghi ReplayGain mặc định. Tag `R128_TRACK_GAIN` được lưu dưới dạng số nguyên Q7.8 qua MediaFile.
 
 Sao lưu mới giữ nguyên các tag bị thay đổi, gồm nhiều giá trị, ngôn ngữ ID3 và dữ liệu MP4. Sao lưu cũ vẫn đọc được, nhưng chỉ khôi phục thông tin đã lưu trước đây (ví dụ, bản cũ không lưu ngôn ngữ của comment ID3).

@@ -314,3 +314,23 @@ Disposable evidence: `/tmp/audio-function-ui-proof/results.json`,
 `/tmp/audio-function-ui-proof/track-mobile.png`,
 `/tmp/audio-function-ui-proof/album-preview-mobile.png` and
 `/tmp/audio-function-ui-browser/browser-results.json`.
+
+## ReplayGain dependency installation and final checks (2026-10-29)
+
+Installed `rsgain 3.7` into the Nix user profile; `rsgain --version` confirms it
+is available through the normal shell PATH. README installation instructions and
+the system-requirements comments clarify that ReplayGain needs `rsgain >= 3.6`
+and pip does not install this executable.
+
+The disposable UI probe was repeated after installation. Both single-track tag
+actions succeeded; the diagnostics response identified `rsgain` as its ReplayGain
+backend. The generated FLAC contained `REPLAYGAIN_TRACK_GAIN` and
+`REPLAYGAIN_TRACK_PEAK` values read back from disk, and rollback succeeded.
+This supersedes the earlier missing-dependency limitation for this machine.
+The six album/fingerprint/tag/mobile checks passed with no JavaScript errors.
+Evidence is in `/tmp/audio-rsgain-proof/results.json` and
+`/tmp/audio-rsgain-proof/replaygain.json`.
+
+Before committing, the full existing Python suite passed 31 tests in 59.98s;
+JavaScript syntax and diff whitespace checks also passed. All tag/file operations
+used temporary fixture copies. No real library files were modified.

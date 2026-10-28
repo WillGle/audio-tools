@@ -4,7 +4,8 @@
 # System requirements (non-python):
 #   - ffmpeg / ffprobe (>= 4.4)
 #   - flac (>= 1.3)
-#   - rsgain (>= 3.6), fpcalc (Chromaprint)
+#   - rsgain (>= 3.6): required for ReplayGain diagnostics and tagging
+#   - fpcalc (Chromaprint)
 
 fastapi>=0.110.0
 uvicorn[standard]>=0.28.0
