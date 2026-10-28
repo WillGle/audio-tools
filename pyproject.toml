@@ -1,7 +1,7 @@
 [project]
 name = "audio-tools"
 version = "1.0.0"
-description = "Hi-Res Vault Companion & 7-Pillar Audiophile Studio for Navidrome"
+description = "Local audio analysis and music library tools for Navidrome"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

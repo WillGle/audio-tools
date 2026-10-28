@@ -397,6 +397,20 @@ def scan_duplicates(root_dir, force_refresh=False):
                         'duplicates': enriched_files[1:]
                     })
 
+    # Reuse already-read metadata and current measurements for aligned UI comparisons.
+    for group in byte_duplicates + name_duplicates + meta_duplicates:
+        group['file_details'] = {}
+        for item in group['files']:
+            name = item if isinstance(item, str) else item['path']
+            row = active_cache[name]
+            result = integrity_results.get(name)
+            group['file_details'][name] = {
+                'album': row[7], 'duration': row[8] or None,
+                'specs': specs_map.get(name, ''),
+                'integrity_status': (result or {}).get('rules', {}).get('integrity', {}).get('status'),
+                'recommendation_reason': recommendation_reason(result)
+            }
+
     from core.duplicate_review import apply_decisions
     apply_decisions(root, {'byte_duplicates': byte_duplicates, 'name_duplicates': name_duplicates, 'meta_duplicates': meta_duplicates})
 

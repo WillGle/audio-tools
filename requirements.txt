@@ -1,4 +1,4 @@
-# Hi-Res Vault Companion & Audiophile 7-Pillar Studio
+# Audio Tools for Navidrome
 # Python Requirements
 #
 # System requirements (non-python):

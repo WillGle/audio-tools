@@ -1,6 +1,6 @@
-# Hi-Res Vault Companion & Audiophile 7-Pillar Studio
+# Audio Tools for Navidrome
 
-Công cụ kiểm tra tính nhất quán kỹ thuật của thư viện nhạc, đo tín hiệu, ReplayGain, Gapless và phân nhóm định dạng cho Navidrome/Plex/Subsonic. Không xác minh nguồn master chỉ từ phổ và không coi Hi-Res là bảo đảm chất lượng nghe.
+Công cụ kiểm tra tính nhất quán kỹ thuật của thư viện nhạc, đo tín hiệu, ReplayGain, Gapless và phân nhóm định dạng cho Navidrome/Plex/Subsonic. Không xác minh nguồn master chỉ từ phổ và không coi Hi-Res là bảo đảm chất lượng nghe. Các chức năng phục vụ từng nhu cầu riêng: kiểm tra tệp, xem số đo âm thanh, cân bằng âm lượng, rà soát phát liên tục, tìm bản trùng, sắp xếp và ghi tag. Chọn công cụ theo nhu cầu của từng bài hoặc thư viện.
 
 ---
 

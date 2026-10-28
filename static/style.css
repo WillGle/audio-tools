@@ -1825,7 +1825,7 @@ body {
 }
 
 /* ==============================================================================
-   7 AUDIOPHILE PILLARS & LAB STYLES
+   AUDIO DIAGNOSTICS & ANALYSIS STYLES
    ============================================================================== */
 .audiophile-banner {
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.1));
@@ -1897,7 +1897,7 @@ body {
     box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
 }
 
-/* 7 Pillars Grid */
+/* Supplementary diagnostic cards */
 .audiophile-pillars-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
@@ -3445,6 +3445,82 @@ body:has(#audio-player-bar[style*="flex"]) .floating-batch-bar { bottom: 100px; 
     animation-duration: 0.08s !important;
 }
 .sidebar-nav-item:hover, .btn:hover, .stat-card:hover { transform: none; }
+
+/* Keep task scope, evidence and actions readable across the existing tools. */
+.task-context { position: sticky; top: var(--taskbar-top, var(--topbar-height)); z-index: 35; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .85rem; padding: .75rem; margin-bottom: 1rem; background: #192b43; border: 1px solid var(--border-color); border-radius: 8px; }
+.task-context > * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.task-context .btn { white-space: normal; text-align: left; }
+#context-filters { font-size: .875rem; color: var(--text-secondary); }
+.tool-example, .action-scope { padding: .75rem 0; font-size: .9375rem; line-height: 1.6; overflow-wrap: anywhere; }
+.tool-example code { white-space: normal; overflow-wrap: anywhere; }
+.action-scope { color: #d7e3f3; }
+.result-pagination { display: flex; justify-content: center; padding: 1rem 0; }
+.scoring-row-note, .scoring-note, .table-hint, .quality-note, .pillar-subtitle, .tag-menu-help { font-size: .875rem; line-height: 1.55; }
+.topbar .sidebar .nav-label { font-size: .875rem; }
+.btn-xs { font-size: .8125rem; min-height: 34px; }
+.btn-sm, .mode-pill, .filter-pill { min-height: 36px; }
+.btn:focus-visible, summary:focus-visible, .clickable-tier:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #9bbfff; outline-offset: 3px; }
+.result-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
+.result-heading > div { min-width: 0; }
+.result-heading h2 { overflow-wrap: anywhere; }
+.result-heading #auth-verdict { border: 1px solid var(--border-color); padding: .4rem .65rem; border-radius: 6px; }
+.result-next { padding: .85rem 1rem; margin: 1rem 0; border-left: 3px solid var(--scoring-tone, #9bbfff); background: #1b304a; }
+.result-next p { margin-top: .25rem; line-height: 1.6; }
+#scoring-result .result-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: none; gap: 1rem; text-align: left; align-items: start; padding: .85rem 1rem; margin: 1rem 0 .5rem; background: #192b43; border: 1px solid var(--border-color); border-radius: 8px; }
+.result-metrics dt { font-size: .875rem; color: var(--text-secondary); }
+.result-metrics dd { margin-top: .25rem; font-size: 1.15rem; font-weight: 600; overflow-wrap: anywhere; }
+#auth-warnings:empty { display: none; }
+.audiophile-pillars-grid { display: block; }
+.diagnostic-card { margin-bottom: .75rem; padding: 0; }
+.diagnostic-card > summary { cursor: pointer; list-style: none; padding: 1rem; margin: 0; border: 0; }
+.diagnostic-card > summary::after { content: '+'; font-size: 1.2rem; margin-left: auto; }
+.diagnostic-card[open] > summary::after { content: '−'; }
+.diagnostic-card > summary::-webkit-details-marker { display: none; }
+.diagnostic-card > summary .pillar-title-group { flex: 1; min-width: 0; }
+.diagnostic-card > summary .stat-tag { white-space: normal; max-width: 45%; }
+.diagnostic-card[open] { padding-bottom: 1rem; }
+.diagnostic-card > :not(summary) { margin-left: 1rem; margin-right: 1rem; }
+.diagnostic-card[data-warning="true"] { border-color: #b38b4a; }
+.diagnostic-card .pillar-title, .diagnostic-card .pillar-subtitle { overflow-wrap: anywhere; }
+.dupe-file-list.dupe-comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); align-items: stretch; gap: .75rem; padding: .75rem; }
+.dupe-comparison .dupe-copy { display: flex; flex-direction: column; align-items: stretch; gap: .65rem; min-width: 0; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: #17283e; }
+.dupe-comparison .dupe-copy.is-kept { border-color: #64bfa6; background: #193931; }
+.dupe-comparison .dupe-copy.is-archive { opacity: 1; }
+.dupe-choice { display: flex; align-items: center; gap: .6rem; cursor: pointer; }
+.dupe-choice .dupe-radio-custom { position: static; opacity: 1; width: 18px; height: 18px; flex: 0 0 auto; accent-color: #75d6b7; }
+.dupe-choice .dupe-badge-archive { color: #ced9e9; background: transparent; }
+.dupe-copy-name { overflow-wrap: anywhere; min-height: 3em; }
+.dupe-copy-facts { display: grid; gap: .55rem; font-size: .9rem; }
+.dupe-copy-facts > div { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: .6rem; }
+.dupe-copy-facts dt { color: var(--text-secondary); }
+.dupe-copy-facts dd { overflow-wrap: anywhere; }
+.dupe-reason { font-size: .875rem; line-height: 1.55; }
+.dupe-path { font-size: .875rem; }
+.dupe-path summary { cursor: pointer; padding: .25rem 0; color: #b9d1f7; }
+.dupe-path code { display: block; white-space: normal; overflow-wrap: anywhere; margin-top: .4rem; }
+.dupe-copy-actions { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: auto; padding-top: .5rem; }
+.dupe-card-meta-group select { min-width: 0; max-width: 100%; font: inherit; font-size: .875rem; }
+.tag-help { margin-bottom: 1rem; }
+.tag-help dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
+.tag-help dt { font-weight: 600; margin-bottom: .35rem; }
+.tag-help dd, .tag-help p { font-size: .9375rem; line-height: 1.6; }
+.tag-help .btn { margin-top: .85rem; }
+.batch-more-menu .tag-menu-help { padding: .6rem; white-space: normal; max-width: 300px; }
+.modal-confirm-card #confirm-modal-message { white-space: pre-line; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+    .task-context { position: static; }
+    .result-heading { display: block; }
+    #scoring-result .result-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; padding: .75rem; }
+    .result-metrics > div:first-child { grid-column: 1 / -1; }
+    .result-metrics #auth-score { white-space: nowrap; font-size: 2rem; }
+    .result-metrics dt { font-size: .8125rem; }
+    .result-metrics dd { font-size: 1rem; }
+    .tag-help dl { grid-template-columns: minmax(0, 1fr); }
+    .diagnostic-card > summary { gap: .5rem; flex-wrap: wrap; }
+    .diagnostic-card > summary .stat-tag { max-width: 100%; }
+    .dupe-copy-name { min-height: 0; }
+    .dupe-card-meta-group { width: 100%; }
+}
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         transition: none !important;

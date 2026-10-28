@@ -45,6 +45,8 @@ let currentTieringPlan = null;
 let selectedTieringMode = 'symlink';
 let tierPlanFilter = 'all';
 let tierPlanSearch = '';
+let tierVisibleLimit = 100, tierViewKey = '';
+let dupeVisibleLimit = 100, dupeViewKey = '';
 
 // Audio Player Global State
 let audioPlayer = {
@@ -339,7 +341,7 @@ function initSidebar() {
 // 1. Tab Navigation
 const TAB_TITLES = {
     'tab-library': 'Kho nhạc',
-    'tab-organize': 'Sắp xếp thư viện',
+    'tab-organize': 'Đổi tên & sắp xếp',
     'tab-audiophile': 'Tổng quan chất lượng',
     'tab-vault': 'Nhóm theo định dạng',
     'tab-duplicates': 'Quản lý trùng lặp',
@@ -347,7 +349,50 @@ const TAB_TITLES = {
     'tab-tools': 'Ghi tag'
 };
 
+function updateTaskContext() {
+    const path = document.getElementById('lab-selected-path').value;
+    const track = document.getElementById('context-track');
+    track.hidden = !path;
+    track.textContent = path ? `Bài đang chọn: ${path.split('/').pop()}` : '';
+    track.title = path;
+    const selection = document.getElementById('context-selection');
+    selection.hidden = !selectedTrackPaths.size;
+    selection.textContent = `${selectedTrackPaths.size} bài đã chọn trong Kho nhạc`;
+    const filters = [];
+    if (currentFilter !== 'all') {
+        const pill = document.querySelector(`#filter-pills [data-filter="${currentFilter}"]`);
+        filters.push(`Kho nhạc: ${pill?.textContent.trim() || currentFilter}`);
+    }
+    if (searchQuery) filters.push(`Tìm trong kho: “${searchQuery}”`);
+    const columnNames = {title: 'Tên bài', artist: 'Nghệ sĩ', album: 'Album', format: 'Định dạng', verdict: 'Kết quả'};
+    Object.entries(colFilters).forEach(([key, value]) => { if (value) filters.push(`${columnNames[key]}: ${value}`); });
+    if (currentTab === 'tab-duplicates') {
+        filters.push(`Bài trùng: ${currentDupeType === 'byte' ? 'giống từng byte' : currentDupeType === 'meta' ? 'cùng metadata' : 'cùng tên'}`);
+        if (dupeSearchQuery) filters.push(`Tìm: “${dupeSearchQuery}”`);
+        if (dupeSubFilter !== 'all' && currentDupeType === 'meta') {
+            filters.push(document.querySelector(`#dupe-subfilter-pills [data-subfilter="${dupeSubFilter}"]`)?.textContent.trim() || dupeSubFilter);
+        }
+        if (document.getElementById('dupe-show-reviewed').checked) filters.push('Gồm nhóm đã duyệt');
+    }
+    if (currentTab === 'tab-vault') {
+        if (tierPlanFilter !== 'all') filters.push(document.getElementById('plan-filter-active-badge').textContent);
+        if (tierPlanSearch) filters.push(`Tìm nhóm: “${tierPlanSearch}”`);
+    }
+    document.getElementById('context-filters').textContent = filters.join(' · ');
+    document.getElementById('task-context').hidden = !path && !selectedTrackPaths.size && !filters.length;
+}
+
 function initTabs() {
+    document.getElementById('context-track').addEventListener('click', () => {
+        switchTab('tab-audiophile');
+        const scope = document.getElementById('scoring-target');
+        scope.value = 'single'; scope.dispatchEvent(new Event('change'));
+        document.getElementById('scoring-setup').open = true;
+        document.getElementById('lab-combobox-input').focus();
+    });
+    document.getElementById('context-selection').addEventListener('click', () => switchTab('tab-library'));
+    document.addEventListener('audio-selection-change', updateTaskContext);
+    new ResizeObserver(entries => { document.documentElement.style.setProperty('--taskbar-top', `${entries[0].target.getBoundingClientRect().height}px`); }).observe(document.querySelector('.topbar'));
     document.querySelectorAll('[data-tab]').forEach(button => {
         button.addEventListener('click', () => switchTab(button.dataset.tab));
     });
@@ -389,6 +434,7 @@ function switchTab(tabId) {
     });
     document.querySelectorAll('.tab-content').forEach(section => section.classList.toggle('active', section === target));
     currentTab = tabId;
+    updateTaskContext();
     document.getElementById('tool-back-row').hidden = true;
     document.getElementById('topbar-page-title').textContent = TAB_TITLES[tabId] || 'Công cụ';
     updateBatchBar();
@@ -616,7 +662,7 @@ function initBatchActions() {
         const count = selectedTrackPaths.size;
         const confirmed = await showConfirm(
             'Xác nhận ghi Tag hàng loạt',
-            `Bạn có chắc chắn muốn ghi tag chất lượng vào ${count} bài hát đã chọn?`
+            `Phạm vi: ${count} bài đã chọn trong Kho nhạc, kể cả ngoài trang hiện tại. Ghi ghi chú phân nhóm và trạng thái chưa xác minh, không thêm ReplayGain. Có thể thay đổi ghi chú hiện có; tag gốc được sao lưu. Tiếp tục?`
         );
         if (!confirmed) return;
 
@@ -644,7 +690,7 @@ function initBatchActions() {
             showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = '🏷️ Ghi tag phân loại';
+            btn.textContent = 'Ghi nhãn phân loại';
         }
     });
 
@@ -652,8 +698,8 @@ function initBatchActions() {
         if (selectedTrackPaths.size === 0) return;
         const count = selectedTrackPaths.size;
         const confirmed = await showConfirm(
-            'Xác nhận kiểm định & ghi Tag 7 chuẩn hàng loạt',
-            `Hệ thống sẽ đo lường DR, EBU R128, Audio MD5 và ghi tag đầy đủ cho ${count} bài hát đã chọn. Bạn có muốn tiếp tục?`
+            'Xác nhận kiểm tra & ghi tag hàng loạt',
+            `Phạm vi: ${count} bài đã chọn trong Kho nhạc, kể cả ngoài trang hiện tại. Đo chẩn đoán, ghi ghi chú và trạng thái chưa xác minh, thêm ReplayGain khi đo được. Có thể thay đổi ghi chú hiện có; tag gốc được sao lưu. Dữ liệu âm thanh không được mã hóa lại. Tiếp tục?`
         );
         if (!confirmed) return;
 
@@ -670,23 +716,24 @@ function initBatchActions() {
             const data = await res.json();
             if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
             if (data.success) {
-                showToast(`🔬 Đã kiểm định và ghi tag 7 chuẩn cho ${data.tagged_count} / ${count} bài!`, 'success');
+                showToast(`🔬 Đã kiểm tra và ghi tag cho ${data.tagged_count} / ${count} bài!`, 'success');
                 selectedTrackPaths.clear();
                 updateBatchBar();
                 loadTracks();
             } else {
-                showToast(`❌ Lỗi kiểm định 7 chuẩn hàng loạt`, 'error');
+                showToast(`❌ Lỗi kiểm tra và ghi tag hàng loạt`, 'error');
             }
         } catch (e) {
             showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = 'Kiểm tra & ghi tag';
+            btn.textContent = 'Đo & ghi tag';
         }
     });
 }
 
 function updateBatchBar() {
+    updateTaskContext();
     const bar = document.getElementById('floating-batch-bar');
     const countEl = document.getElementById('batch-selected-count');
     const chkAll = document.getElementById('check-all-tracks');
@@ -812,6 +859,7 @@ function setFilter(filterName) {
 }
 
 async function loadTracks() {
+    updateTaskContext();
     const tbody = document.getElementById('tracks-tbody');
     if (!tbody) return;
     document.getElementById('pagination-info').textContent = 'Đang tải danh sách…';
@@ -1015,7 +1063,7 @@ async function loadTracks() {
 }
 
 // ==============================================================================
-// 4. AUDIOPHILE 7-PILLAR STUDIO LAB
+// 4. AUDIO ANALYSIS & SUPPLEMENTARY DIAGNOSTICS
 // ==============================================================================
 function initAudiophileLab() {
     const btnTagNow = document.getElementById('btn-audiophile-tag-now');
@@ -1042,7 +1090,7 @@ function initAudiophileLab() {
             showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btnTagNow.disabled = false;
-            btnTagNow.textContent = '🏷️ Ghi Toàn Bộ Tag Vào Metadata';
+            btnTagNow.textContent = 'Ghi tag cho bài này';
         }
     });
 
@@ -1063,6 +1111,7 @@ function clearLabAudit() {
 }
 
 function selectLabTrack(path, title = path) {
+    if (document.getElementById('lab-selected-path').value !== path) document.getElementById('scoring-result').hidden = true;
     document.getElementById('lab-selected-path').value = path;
     document.getElementById('lab-combobox-input').value = title;
     document.getElementById('lab-combobox-clear').style.display = title ? 'block' : 'none';
@@ -1265,7 +1314,7 @@ function renderAudiophileAuditResults(data) {
     document.getElementById('loudness-lufs-val').textContent = formatMeasurement(loudness.integrated_lufs, ' LUFS');
     document.getElementById('loudness-peak-val').textContent = formatMeasurement(loudness.true_peak_db, ' dBTP');
     document.getElementById('loudness-rg-val').textContent = loudness.replaygain_track_gain || '--';
-    document.getElementById('loudness-msg-desc').textContent = loudness.error || `Target: -18 LUFS (ReplayGain 2.0) | R128 Gain: ${loudness.r128_track_gain ?? '—'}. Bit-perfect, không suy hao âm chất.`;
+    document.getElementById('loudness-msg-desc').textContent = loudness.error || `Mục tiêu: -18 LUFS (ReplayGain 2.0) · R128 Gain: ${loudness.r128_track_gain ?? '—'}. Ghi tag không mã hóa lại dữ liệu âm thanh.`;
 
     // 6. Gapless Playback
     const gapless = data.gapless || {};
@@ -1288,12 +1337,27 @@ function renderAudiophileAuditResults(data) {
         tierBadge.style.color = tier.badge_color || '#fff';
     }
     document.getElementById('pillar-tier-dest').textContent = tier.tier_name || '--';
+    const warnings = {
+        integrity: integrity.status === 'FAIL' || integrity.status === 'REVIEW',
+        bitdepth: bits.is_fake_24bit || ['FAIL', 'SUSPECT', 'REVIEW'].includes(bits.badge),
+        loudness: Boolean(loudness.error),
+        gapless: gapless.intro_silence_ms == null || gapless.outro_silence_ms == null,
+        dsd: dsd.is_dsd && ['SUSPECT', 'REVIEW', 'UNKNOWN'].includes(dsd.purity)
+    };
+    ['dr', 'integrity', 'bitdepth', 'dsd', 'loudness', 'gapless', 'tier'].forEach(name => {
+        const card = document.getElementById(`pillar-${name}-card`);
+        card.open = Boolean(warnings[name]);
+        card.dataset.warning = String(Boolean(warnings[name]));
+    });
 }
 
 // ==============================================================================
 // 5. VAULT TIERING 3 CẤP
 // ==============================================================================
 function initVaultTiering() {
+    document.getElementById('tiering-more').addEventListener('click', () => {
+        tierVisibleLimit += 100; renderVaultTieringPlanTable();
+    });
     const btnSymlink = document.getElementById('btn-mode-symlink');
     const btnMove = document.getElementById('btn-mode-move');
 
@@ -1311,7 +1375,11 @@ function initVaultTiering() {
 
     // Interactive Click on 3 Tier Cards to filter plan table
     document.querySelectorAll('.clickable-tier').forEach(card => {
+        card.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); card.click(); }
+        });
         card.addEventListener('click', () => {
+            document.querySelectorAll('.clickable-tier').forEach(item => item.setAttribute('aria-pressed', String(item === card)));
             const tier = card.dataset.tier;
             document.querySelectorAll('.clickable-tier').forEach(c => c.style.outline = 'none');
             card.style.outline = '2px solid var(--accent-indigo)';
@@ -1328,7 +1396,7 @@ function initVaultTiering() {
 
     document.getElementById('btn-tier-filter-all')?.addEventListener('click', () => {
         tierPlanFilter = 'all';
-        document.querySelectorAll('.clickable-tier').forEach(c => c.style.outline = 'none');
+        document.querySelectorAll('.clickable-tier').forEach(c => { c.style.outline = 'none'; c.setAttribute('aria-pressed', 'false'); });
         const badge = document.getElementById('plan-filter-active-badge');
         if (badge) badge.style.display = 'none';
         renderVaultTieringPlanTable();
@@ -1352,12 +1420,12 @@ function initVaultTiering() {
         }
 
         const modeText = selectedTieringMode === 'symlink' ?
-            'TẠO LIÊN KẾT MỀM (SYMLINK)\n👉 Giữ nguyên tệp gốc: File gốc KHÔNG bị di chuyển hay thay đổi vị trí!' :
-            'DI CHUYỂN THẬT (MOVE)\n👉 Các file sẽ được di chuyển vào 3 thư mục tương ứng. Hệ thống tự động tạo file rollback để khôi phục bất cứ lúc nào!';
+            'Tạo liên kết: giữ nguyên vị trí tệp gốc.' :
+            'Di chuyển tệp vào các nhóm đích. Có nhật ký để khôi phục vị trí; tệp xung đột sẽ không bị ghi đè.';
 
         const confirmed = await showConfirm(
             `Xác nhận thực thi phân cấp (${currentTieringPlan.total_files} bài)`,
-            `Bạn có chắc chắn muốn thực thi phân loại ${currentTieringPlan.total_files} bài hát theo chế độ:\n\n${modeText}`
+            `Phạm vi: TOÀN BỘ ${currentTieringPlan.items.length} tệp trong kế hoạch, kể cả tệp ngoài bộ lọc và chưa hiển thị.\n${document.getElementById('tiering-scope').textContent}\n\n${modeText}`
         );
         if (!confirmed) return;
 
@@ -1424,6 +1492,8 @@ async function loadVaultTieringPlan() {
     const tbody = document.getElementById('tiering-preview-tbody');
     if (!tbody) return;
     currentTieringPlan = null;
+    document.getElementById('tiering-more').hidden = true;
+    document.getElementById('tiering-scope').textContent = 'Đang tải kế hoạch; chưa thể áp dụng.';
     document.getElementById('btn-execute-tiering').disabled = true;
     for (let tier = 1; tier <= 3; tier++) {
         document.getElementById(`tier${tier}-count`).textContent = '—';
@@ -1467,6 +1537,7 @@ async function loadVaultTieringPlan() {
         const cell = tbody.insertRow().insertCell(); cell.colSpan = 4;
         cell.className = 'text-center py-6 text-rose';
         cell.textContent = `Lỗi tải kế hoạch: ${e.message}. Chọn lại tab để thử lại.`;
+        document.getElementById('tiering-scope').textContent = 'Không tải được kế hoạch; chưa thể áp dụng.';
     }
 }
 
@@ -1475,6 +1546,8 @@ function renderVaultTieringPlanTable() {
     if (!tbody || !currentTieringPlan) return;
 
     let items = currentTieringPlan.items || [];
+    const viewKey = JSON.stringify([tierPlanFilter, tierPlanSearch]);
+    if (viewKey !== tierViewKey) { tierVisibleLimit = 100; tierViewKey = viewKey; }
     if (tierPlanFilter !== 'all') {
         items = items.filter(it => it.tier === tierPlanFilter || it.tier_id === tierPlanFilter);
     }
@@ -1486,13 +1559,18 @@ function renderVaultTieringPlanTable() {
         );
     }
 
+    const shown = Math.min(tierVisibleLimit, items.length);
+    const affected = currentTieringPlan.items.length;
+    document.getElementById('tiering-scope').textContent = `Đang hiển thị ${shown}/${items.length} tệp khớp bộ lọc · Toàn kế hoạch: ${affected} tệp · Áp dụng sẽ xử lý cả ${affected} tệp, kể cả ngoài bộ lọc.`;
+    document.getElementById('tiering-more').hidden = shown >= items.length;
+    updateTaskContext();
     if (items.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-muted">Không có bài hát nào phù hợp với bộ lọc hoặc từ khóa tìm kiếm.</td></tr>`;
         return;
     }
 
     let html = '';
-    items.slice(0, 100).forEach(item => {
+    items.slice(0, tierVisibleLimit).forEach(item => {
         let tierTag = '';
         if (item.tier === '01_Hi-Res & DSD' || item.tier === 'tier_1') {
             tierTag = `<span class="stat-tag tag-cyan">Tầng 1 &bull; Hi-Res</span>`;
@@ -1528,6 +1606,13 @@ let dupeSubFilter = 'all';
 let currentFilteredDuplicates = [];
 
 function initDuplicates() {
+    document.getElementById('dupes-more').addEventListener('click', () => {
+        const previous = dupeVisibleLimit;
+        dupeVisibleLimit += 100; renderDuplicates();
+        if (document.getElementById('dupes-more').hidden) {
+            document.querySelectorAll('.dupe-card')[previous]?.querySelector('input')?.focus();
+        }
+    });
     // 1. Tab switching (Byte / Meta / Name)
     const pills = document.querySelectorAll('#dupe-filter-pills .filter-pill');
     pills.forEach(pill => {
@@ -1573,6 +1658,22 @@ function initDuplicates() {
         }, 200);
     });
 
+    document.getElementById('dupe-show-reviewed').addEventListener('change', () => loadDuplicates());
+    document.getElementById('btn-undo-dupe-archive').addEventListener('click', async () => {
+        if (!await showConfirm('Hoàn tác lưu trữ', 'Khôi phục các bản trùng đã lưu trữ? Tệp có sẵn ở đường dẫn gốc sẽ không bị ghi đè.')) return;
+        const button = document.getElementById('btn-undo-dupe-archive');
+        button.disabled = true;
+        try {
+            const response = await postJSON('/api/duplicates/rollback', {});
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Không thể hoàn tác');
+            showToast([result.message, ...(result.errors || [])].join('\n'), result.success ? 'success' : 'warning');
+            if (result.navidrome_scan) handleNavidromeResult(result.navidrome_scan);
+            await loadDuplicates();
+        } catch (error) { showToast(error.message, 'error'); }
+        finally { button.disabled = false; }
+    });
+
     // 4. Refresh button
     document.getElementById('btn-refresh-dupes')?.addEventListener('click', async () => {
         const btn = document.getElementById('btn-refresh-dupes');
@@ -1583,12 +1684,12 @@ function initDuplicates() {
         btn.textContent = '🔄 Quét Lại';
     });
 
-    // 5. Batch Archive Button (works for Byte, Meta, and Name duplicates!)
+    // 5. Archive only byte-identical groups; other matches require review.
     document.getElementById('btn-archive-byte-dupes')?.addEventListener('click', async () => {
         await executeBatchArchiveDuplicates();
     });
 
-    // 6. Auto-pick best audio quality for all duplicate groups using Audiophile Quality Standards
+    // 6. Use the same explained server recommendation in every view.
     document.getElementById('btn-auto-pick-best-dupes')?.addEventListener('click', () => {
         let allGroups = [];
         if (duplicatesData) {
@@ -1604,17 +1705,8 @@ function initDuplicates() {
             const files = item.files || [];
             if (files.length <= 1) return;
 
-            let bestFile = null;
-            let bestScore = -Infinity;
-            files.forEach(f => {
-                const filePath = typeof f === 'string' ? f : f.path;
-                const score = scoreAudiophileQuality(f);
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestFile = filePath;
-                }
-            });
+            const first = files[0];
+            const bestFile = typeof first === 'string' ? first : first.path;
 
             if (bestFile) {
                 userSelectedKeep[gId] = bestFile;
@@ -1623,100 +1715,18 @@ function initDuplicates() {
         });
 
         renderDuplicates();
-        showToast(`⚡ Đã tự động chọn bản tối ưu theo chuẩn Audiophile cho ${changed} nhóm trùng lặp!`, 'success');
+        showToast(`Đã dùng đề xuất kiểm tra toàn vẹn / metadata cho ${changed} nhóm; không xác minh bản master.`, 'success');
     });
-}
-
-function scoreAudiophileQuality(f) {
-    const path = typeof f === 'string' ? f : (f.path || '');
-    const filename = path.split('/').pop() || '';
-    const fnLower = filename.toLowerCase();
-    const ext = (filename.split('.').pop() || '').toLowerCase();
-    const specs = ((typeof f === 'object' && f.specs) ? f.specs : '').toLowerCase();
-    const sizeMb = (typeof f === 'object' && f.size_mb) ? parseFloat(f.size_mb) : 0;
-    const art = ((typeof f === 'object' && f.artist) ? f.artist : '').trim().toLowerCase();
-    const tit = ((typeof f === 'object' && f.title) ? f.title : '').trim().toLowerCase();
-    const alb = ((typeof f === 'object' && f.album) ? f.album : '').trim().toLowerCase();
-
-    let score = 1000.0;
-
-    // 1. Format Tier (Thứ hạng định dạng)
-    if (['dsf', 'dff'].includes(ext)) {
-        score += 5000.0;
-    } else if (['flac', 'wav', 'aif', 'aiff', 'alac', 'ape'].includes(ext)) {
-        if (specs.includes('24bit') || specs.includes('32bit') || specs.includes('96k') || specs.includes('192k') || specs.includes('88.2k') || specs.includes('176.4k')) {
-            score += 4500.0;
-        } else {
-            score += 3500.0;
-        }
-    } else if (['m4a', 'aac', 'ogg', 'opus'].includes(ext)) {
-        score += 1800.0;
-    } else if (ext === 'mp3') {
-        score += 1200.0;
-    } else {
-        score += 800.0;
-    }
-
-    // 2. Technical specs precision
-    if (specs.includes('24bit') || specs.includes('32bit')) score += 600.0;
-    if (specs.includes('192k') || specs.includes('176.4k')) score += 500.0;
-    else if (specs.includes('96k') || specs.includes('88.2k')) score += 400.0;
-    else if (specs.includes('48k')) score += 100.0;
-
-    if (specs.includes('320k')) score += 250.0;
-    else if (specs.includes('256k')) score += 150.0;
-    else if (specs.includes('128k')) score -= 300.0;
-
-    // File size bonus (chống file bị cắt cụt)
-    score += Math.min(sizeMb * 2.0, 300.0);
-
-    // 3. Trừ điểm rất nặng bản sao lưu tải trùng
-    if (/\(\s*\d+\s*\)/.test(filename)) score -= 8000.0;
-    if (/\[\s*\d+\s*\](?!\s*[\.\w])/.test(filename)) score -= 6000.0;
-    if (/[-_\s]copy\b/i.test(fnLower)) score -= 8000.0;
-    if (/_1\.[a-z0-9]+$/i.test(fnLower)) score -= 5000.0;
-
-    // 4. Trừ điểm tệp dán nhãn web rip / tag video rác
-    if (/nhacpro\.net|chiasenhac|nhaccuatui|zingmp3|y2mate|tubidy/i.test(fnLower)) score -= 3000.0;
-    if (/\((official\s*(?:mv|music\s*video|audio|video)|lyric\s*video)\)/i.test(fnLower)) score -= 1500.0;
-    if (/\((128\s*kbps)\)/i.test(fnLower)) score -= 2500.0;
-    if (/\((320\s*kbps)\)/i.test(fnLower)) score -= 300.0;
-    if (filename.startsWith('#') || filename.startsWith('.')) score -= 500.0;
-    if (filename.includes(' - - ') || filename.includes('--')) score -= 300.0;
-
-    // 5. Cấu trúc thư mục: ưu tiên nằm trong album hoàn chỉnh
-    const parts = path.split('/').filter(Boolean);
-    const depth = parts.length - 1;
-    if (depth >= 2) {
-        score += 500.0;
-        const parent = parts[parts.length - 2].toLowerCase();
-        if (/\[\d{4}\]|\(\d{4}\)|\b(19\d\d|20\d\d)\b/.test(parent)) score += 300.0;
-        if (/album|disc|cd|vinyl|remaster|soundtrack|ost/.test(parent)) score += 200.0;
-    } else if (depth === 1) {
-        score += 200.0;
-    } else {
-        score -= 400.0; // file vứt mồ côi ở root
-    }
-
-    // Track number ở đầu tên file (01., 10.)
-    if (/^\d{2,3}[\.\s_-]/.test(filename)) score += 150.0;
-
-    // 6. Metadata đầy đủ
-    if (tit && !['track', 'untitled', 'no title'].includes(tit)) score += 150.0;
-    if (art && !['unknown', 'unknown artist', 'none'].includes(art)) score += 150.0;
-    if (alb && !['unknown', 'unknown album', 'none', 'singles'].includes(alb)) score += 150.0;
-
-    // Tiếng Việt chuẩn có dấu
-    const vnChars = /[àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ]/i;
-    if (vnChars.test(filename)) score += 200.0;
-
-    return score;
 }
 
 async function loadDuplicates(refresh = false) {
     const container = document.getElementById('dupes-container');
     if (!container) return;
     duplicatesData = null;
+    currentFilteredDuplicates = [];
+    updateDupeArchiveButton([]);
+    document.getElementById('dupes-more').hidden = true;
+    document.getElementById('dupe-display-count').textContent = 'Đang tải nhóm trùng…';
     ['dupe-count-byte', 'dupe-count-meta', 'dupe-count-name', 'dupe-subcount-all', 'dupe-subcount-flac', 'dupe-subcount-mixed', 'dupe-subcount-numbered'].forEach(id => {
         document.getElementById(id).textContent = '—';
     });
@@ -1731,6 +1741,11 @@ async function loadDuplicates(refresh = false) {
             throw new Error('Kết quả quét trùng lặp thiếu dữ liệu.');
         }
         duplicatesData = data;
+        if (!document.getElementById('dupe-show-reviewed').checked) {
+            ['byte_duplicates', 'meta_duplicates', 'name_duplicates'].forEach(kind => {
+                duplicatesData[kind] = duplicatesData[kind].filter(group => !group.review_decision);
+            });
+        }
 
         const byteCount = (duplicatesData.byte_duplicates || []).length;
         const metaCount = (duplicatesData.meta_duplicates || []).length;
@@ -1739,16 +1754,6 @@ async function loadDuplicates(refresh = false) {
         document.getElementById('dupe-count-byte').textContent = byteCount;
         document.getElementById('dupe-count-meta').textContent = metaCount;
         document.getElementById('dupe-count-name').textContent = nameCount;
-
-        // Auto-switch to Metadata tab if Byte duplicates is 0 but Metadata duplicates exist
-        if (currentDupeType === 'byte' && byteCount === 0 && metaCount > 0) {
-            currentDupeType = 'meta';
-            document.querySelectorAll('#dupe-filter-pills .filter-pill').forEach(p => {
-                p.classList.toggle('active', p.dataset.dupetype === 'meta');
-            });
-            const subbar = document.getElementById('dupe-subtoolbar');
-            if (subbar) subbar.style.display = 'flex';
-        }
 
         // Top navigation tab badge: show total count of actionable duplicates
         const badgeCount = byteCount || metaCount || nameCount;
@@ -1772,7 +1777,8 @@ async function loadDuplicates(refresh = false) {
 
         renderDuplicates();
     } catch (e) {
-        document.getElementById('dupe-selection-summary').textContent = 'Chưa có kết quả quét';
+        document.getElementById('dupe-selection-summary').textContent = 'Chưa có kết quả quét; chưa thể lưu trữ.';
+        document.getElementById('dupe-display-count').textContent = 'Không tải được nhóm trùng.';
         container.innerHTML = `<p class="text-center py-6 text-rose">Lỗi khi quét trùng lặp: ${e.message}</p>`;
     }
 }
@@ -1789,17 +1795,20 @@ function renderDuplicates() {
     if (!container || !duplicatesData) return;
 
     let rawList = getActiveDuplicatesList();
+    const viewKey = JSON.stringify([currentDupeType, dupeSearchQuery, dupeSubFilter, document.getElementById('dupe-show-reviewed').checked]);
+    if (viewKey !== dupeViewKey) { dupeVisibleLimit = 100; dupeViewKey = viewKey; }
+    updateTaskContext();
 
     // Set title and description based on currentDupeType
     if (currentDupeType === 'byte') {
         document.getElementById('dupe-title-text').textContent = 'Tệp giống hệt từng byte';
-        document.getElementById('dupe-desc-text').textContent = 'Các file có cùng mã băm MD5 tuyệt đối. Có thể di chuyển các bản thừa vào thư mục _Duplicates_Archive/ để giải phóng dung lượng đĩa.';
+        document.getElementById('dupe-desc-text').textContent = 'Các bản trùng byte được xác minh lại trước khi lưu trữ. Luôn giữ ít nhất một bản gốc; có thể hoàn tác. Lưu trữ trong cùng kho không làm giảm dung lượng đã dùng.';
     } else if (currentDupeType === 'meta') {
         document.getElementById('dupe-title-text').textContent = `Trùng Metadata Ca Sĩ & Tên Bài (${rawList.length} nhóm)`;
-        document.getElementById('dupe-desc-text').textContent = 'Các bài hát cùng Ca Sĩ & Tên Bài. Thuật toán đã tự động xếp bản có Metadata đầy đủ nhất, nằm trong Album chuẩn và chất lượng cao nhất lên làm bản để xuất giữ lại. Bạn có thể bấm chọn đổi bản muốn giữ.';
+        document.getElementById('dupe-desc-text').textContent = 'Cùng nghệ sĩ / tên bài chỉ là gợi ý để xem xét. Đề xuất ưu tiên kiểm tra toàn vẹn còn hiệu lực, rồi metadata và vị trí; các bản master hoặc phát hành khác nhau nên giữ riêng. Không tự lưu trữ nhóm này.';
     } else {
         document.getElementById('dupe-title-text').textContent = `Trùng Tên Tệp Ở Khác Thư Mục (${rawList.length} nhóm)`;
-        document.getElementById('dupe-desc-text').textContent = 'Các file có cùng tên nhưng nằm ở cả thư mục gốc và các thư mục album con (một số file là bản rip khác chất lượng hoặc bản phát hành khác). Hệ thống đã phân tích bitrate và độ phân giải để đề xuất bản tối ưu nhất.';
+        document.getElementById('dupe-desc-text').textContent = 'Trùng tên không chứng minh trùng âm thanh hoặc cùng bản phát hành. Nghe A/B và xem bằng chứng; đánh dấu giữ cả hai, khác bản phát hành hoặc bỏ qua. Không tự lưu trữ nhóm này.';
     }
 
     // Apply filtering
@@ -1836,6 +1845,13 @@ function renderDuplicates() {
     });
 
     currentFilteredDuplicates = filteredList;
+    filteredList.forEach(item => {
+        const paths = item.files.map(file => typeof file === 'string' ? file : file.path);
+        const key = item.id || item.hash;
+        if (!paths.includes(userSelectedKeep[key])) userSelectedKeep[key] = paths[0];
+    });
+    document.getElementById('dupe-display-count').textContent = `Đang hiển thị ${Math.min(dupeVisibleLimit, filteredList.length)}/${filteredList.length} nhóm khớp bộ lọc · Tổng loại đang xem: ${rawList.length} nhóm.`;
+    document.getElementById('dupes-more').hidden = dupeVisibleLimit >= filteredList.length;
 
     if (filteredList.length === 0) {
         container.innerHTML = `<div class="technical-note text-center py-6"><span class="text-emerald">🎉 Không có bản trùng lặp nào phù hợp với bộ lọc hiện tại!</span></div>`;
@@ -1844,13 +1860,13 @@ function renderDuplicates() {
     }
 
     let html = '<div class="dupes-list">';
-    filteredList.slice(0, 100).forEach((item, idx) => {
+    filteredList.slice(0, dupeVisibleLimit).forEach((item, idx) => {
         const groupId = item.id || item.hash || (`grp_${idx}`);
         const files = item.files || [];
 
         // Determine currently kept file
         const defaultKept = typeof files[0] === 'string' ? files[0] : files[0].path;
-        if (!userSelectedKeep[groupId]) {
+        if (!files.some(file => (typeof file === 'string' ? file : file.path) === userSelectedKeep[groupId])) {
             userSelectedKeep[groupId] = defaultKept;
         }
         const keptFile = userSelectedKeep[groupId];
@@ -1895,80 +1911,45 @@ function renderDuplicates() {
                             ▶ Nghe A/B
                         </button>
                         ` : ''}
-                        <button class="btn btn-sm btn-secondary btn-archive-single-group" data-groupid="${groupId}">
-                            📦 Archive (${numToArchive} bản)
-                        </button>
+                        ${currentDupeType === 'byte' && !item.review_decision ? `<button class="btn btn-sm btn-secondary btn-archive-single-group" data-groupid="${groupId}">📦 Lưu trữ (${numToArchive} bản)</button>` : ''}
+                        <select class="dupe-review-decision" data-reviewkey="${item.review_key}" aria-label="Quyết định cho nhóm ${escapeHtml(keptFilename)}">
+                            <option value="" ${!item.review_decision ? 'selected' : ''}>Chưa duyệt / Hoàn tác quyết định</option>
+                            <option value="keep_both" ${item.review_decision === 'keep_both' ? 'selected' : ''}>Giữ tất cả</option>
+                            <option value="different_edition" ${item.review_decision === 'different_edition' ? 'selected' : ''}>Khác bản phát hành</option>
+                            <option value="ignore" ${item.review_decision === 'ignore' ? 'selected' : ''}>Bỏ qua nhóm này</option>
+                        </select>
                     </div>
                 </div>
 
-                <div class="dupe-file-list">
+                <div class="dupe-file-list dupe-comparison" role="list" aria-label="So sánh các bản của nhóm">
                     ${files.map(f => {
                         const filePath = typeof f === 'string' ? f : f.path;
-                        const fileName = typeof f === 'string' ? f.split('/').pop() : (f.filename || f.path.split('/').pop());
-                        const isKept = (filePath === keptFile);
-                        
-                        let ext = '';
-                        let sizeMb = '';
-                        let album = '';
-                        let specs = '';
-                        let isLossless = false;
-                        let hasNum = false;
-
-                        if (typeof f === 'string') {
-                            ext = (f.split('.').pop() || '').toUpperCase();
-                            sizeMb = item.size_mb ? `${item.size_mb} MB` : '';
-                            isLossless = ['FLAC', 'DSF', 'DFF', 'WAV', 'APE'].includes(ext);
-                            hasNum = Boolean(fileName.match(/\(\d+\)/));
-                        } else {
-                            ext = f.ext ? f.ext.replace('.', '').toUpperCase() : '';
-                            sizeMb = f.size_mb ? `${f.size_mb} MB` : '';
-                            album = f.album || '';
-                            specs = f.specs || '';
-                            isLossless = f.is_lossless || false;
-                            hasNum = f.has_number_suffix || false;
-                        }
-
-                        const qScore = Math.round(scoreAudiophileQuality(f));
-                        const scoreDisplay = (qScore > 0 ? '+' : '') + qScore;
-
-                        let extBadgeClass = 'tag-slate';
-                        if (['FLAC', 'APE'].includes(ext)) extBadgeClass = 'tag-emerald';
-                        else if (['DSF', 'DFF'].includes(ext)) extBadgeClass = 'tag-cyan';
-                        else if (['WAV', 'ALAC'].includes(ext)) extBadgeClass = 'tag-indigo';
-                        else if (['M4A', 'AAC'].includes(ext)) extBadgeClass = 'tag-amber';
-
+                        const info = {...(typeof f === 'object' ? f : {}), ...item.file_details?.[filePath]};
+                        const fileName = filePath.split('/').pop();
+                        const isKept = filePath === keptFile;
+                        const ext = (filePath.split('.').pop() || '').toUpperCase();
+                        const integrity = {PASS: 'Đạt trong phạm vi đo', FAIL: 'Có lỗi', REVIEW: 'Cần xem xét', INCONCLUSIVE: 'Chưa kết luận'}[info.integrity_status] || 'Chưa kiểm tra / kết quả đã cũ';
+                        const duration = Number.isFinite(info.duration) && info.duration > 0 ? `${Math.floor(info.duration / 60)}:${String(Math.floor(info.duration % 60)).padStart(2, '0')}` : 'Chưa đọc được';
+                        const reason = info.recommendation_reason || (currentDupeType === 'byte' ? 'Nội dung giống từng byte; chọn vị trí muốn giữ.' : 'Chưa có kiểm tra toàn vẹn còn hiệu lực.');
                         return `
-                            <div class="dupe-file-row ${isKept ? 'is-kept' : 'is-archive'}" data-groupid="${groupId}" data-file="${escapeHtml(filePath)}" data-score="${scoreDisplay}">
-                                <input type="radio" name="dupe_radio_${groupId}" class="dupe-radio-custom" value="${escapeHtml(filePath)}" ${isKept ? 'checked' : ''}>
-                                <span class="${isKept ? 'dupe-badge-keep' : 'dupe-badge-archive'}">
-                                    ${isKept ? '🟢 ĐỀ XUẤT GIỮ' : '🗑️ BẢN PHỤ'} <span class="dupe-score-tag" style="opacity: 0.85; font-size: 0.72rem; margin-left: 3px;">(${scoreDisplay}đ)</span>
-                                </span>
-                                <span class="stat-tag ${extBadgeClass}" style="font-size: 0.72rem; padding: 2px 7px; font-weight: 600;">
-                                    .${ext}
-                                </span>
-                                ${specs ? `<span class="dupe-specs-tag">${escapeHtml(specs)}</span>` : ''}
-                                <code class="dupe-path-code">${escapeHtml(filePath)}</code>
-                                ${album ? `<span class="dupe-tag-pill dupe-tag-album">${escapeHtml(album)}</span>` : ''}
-                                ${sizeMb ? `<span class="text-secondary" style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; white-space: nowrap;">${sizeMb}</span>` : ''}
-                                ${hasNum ? `<span class="dupe-tag-pill dupe-tag-number">Đuôi (${fileName.match(/\((\d+)\)/)?.[1] || 'số'})</span>` : ''}
-                                ${typeof f === 'object' && f.acoustic_match_pct !== undefined && f.acoustic_match_pct !== null && !isKept ? `
-                                    <span class="stat-tag ${f.acoustic_match_pct >= 80 ? 'tag-emerald' : 'tag-rose'}" style="font-size: 0.72rem; padding: 2px 7px;" title="Độ khớp vân tay Chromaprint với bản đề xuất giữ">
-                                        🎵 ${f.acoustic_match_pct}% Khớp
-                                    </span>
-                                ` : ''}
-                                ${!isKept ? `
-                                <button class="btn btn-xs btn-outline btn-row-compare-acoustic" title="So sánh dấu vân tay âm học Chromaprint với bản giữ" data-file1="${escapeHtml(keptFile)}" data-file2="${escapeHtml(filePath)}">
-                                    🎵 So Âm
-                                </button>
-                                ` : ''}
-                                <button class="btn btn-xs btn-outline btn-row-play" title="Phát nghe thử tệp âm thanh này" data-file="${escapeHtml(filePath)}" data-title="${escapeHtml(fileName)}" data-specs="${escapeHtml(specs || ext)}">
-                                    ▶ Nghe
-                                </button>
-                                <button class="btn btn-xs btn-outline btn-row-spectrogram" title="Mở phổ âm kiểm tra tần số cut-off" data-file="${escapeHtml(filePath)}" data-title="${escapeHtml(fileName)}" data-specs="${escapeHtml(specs || ext)}">
-                                    📊 Phổ Âm
-                                </button>
-                            </div>
-                        `;
+                            <div class="dupe-file-row dupe-copy ${isKept ? 'is-kept' : 'is-archive'}" data-groupid="${groupId}" data-file="${escapeHtml(filePath)}" role="listitem">
+                                <label class="dupe-choice"><input type="radio" name="dupe_radio_${groupId}" class="dupe-radio-custom" value="${escapeHtml(filePath)}" ${isKept ? 'checked' : ''} aria-label="Chọn giữ ${escapeHtml(fileName)}"><span class="${isKept ? 'dupe-badge-keep' : 'dupe-badge-archive'}">${isKept ? 'ĐANG GIỮ' : 'BẢN KHÁC'}</span></label>
+                                <strong class="dupe-copy-name">${escapeHtml(fileName)}</strong>
+                                <dl class="dupe-copy-facts">
+                                    <div><dt>Định dạng</dt><dd>${escapeHtml(info.specs || ext)}</dd></div>
+                                    <div><dt>Thời lượng</dt><dd>${duration}</dd></div>
+                                    <div><dt>Toàn vẹn</dt><dd>${integrity}</dd></div>
+                                    <div><dt>Album</dt><dd>${escapeHtml(info.album || 'Chưa có metadata')}</dd></div>
+                                </dl>
+                                <p class="dupe-reason">${escapeHtml(reason)}</p>
+                                <details class="dupe-path"><summary>Đường dẫn tệp</summary><code>${escapeHtml(filePath)}</code></details>
+                                ${Number.isFinite(info.acoustic_match_pct) && !isKept ? `<p class="scoring-row-note">Vân tay: ${info.acoustic_match_pct}% khớp đề xuất ban đầu.</p>` : ''}
+                                <div class="dupe-copy-actions">
+                                    <button type="button" class="btn btn-sm btn-outline btn-row-play" data-file="${escapeHtml(filePath)}" data-title="${escapeHtml(fileName)}" data-specs="${escapeHtml(info.specs || ext)}">Nghe</button>
+                                    <button type="button" ${isKept ? 'hidden' : ''} class="btn btn-sm btn-outline btn-row-compare-acoustic" data-file1="${escapeHtml(keptFile)}" data-file2="${escapeHtml(filePath)}" title="Đối chiếu vân tay với bản đang giữ">So vân tay</button>
+                                    <button type="button" class="btn btn-sm btn-outline btn-row-spectrogram" data-file="${escapeHtml(filePath)}" data-title="${escapeHtml(fileName)}" data-specs="${escapeHtml(info.specs || ext)}">Xem phổ</button>
+                                </div>
+                            </div>`;
                     }).join('')}
                 </div>
             </div>
@@ -1977,10 +1958,22 @@ function renderDuplicates() {
     html += '</div>';
     container.innerHTML = html;
 
+    container.querySelectorAll('.dupe-review-decision').forEach(select => {
+        select.addEventListener('change', async () => {
+            select.disabled = true;
+            try {
+                const response = await postJSON('/api/duplicates/decision', {group_key: select.dataset.reviewkey, decision: select.value || null});
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Không lưu được quyết định');
+                await loadDuplicates();
+            } catch (error) { showToast(error.message, 'error'); select.disabled = false; }
+        });
+    });
+
     // 1. Attach interactive click event on each file row
     container.querySelectorAll('.dupe-file-row').forEach(row => {
         row.addEventListener('click', (e) => {
-            if (e.target.closest('.btn-row-spectrogram') || e.target.closest('.btn-row-play') || e.target.closest('.btn-row-compare-acoustic')) return;
+            if (e.target.closest('button, details')) return;
 
             const gId = row.dataset.groupid;
             const file = row.dataset.file;
@@ -1994,7 +1987,6 @@ function renderDuplicates() {
                     const rFile = r.dataset.file;
                     const radio = r.querySelector('input[type="radio"]');
                     const badge = r.querySelector('.dupe-badge-keep, .dupe-badge-archive');
-                    const sVal = r.dataset.score || '';
                     
                     if (rFile === file) {
                         r.classList.add('is-kept');
@@ -2002,7 +1994,7 @@ function renderDuplicates() {
                         if (radio) radio.checked = true;
                         if (badge) {
                             badge.className = 'dupe-badge-keep';
-                            badge.innerHTML = `🟢 ĐỀ XUẤT GIỮ <span class="dupe-score-tag" style="opacity: 0.85; font-size: 0.72rem; margin-left: 3px;">(${sVal}đ)</span>`;
+                            badge.textContent = 'ĐANG GIỮ';
                         }
                     } else {
                         r.classList.remove('is-kept');
@@ -2010,7 +2002,7 @@ function renderDuplicates() {
                         if (radio) radio.checked = false;
                         if (badge) {
                             badge.className = 'dupe-badge-archive';
-                            badge.innerHTML = `🗑️ BẢN PHỤ <span class="dupe-score-tag" style="opacity: 0.85; font-size: 0.72rem; margin-left: 3px;">(${sVal}đ)</span>`;
+                            badge.textContent = 'BẢN KHÁC';
                         }
                     }
                 });
@@ -2021,8 +2013,20 @@ function renderDuplicates() {
                 }
             }
 
+            card?.querySelectorAll('.btn-row-compare-acoustic').forEach(button => {
+                if (button.dataset.file1 !== file) {
+                    button.textContent = 'So vân tay';
+                    button.className = 'btn btn-sm btn-outline btn-row-compare-acoustic';
+                }
+                button.dataset.file1 = file;
+                button.hidden = button.dataset.file2 === file;
+            });
             updateDupeArchiveButton(filteredList);
         });
+    });
+
+    container.querySelectorAll('.dupe-radio-custom').forEach(radio => {
+        radio.addEventListener('change', () => radio.closest('.dupe-file-row').click());
     });
 
     // 2. Attach row play buttons
@@ -2045,6 +2049,7 @@ function renderDuplicates() {
             try {
                 const res = await postJSON('/api/fingerprint/compare', { file1: f1, file2: f2 });
                 const data = await res.json();
+                if (!btn.isConnected || btn.dataset.file1 !== f1 || btn.dataset.file2 !== f2) return;
                 if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
                 if (data.match_pct !== undefined) {
                     showToast(`🎵 Khớp ${data.match_pct}%: ${data.explanation}`, data.is_identical ? 'success' : 'info');
@@ -2144,7 +2149,8 @@ async function archiveSingleGroup(toArchive, btn) {
             showToast(`✅ Đã di chuyển ${data.archived_count || toArchive.length} bản phụ vào _Duplicates_Archive`, 'success');
             await loadDuplicates(true);
         } else {
-            showToast(`❌ Lỗi: ${data.message || 'Không thể di chuyển file'}`, 'error');
+            showToast([data.message || data.detail || 'Không thể di chuyển file', ...(data.errors || [])].join('\n'), 'warning');
+            await loadDuplicates();
             if (btn) {
                 btn.disabled = false;
                 btn.textContent = '📦 Archive nhóm này';
@@ -2160,10 +2166,11 @@ async function archiveSingleGroup(toArchive, btn) {
 }
 
 function duplicateArchivePaths(activeList) {
-    return activeList.flatMap((item, idx) => {
+    if (currentDupeType !== 'byte') return [];
+    return activeList.filter(item => !item.review_decision).flatMap((item, idx) => {
         const gId = item.id || item.hash || (`grp_${idx}`);
         const paths = (item.files || []).map(file => typeof file === 'string' ? file : file.path);
-        const kept = userSelectedKeep[gId] || paths[0];
+        const kept = paths.includes(userSelectedKeep[gId]) ? userSelectedKeep[gId] : paths[0];
         return paths.filter(path => path !== kept);
     });
 }
@@ -2173,11 +2180,11 @@ function updateDupeArchiveButton(activeList) {
     const summarySpan = document.getElementById('dupe-selection-summary');
     if (!btn) return;
 
-    if (!activeList || activeList.length === 0) {
+    if (currentDupeType !== 'byte' || !activeList || activeList.length === 0) {
         btn.disabled = true;
         btn.textContent = 'Di Chuyển 0 Bản Phụ Vào Archive';
         if (summarySpan) {
-            summarySpan.textContent = 'Không có bản phụ nào để di chuyển';
+            summarySpan.textContent = currentDupeType === 'byte' ? 'Không có bản trùng byte nào để lưu trữ' : 'Nhóm này cần xem xét; chỉ cho phép lưu trữ bản giống từng byte.';
         }
         return;
     }
@@ -2185,17 +2192,18 @@ function updateDupeArchiveButton(activeList) {
     const totalToArchive = duplicateArchivePaths(activeList).length;
 
     const typeLabel = currentDupeType === 'meta' ? 'Bản Phụ Metadata' : (currentDupeType === 'name' ? 'Bản Trùng Tên' : 'Bản Trùng Byte');
-    btn.textContent = `Di Chuyển ${totalToArchive} ${typeLabel} Vào Archive`;
+    btn.textContent = `Lưu trữ ${totalToArchive} bản trùng byte`;
     btn.disabled = (totalToArchive === 0);
 
     if (summarySpan) {
         const filterNote = dupeSubFilter !== 'all' ? ` (theo bộ lọc hiện tại)` : '';
-        summarySpan.textContent = `Đang giữ ${activeList.length} bài đã chọn • Sẵn sàng di chuyển ${totalToArchive} bản phụ vào Archive${filterNote}`;
+        summarySpan.textContent = `Lưu trữ ${totalToArchive} bản từ tất cả ${activeList.filter(item => !item.review_decision).length} nhóm chưa duyệt khớp bộ lọc, kể cả nhóm chưa hiển thị. Mỗi nhóm giữ lại một bản${filterNote}.`;
     }
 }
 
 async function executeBatchArchiveDuplicates() {
-    const activeList = currentFilteredDuplicates.length > 0 ? currentFilteredDuplicates : getActiveDuplicatesList();
+    if (currentDupeType !== 'byte') return;
+    const activeList = currentFilteredDuplicates;
     if (!activeList || activeList.length === 0) return;
 
     const filesToArchive = duplicateArchivePaths(activeList);
@@ -2209,7 +2217,7 @@ async function executeBatchArchiveDuplicates() {
     const filterContext = dupeSubFilter !== 'all' ? ` [Bộ lọc: ${dupeSubFilter}]` : (dupeSearchQuery ? ` [Tìm kiếm: "${dupeSearchQuery}"]` : '');
     const confirmed = await showConfirm(
         'Xác nhận di chuyển bản phụ hàng loạt',
-        `Hệ thống sẽ:\n• Giữ lại ${activeList.length} bản chất lượng cao nhất bạn đã chọn\n• Di chuyển an toàn ${filesToArchive.length} bản phụ (${typeDesc}${filterContext}) vào thư mục '_Duplicates_Archive/'\n\nBạn có chắc chắn muốn thực hiện?`
+        `${document.getElementById('dupe-display-count').textContent}\n\nPhạm vi: TẤT CẢ nhóm chưa duyệt khớp bộ lọc hiện tại, kể cả nhóm chưa hiển thị.\nLưu trữ ${filesToArchive.length} bản trùng byte; mỗi nhóm giữ lại một bản. Có thể hoàn tác.\n${filterContext}\n\nTiếp tục?`
     );
     if (!confirmed) return;
 
@@ -2227,12 +2235,13 @@ async function executeBatchArchiveDuplicates() {
             showToast(`✅ ${data.message}`, 'success');
             await loadDuplicates(true);
         } else {
-            showToast(`❌ Lỗi: ${data.message}`, 'error');
+            showToast([data.message || data.detail || 'Không thể di chuyển file', ...(data.errors || [])].join('\n'), 'warning');
+            await loadDuplicates();
         }
     } catch (e) {
         showToast(`❌ Lỗi: ${e.message}`, 'error');
     } finally {
-        if (btn) btn.disabled = false;
+        updateDupeArchiveButton(currentFilteredDuplicates);
     }
 }
 
@@ -2635,7 +2644,7 @@ function initOrganize() {
             const empty = rows.insertRow().insertCell(); empty.colSpan = 3;
             empty.textContent = 'Không có bài khớp bộ lọc hoặc từ khóa.';
         }
-        document.getElementById('metadata-organize-count').textContent = `${items.length} / ${plan?.total || 0} bài khớp bộ lọc`;
+        document.getElementById('metadata-organize-count').textContent = `Hiển thị ${items.length}/${plan?.total || 0} bài trong bản xem trước · Áp dụng: ${plan?.counts.READY || 0} bài sẵn sàng trong toàn bộ bản xem trước, kể cả ngoài bộ lọc.`;
         apply.textContent = `Áp dụng ${plan?.counts.READY || 0} bài sẵn sàng (toàn bộ danh sách)`;
     };
     form.addEventListener('submit', async event => {
@@ -2667,7 +2676,7 @@ function initOrganize() {
         setBusy(true);
         const confirmed = await showConfirm(undo ? 'Khôi phục vị trí cũ' : 'Áp dụng bản xem trước', undo
             ? 'Khôi phục các tệp trong nhật ký sắp xếp metadata về vị trí cũ? Các thay đổi phân cấp chất lượng không nằm trong thao tác này.'
-            : `Đổi tên và di chuyển ${preview.counts.READY} bài theo bản xem trước? Bỏ qua bài thiếu metadata và trùng đích. Nội dung audio và tag được giữ nguyên.`);
+            : `${document.getElementById('metadata-organize-count').textContent}\nPhạm vi: TẤT CẢ ${preview.counts.READY} bài sẵn sàng trong bản xem trước, kể cả ngoài bộ lọc. Bỏ qua bài thiếu metadata và trùng đích. Nội dung audio và tag được giữ nguyên. Tiếp tục?`);
         if (!confirmed) { setBusy(false); return; }
         status.textContent = undo ? 'Đang khôi phục vị trí…' : 'Đang đổi tên và sắp xếp…';
         try {
@@ -2700,17 +2709,11 @@ function initOrganize() {
     });
 
     document.getElementById('btn-tag-navidrome-all')?.addEventListener('click', async () => {
-        const confirmed = await showConfirm(
-            'Gắn tag Audiophile toàn bộ thư viện',
-            'Gắn tag Audiophile (Dynamic Range, ReplayGain và nhãn định dạng) vào toàn bộ các bài hát trong thư viện?\n\nBản sao lưu metadata gốc sẽ được tạo tự động để bạn có thể hoàn tác bất kỳ lúc nào.'
-        );
-        if (!confirmed) return;
-
         const btn = document.getElementById('btn-tag-navidrome-all');
         const box = document.getElementById('organize-status-box');
         btn.disabled = true;
-        btn.textContent = '⏳ Đang gắn tag toàn bộ thư viện...';
-        if (box) box.innerHTML = `<span class="text-muted">Đang tải danh sách bài hát và ghi metadata...</span>`;
+        btn.textContent = 'Đang đọc phạm vi…';
+        if (box) box.innerHTML = `<span class="text-muted">Đang đọc danh sách toàn bộ kho để xác nhận phạm vi…</span>`;
         try {
             const tracks = [];
             let total = 0;
@@ -2723,6 +2726,11 @@ function initOrganize() {
                 if (!page.length && tracks.length < total) throw new Error('Danh sách bài hát bị thiếu');
                 tracks.push(...page);
             } while (tracks.length < total);
+            const confirmed = await showConfirm(
+                `Đo & ghi tag toàn bộ kho (${tracks.length} bài)`,
+                `Phạm vi: TOÀN BỘ ${tracks.length} bài trong kho. Bỏ qua bộ lọc và danh sách bài đã chọn. Đo chẩn đoán rồi ghi ghi chú, trạng thái chưa xác minh và ReplayGain khi đo được. Có thể thay đổi ghi chú hiện có; tag gốc được sao lưu trước khi ghi. Dữ liệu âm thanh không được mã hóa lại. Tiếp tục?`
+            );
+            if (!confirmed) { if (box) box.textContent = 'Đã hủy; chưa ghi tag.'; return; }
             let success = 0;
             for (let i = 0; i < tracks.length; i++) {
                 const t = tracks[i];
@@ -2742,7 +2750,7 @@ function initOrganize() {
             showToast(`❌ Lỗi: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = 'Ghi Metadata Tag Vào File Âm Thanh';
+            btn.textContent = 'Đo & ghi tag toàn bộ kho';
         }
     });
 

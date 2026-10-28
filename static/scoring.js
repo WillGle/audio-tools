@@ -195,10 +195,11 @@
         clearLabAudit();
         el('scoring-result').hidden = false;
         const warning = warningStyle(r);
+        const declared = r.claims.container_assertions;
+        el('auth-integrity-summary').textContent = `Toàn vẹn: ${statuses[r.rules.integrity.status]}. ${r.rules.integrity.explanation}`;
+        el('auth-format-summary').textContent = `Định dạng tệp: ${declared.codec || 'chưa rõ'} · ${declared.sample_rate == null ? 'chưa rõ Hz' : declared.sample_rate + ' Hz'} · ${declared.bit_depth == null ? 'chưa rõ bit' : declared.bit_depth + ' bit'}. Đây là thông số tệp, không phải độ phân giải nguồn.`;
+        el('auth-source-summary').textContent = 'Nguồn master và lịch sử chuyển mã: chưa thể xác minh chỉ từ các phép đo này. Xem bằng chứng và giới hạn ở từng phép kiểm tra.';
         el('scorer-scorecard').dataset.level = warning.level;
-        el('scorer-score-value').textContent = r.score == null ? 'N/A' : r.score;
-        el('scorer-dial').style.setProperty('--score-fill', `${r.score == null ? 0 : Math.max(0, Math.min(100, r.score))}%`);
-        el('scorer-assessment').textContent = warning.label;
         el('scorer-coverage').textContent = `${(r.coverage * 100).toFixed(1)}%`;
         el('scorer-confidence').textContent = confidence[r.assessment_confidence];
         el('scorer-state').textContent = r.filename;
@@ -209,10 +210,15 @@
         el('auth-properties-panel').open = false;
         el('auth-verdict').textContent = `${warning.label}${r.preliminary ? ' · FAST sơ bộ' : ''}`;
         el('auth-verdict').title = r.band;
-        el('auth-confidence').textContent = `Độ tin cậy: ${confidence[r.assessment_confidence]} · Phạm vi đánh giá (coverage): ${(r.coverage*100).toFixed(1)}% (${r.assessed_weight}/${r.applicable_weight} trọng số áp dụng)`;
         el('auth-warnings').className = r.critical_failure ? 'critical' : '';
         el('auth-warnings').replaceChildren();
-        r.warnings.forEach(w => text('p', w, el('auth-warnings')));
+        r.warnings.filter(w => !w.startsWith('Không thể xác minh nguồn master chỉ từ file này.')).forEach(w => text('p', w, el('auth-warnings')));
+        el('auth-next-step').textContent = r.critical_failure
+            ? 'Giữ nguyên tệp và mở kiểm tra toàn vẹn bên dưới. Đối chiếu với bản khác trước khi ghi tag hoặc di chuyển.'
+            : r.preliminary ? 'Chạy chế độ Cân bằng để kiểm tra toàn tệp trước khi quyết định.'
+            : ['danger', 'suspect'].includes(warning.level) ? 'Mở các phép kiểm tra báo lỗi hoặc có dấu hiệu. Đối chiếu bằng chứng trước khi thay đổi tệp.'
+            : ['review', 'unknown'].includes(warning.level) ? 'Xem các mục cần xem xét và giới hạn đo. Có thể đối chiếu tệp tham chiếu hoặc nghe so sánh; điểm số không xác nhận nguồn gốc.'
+            : 'Không có cảnh báo trong phần đã đo. Xem số đo chi tiết hoặc dùng chẩn đoán bổ sung khi cần ReplayGain và thông tin phát liên tục.';
         const parent = el('auth-details'); parent.replaceChildren();
         const priority = {FAIL: 0, SUSPECT: 1, REVIEW: 2, INCONCLUSIVE: 3, PASS: 4, NOT_APPLICABLE: 5};
         Object.entries(r.rules).sort((a, b) => priority[a[1].status] - priority[b[1].status]).forEach(([key, rule]) => {
@@ -341,6 +347,10 @@
             busy = active; syncSelection(); updateSortHeaders();
             el('scoring-cancel').disabled = !active || state.status === 'CANCELLING';
             el('scoring-cancel').hidden = !active;
+            el('scoring-resume').hidden = active || !['INTERRUPTED', 'CANCELLED', 'FAILED'].includes(state.status);
+            el('scoring-retry').hidden = active || state.errors === 0;
+            el('scoring-resume').disabled = false;
+            el('scoring-retry').disabled = false;
             el('scoring-meter').hidden = !active && !state.total;
             el('scoring-meter').max = Math.max(1, state.total);
             if (state.status === 'SCANNING' || state.status === 'QUEUED') el('scoring-meter').removeAttribute('value');
@@ -367,14 +377,13 @@
         el('scoring-setup').open = false;
         clearLabAudit();
         el('scorer-scorecard').dataset.level = 'unknown';
-        el('scorer-score-value').textContent = '—';
-        el('scorer-dial').style.setProperty('--score-fill', '0%');
         el('scorer-coverage').textContent = '—';
         el('scorer-confidence').textContent = '—';
-        el('scorer-assessment').textContent = 'Chọn kết quả một bài để xem điểm';
         el('scorer-state').textContent = 'Đang tải lượt kiểm tra…';
         viewGeneration += 1;
         el('scoring-result').hidden = true;
+        el('scoring-resume').hidden = true;
+        el('scoring-retry').hidden = true;
         el('scoring-comparison').hidden = true;
         el('scoring-comparison').open = false;
         el('scoring-more').disabled = false;
@@ -451,6 +460,21 @@
             el('scoring-cancel').disabled = true;
             post(`/api/scoring/jobs/${jobId}/cancel`, {}).catch(fail);
         });
+        ['resume', 'retry'].forEach(action => el(`scoring-${action}`).addEventListener('click', async () => {
+            if (!jobId || busy) return;
+            el('scoring-resume').disabled = true;
+            el('scoring-retry').disabled = true;
+            busy = true; syncSelection();
+            try {
+                const job = await post(`/api/scoring/jobs/${jobId}/resume?retry_errors=${action === 'retry'}`, {});
+                view(job.job_id);
+            } catch (error) {
+                busy = false; syncSelection();
+                el('scoring-resume').disabled = false;
+                el('scoring-retry').disabled = false;
+                fail(error);
+            }
+        }));
         el('scoring-history').addEventListener('change', e => { if (e.target.value) view(e.target.value); });
         el('scoring-more').addEventListener('click', () => loadMore(viewGeneration).catch(error => { el('scoring-more').disabled = false; fail(error); }));
         syncSelection();

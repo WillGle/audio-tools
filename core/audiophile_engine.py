@@ -277,11 +277,11 @@ def check_gapless_attributes(filepath: str, duration: Optional[float] = None) ->
 
 
 # ==============================================================================
-# UNIFIED AUDIOPHILE AUDIT
+# COMBINED AUDIO DIAGNOSTICS
 # ==============================================================================
 def run_full_audiophile_audit(filepath: str, scoring: Optional[Dict] = None) -> Dict[str, Any]:
     """
-    Thực hiện kiểm định toàn diện 7 tiêu chuẩn Audiophile cho một tệp âm thanh.
+    Thu thập phép đo và chẩn đoán kỹ thuật cho một tệp âm thanh.
     Tích hợp bằng chứng kỹ thuật; nguồn master không xác thực từ phổ.
     """
     p = Path(filepath)
@@ -298,10 +298,10 @@ def run_full_audiophile_audit(filepath: str, scoring: Optional[Dict] = None) -> 
     integrity_data = fields['integrity']
     bit_data = fields['bit_depth']
 
-    # 4. DSD Purity
+    # DSD format and spectral evidence
     dsd_data = check_dsd_purity(filepath, specs=specs)
 
-    # 5. ReplayGain & EBU R128
+    # ReplayGain & EBU R128
     try:
         measured = scoring['mastering'] if scoring['mastering'].get('available') else None
         lufs_data = measure_replaygain_ebu_r128(filepath, measurement=measured)
@@ -313,15 +313,15 @@ def run_full_audiophile_audit(filepath: str, scoring: Optional[Dict] = None) -> 
                      'true_peak_db': scoring['mastering'].get('true_peak_dbtp')}
 
 
-    # 6. Gapless Playback
+    # Gapless playback
     gapless_data = check_gapless_attributes(filepath, duration=specs.get('duration'))
 
-    # 7. Spectrum Analysis (FFT Cutoff & Fake Hi-Res / Fake Lossless)
+    # Spectral evidence; cutoff alone cannot establish source history
     spectrum_data = fields['spectrum']
     spectrum_data.pop('authenticity', None)  # The full report is already at the audit root.
     spectrum_data['filepath'] = str(p.resolve())
 
-    # 8. Acoustic Fingerprint (Chromaprint / fpcalc)
+    # Acoustic fingerprint (Chromaprint / fpcalc)
     from core.fingerprint import get_audio_fingerprint
     try:
         fp_res = get_audio_fingerprint(filepath)

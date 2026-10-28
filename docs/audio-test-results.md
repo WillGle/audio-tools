@@ -257,3 +257,32 @@ Removed unused dr14meter. Playwright and its dependencies are opt-in through the
 `browser` extra; they are not required for the app or Python regressions.
 Experimental flaccheck runs only in DEEP. Queue, cache, cancellation, subprocess
 limits, fixtures, evidence, reference comparison and existing dashboard remain.
+
+## Existing-tool UI improvements (2026-10-29)
+
+The existing Python suite passed 31 tests in 59.70s. The existing browser workflow
+passed all 18 checks, including 25 batch rows, with no JavaScript errors. JavaScript
+syntax, Python compilation, unique HTML IDs and diff whitespace checks also passed.
+
+A disposable Chromium probe used 213 synthetic FLAC files forming 105 duplicate
+groups, including a three-copy group. It checked incremental display beyond 100,
+explicit displayed/filtered/affected scope, all-filtered duplicate confirmations,
+all-plan format confirmations, keeper persistence, collapsed paths, aligned
+metadata, empty/failed refresh protection and retained cross-tab selection/search.
+Organization examples and all-READY scope, selected versus whole-library tag
+confirmations, the single result summary/next step, warning-driven diagnostic
+expansion and native keyboard controls were also checked. All seven tabs fit a
+390px viewport without document overflow or JavaScript errors. Visual review
+corrected score wrapping on mobile.
+
+The stale fingerprint display check simulated comparison responses to exercise
+both completed and pending responses after changing the keeper. It verifies
+presentation state, not acoustic-detector accuracy. Other probe file/metadata
+operations used the real local API. No real library files were changed, and no
+maintained tests or dependencies were added.
+
+Disposable evidence: `/tmp/audio-task-ui-proof/results.json`,
+`/tmp/audio-task-ui-proof/duplicates-desktop.png`,
+`/tmp/audio-task-ui-proof/analysis-desktop.png` and
+`/tmp/audio-task-ui-proof/analysis-mobile.png`. Existing browser results are in
+`/tmp/audio-task-ui-existing-browser/browser-results.json`.
