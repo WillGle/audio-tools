@@ -286,3 +286,31 @@ Disposable evidence: `/tmp/audio-task-ui-proof/results.json`,
 `/tmp/audio-task-ui-proof/analysis-desktop.png` and
 `/tmp/audio-task-ui-proof/analysis-mobile.png`. Existing browser results are in
 `/tmp/audio-task-ui-existing-browser/browser-results.json`.
+
+## Existing-function UI access (2026-10-29)
+
+Added library selection album analysis with a fixed filename-ordered preview,
+album DR and transition results; on-demand fingerprint details in the track
+drawer; and matching classification/diagnostic tag choices for a single track.
+
+The existing Chromium workflow passed 18 checks with 25 batch rows and no
+JavaScript errors. A disposable probe exercised the real two-track album API,
+preview order and fixed scope, DR/transition rendering, and fingerprint info.
+Simulated unavailable, partial and delayed responses verified retry states,
+missing DR display and protection against a previously opened track's response.
+Both single-track choices confirmed the exact path; cancelling sent no write.
+Classification tag writing and rollback succeeded on a synthetic FLAC copy.
+Diagnostics tagging reported the existing missing `rsgain >= 3.6` dependency;
+the UI displayed the failure. Successful ReplayGain writing was not verified.
+
+Album and track views fit 390px without document overflow. Visual review corrected
+the new tag menu's inherited mobile button sizing; a focused browser probe then
+confirmed normal button heights. JavaScript syntax, unique HTML IDs and diff
+whitespace checks passed. No backend files, real music files, maintained tests or
+dependencies were changed in this addition.
+
+Disposable evidence: `/tmp/audio-function-ui-proof/results.json`,
+`/tmp/audio-function-ui-proof/album-desktop.png`,
+`/tmp/audio-function-ui-proof/track-mobile.png`,
+`/tmp/audio-function-ui-proof/album-preview-mobile.png` and
+`/tmp/audio-function-ui-browser/browser-results.json`.

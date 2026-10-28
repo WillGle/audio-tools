@@ -284,12 +284,23 @@ Mở ↗
                         </div>
                         <div class="batch-actions-group">
                             <button class="btn btn-sm btn-primary" id="btn-batch-score">Kiểm tra đã chọn</button>
+                            <button class="btn btn-sm btn-secondary" id="btn-batch-album" disabled>Phân tích như album…</button>
                             <button class="btn btn-sm btn-secondary" id="btn-batch-organize" type="button">Sắp xếp thư mục…</button>
                             <details class="batch-more"><summary class="btn btn-sm btn-secondary">Ghi tag cho bài đã chọn</summary><div class="batch-more-menu"><p class="tag-menu-help">Ghi nhãn: ghi chú phân nhóm. Đo &amp; ghi: thêm ReplayGain khi đo được. Có sao lưu tag gốc.</p><button class="btn btn-sm btn-emerald" id="btn-batch-tag" title="Ghi ghi chú phân nhóm và trạng thái chưa xác minh; không thêm ReplayGain">Ghi nhãn phân loại</button>
                             <button class="btn btn-sm btn-primary" id="btn-batch-audiophile-tag" title="Đo chẩn đoán rồi ghi ghi chú, trạng thái và ReplayGain khi đo được">Đo &amp; ghi tag</button>
                             </div></details><button class="btn btn-sm btn-outline-rose" id="btn-batch-clear-selection">Bỏ chọn</button>
                         </div>
                     </div>
+
+                    <section class="card album-analysis" id="album-analysis" hidden aria-labelledby="album-analysis-title">
+                        <h3 id="album-analysis-title">Phân tích các bài đã chọn như một album</h3>
+                        <p id="album-scope"></p>
+                        <p class="text-secondary">Thứ tự theo tên tệp, không theo thứ tự chọn. Kiểm tra danh sách trước khi chạy; ứng dụng không xác nhận đây là album đầy đủ. Chỉ đo, không ghi tag.</p>
+                        <details open><summary>Thứ tự phân tích</summary><ol id="album-order"></ol></details>
+                        <div class="album-actions"><button class="btn btn-primary" id="btn-run-album">Phân tích album</button><button class="btn btn-secondary" id="btn-close-album">Đóng</button></div>
+                        <p id="album-status" role="status"></p>
+                        <div id="album-results" hidden></div>
+                    </section>
 
                     <!-- Pagination -->
                     <div class="pagination-bar mt-4">
@@ -855,6 +866,11 @@ Mở ↗
             <div class="modal-body">
                 <dl class="track-summary" id="track-summary"></dl>
                 <p class="text-secondary">Kiểm tra âm thanh để xem cảnh báo, độ phủ và bằng chứng. Thông số định dạng không xác minh nguồn master.</p>
+                <details id="track-fingerprint" class="scoring-detail"><summary>Thông tin vân tay âm học</summary>
+                    <p id="track-fingerprint-status" role="status">Mở để đọc vân tay của tệp này.</p>
+                    <dl id="track-fingerprint-data" class="track-summary"></dl>
+                    <button class="btn btn-secondary btn-sm" id="btn-retry-fingerprint" hidden>Thử lại</button>
+                </details>
                 <details id="track-diagnostics" class="scoring-detail"><summary>Đo thông số &amp; xem phổ âm</summary>
 
                 <div class="spectrogram-image-container" id="spectrogram-img-container">
@@ -883,7 +899,11 @@ Mở ↗
                 <button class="btn btn-secondary" id="modal-btn-duplicates" hidden>So sánh bản trùng</button>
                 <button class="btn btn-secondary" id="modal-btn-close">Đóng</button>
                 <button class="btn btn-outline-rose" id="modal-btn-rollback-tag" title="Hoàn tác và khôi phục metadata gốc">Hoàn tác tag</button>
-                <button class="btn btn-primary" id="modal-btn-apply-tag">Đo &amp; ghi tag</button>
+                <details class="batch-more"><summary class="btn btn-primary">Ghi tag cho bài này</summary><div class="batch-more-menu">
+                    <p class="tag-menu-help">Ghi nhãn: ghi chú phân nhóm. Đo &amp; ghi: thêm ReplayGain khi đo được. Có sao lưu tag gốc.</p>
+                    <button class="btn btn-sm btn-emerald" id="modal-btn-classification-tag">Ghi nhãn phân loại</button>
+                    <button class="btn btn-sm btn-primary" id="modal-btn-apply-tag">Đo &amp; ghi tag</button>
+                </div></details>
             </div>
         </div>
     </div>

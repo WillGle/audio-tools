@@ -3506,6 +3506,13 @@ body:has(#audio-player-bar[style*="flex"]) .floating-batch-bar { bottom: 100px; 
 .tag-help dd, .tag-help p { font-size: .9375rem; line-height: 1.6; }
 .tag-help .btn { margin-top: .85rem; }
 .batch-more-menu .tag-menu-help { padding: .6rem; white-space: normal; max-width: 300px; }
+.album-analysis { margin-top: 1.5rem; padding: 1.25rem; overflow-wrap: anywhere; }
+.album-analysis p, .album-analysis h4 { margin: .75rem 0; }
+.album-analysis ol { padding-left: 1.5rem; max-height: 240px; overflow: auto; }
+.album-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+.album-transition { border-top: 1px solid var(--border-color); padding: .75rem 0; }
+.track-drawer .batch-more-menu { max-width: calc(100vw - 48px); }
+.track-drawer .batch-more-menu .btn { flex: none; }
 .modal-confirm-card #confirm-modal-message { white-space: pre-line; overflow-wrap: anywhere; }
 @media (max-width: 640px) {
     .task-context { position: static; }

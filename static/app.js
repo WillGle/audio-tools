@@ -39,6 +39,8 @@ let currentSortDir = 'asc';
 let showColFilters = false;
 let libraryTrackDetails = new Map();
 let trackDetailsOpener = null;
+let albumPaths = [];
+let albumBusy = false;
 
 let currentAuditResult = null;
 let currentTieringPlan = null;
@@ -629,6 +631,12 @@ function initExplorer() {
 }
 
 function initBatchActions() {
+    document.getElementById('btn-batch-album').addEventListener('click', previewAlbumAnalysis);
+    document.getElementById('btn-run-album').addEventListener('click', runAlbumAnalysis);
+    document.getElementById('btn-close-album').addEventListener('click', () => {
+        document.getElementById('album-analysis').hidden = true;
+        document.getElementById('btn-batch-album').focus();
+    });
     const chkAll = document.getElementById('check-all-tracks');
     chkAll?.addEventListener('change', () => {
         const cbs = document.querySelectorAll('.track-row-checkbox');
@@ -659,7 +667,8 @@ function initBatchActions() {
 
     document.getElementById('btn-batch-tag')?.addEventListener('click', async () => {
         if (selectedTrackPaths.size === 0) return;
-        const count = selectedTrackPaths.size;
+        const paths = Array.from(selectedTrackPaths);
+        const count = paths.length;
         const confirmed = await showConfirm(
             'Xác nhận ghi Tag hàng loạt',
             `Phạm vi: ${count} bài đã chọn trong Kho nhạc, kể cả ngoài trang hiện tại. Ghi ghi chú phân nhóm và trạng thái chưa xác minh, không thêm ReplayGain. Có thể thay đổi ghi chú hiện có; tag gốc được sao lưu. Tiếp tục?`
@@ -673,7 +682,7 @@ function initBatchActions() {
         try {
             const naviCfg = getNavidromeConfigFromStorage();
             const res = await postJSON('/api/tag/batch', {
-                filepaths: Array.from(selectedTrackPaths),
+                filepaths: paths,
                 navidrome_config: naviCfg
             });
             const data = await res.json();
@@ -696,7 +705,8 @@ function initBatchActions() {
 
     document.getElementById('btn-batch-audiophile-tag')?.addEventListener('click', async () => {
         if (selectedTrackPaths.size === 0) return;
-        const count = selectedTrackPaths.size;
+        const paths = Array.from(selectedTrackPaths);
+        const count = paths.length;
         const confirmed = await showConfirm(
             'Xác nhận kiểm tra & ghi tag hàng loạt',
             `Phạm vi: ${count} bài đã chọn trong Kho nhạc, kể cả ngoài trang hiện tại. Đo chẩn đoán, ghi ghi chú và trạng thái chưa xác minh, thêm ReplayGain khi đo được. Có thể thay đổi ghi chú hiện có; tag gốc được sao lưu. Dữ liệu âm thanh không được mã hóa lại. Tiếp tục?`
@@ -710,7 +720,7 @@ function initBatchActions() {
         try {
             const naviCfg = getNavidromeConfigFromStorage();
             const res = await postJSON('/api/audiophile/tag/batch', {
-                filepaths: Array.from(selectedTrackPaths),
+                filepaths: paths,
                 navidrome_config: naviCfg
             });
             const data = await res.json();
@@ -738,6 +748,7 @@ function updateBatchBar() {
     const countEl = document.getElementById('batch-selected-count');
     const chkAll = document.getElementById('check-all-tracks');
     const size = selectedTrackPaths.size;
+    document.getElementById('btn-batch-album').disabled = size < 2 || albumBusy;
     if (countEl) countEl.textContent = size;
     document.dispatchEvent(new Event('audio-selection-change'));
     if (bar) bar.style.display = size > 0 && currentTab === 'tab-library' ? 'flex' : 'none';
@@ -745,6 +756,59 @@ function updateBatchBar() {
     const visibleCbs = document.querySelectorAll('.track-row-checkbox');
     if (chkAll && visibleCbs.length > 0) {
         chkAll.checked = Array.from(visibleCbs).every(cb => cb.checked);
+    }
+}
+
+function previewAlbumAnalysis() {
+    if (albumBusy || selectedTrackPaths.size < 2) return;
+    // Match the endpoint's filename ordering, including Unicode code points.
+    albumPaths = [...selectedTrackPaths].sort((a, b) => {
+        const left = Array.from(a.split('/').pop(), c => c.codePointAt(0));
+        const right = Array.from(b.split('/').pop(), c => c.codePointAt(0));
+        for (let i = 0; i < Math.min(left.length, right.length); i++) {
+            if (left[i] !== right[i]) return left[i] - right[i];
+        }
+        return left.length - right.length;
+    });
+    const panel = document.getElementById('album-analysis');
+    document.getElementById('album-scope').textContent = `Phạm vi: ${albumPaths.length} bài đã chọn, kể cả ngoài trang hiện tại. Danh sách này được giữ cố định cho lượt phân tích.`;
+    document.getElementById('album-order').innerHTML = albumPaths.map(path => `<li>${escapeHtml(path)}</li>`).join('');
+    document.getElementById('album-status').textContent = '';
+    document.getElementById('album-results').hidden = true;
+    panel.hidden = false;
+    panel.scrollIntoView({block: 'center'});
+    document.getElementById('btn-run-album').focus();
+}
+
+async function runAlbumAnalysis() {
+    if (albumBusy || albumPaths.length < 2) return;
+    const paths = [...albumPaths];
+    const status = document.getElementById('album-status');
+    const results = document.getElementById('album-results');
+    const button = document.getElementById('btn-run-album');
+    albumBusy = true;
+    button.disabled = true;
+    document.getElementById('btn-close-album').disabled = true;
+    updateBatchBar();
+    results.hidden = true;
+    status.textContent = `Đang phân tích ${paths.length} bài… Có thể mất vài phút.`;
+    try {
+        const response = await postJSON('/api/audiophile/audit-album', {track_paths: paths});
+        const data = await response.json();
+        if (!response.ok || data.error) throw new Error(data.detail || data.error || 'Không phân tích được album');
+        const measured = (data.tracks || []).filter(track => Number.isFinite(track.dynamic_range?.dr_score) && track.dynamic_range.dr_score > 0).length;
+        status.textContent = `Đã phân tích ${data.track_count}/${paths.length} bài; ${measured} bài có DR dùng để tính trung bình.${data.track_count < paths.length ? ' Một số bài không phân tích được; chuyển tiếp bên dưới chỉ gồm các bài có kết quả.' : ''}`;
+        results.innerHTML = `<h4>DR trung bình: ${formatMeasurement(data.album_dr_float)}</h4>
+            <p class="text-secondary">Trung bình DR của các bài đo được, không xác minh nguồn master hay chất lượng nghe. Khoảng lặng ở biên không tự xác nhận phát liền mạch.</p>
+            <h4>Chuyển tiếp giữa các bài</h4>${(data.transitions || []).map(item => `<article class="album-transition"><strong>${escapeHtml(item.from_track)} → ${escapeHtml(item.to_track)}</strong><p>Khoảng lặng: ${formatMeasurement(item.total_silence_gap_ms, ' ms')} · Mức cuối bài: ${formatMeasurement(item.from_end_db, ' dB')}</p><p>${escapeHtml(item.note || 'Chưa đủ dữ liệu')}</p></article>`).join('') || '<p>Chưa đủ bài có kết quả để so sánh chuyển tiếp.</p>'}`;
+        results.hidden = false;
+    } catch (error) {
+        status.textContent = `Không hoàn tất: ${error.message}. Có thể thử lại với danh sách trên.`;
+    } finally {
+        albumBusy = false;
+        button.disabled = false;
+        document.getElementById('btn-close-album').disabled = false;
+        updateBatchBar();
     }
 }
 
@@ -2848,6 +2912,10 @@ function initModal() {
             await tagSingleTrack(currentSelectedTrack.path, btn);
         }
     });
+    document.getElementById('modal-btn-classification-tag').addEventListener('click', () => {
+        if (currentSelectedTrack) tagSingleTrack(currentSelectedTrack.path, document.getElementById('modal-btn-classification-tag'), false);
+    });
+    document.getElementById('btn-retry-fingerprint').addEventListener('click', loadTrackFingerprint);
 }
 
 function closeSpectrogramModal() {
@@ -2863,6 +2931,15 @@ async function openSpectrogramModal(filepath, title, specs) {
     modal.focus();
 
     currentSelectedTrack = { path: filepath, title, specs };
+    const fingerprint = document.getElementById('track-fingerprint');
+    fingerprint.open = false;
+    document.getElementById('track-fingerprint-status').textContent = 'Mở để đọc vân tay của tệp này.';
+    document.getElementById('track-fingerprint-data').replaceChildren();
+    document.getElementById('btn-retry-fingerprint').hidden = true;
+    document.querySelector('#modal-btn-apply-tag').closest('details').open = false;
+    fingerprint.ontoggle = () => {
+        if (fingerprint.open && !currentSelectedTrack.fingerprintRequested) loadTrackFingerprint();
+    };
     currentAuditResult = null;
     document.getElementById('modal-track-title').textContent = title || filepath;
     document.getElementById('modal-track-path').textContent = filepath;
@@ -2895,6 +2972,36 @@ async function openSpectrogramModal(filepath, title, specs) {
         loadTrackDiagnostics(filepath);
     };
     delete diagnostics.dataset.path;
+}
+
+async function loadTrackFingerprint() {
+    const track = currentSelectedTrack;
+    if (!track || track.fingerprintLoading) return;
+    track.fingerprintRequested = true;
+    track.fingerprintLoading = true;
+    const status = document.getElementById('track-fingerprint-status');
+    const retry = document.getElementById('btn-retry-fingerprint');
+    retry.hidden = true;
+    status.textContent = 'Đang đọc vân tay…';
+    try {
+        const response = await fetch(`/api/fingerprint/info?filepath=${encodeURIComponent(track.path)}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Không đọc được vân tay');
+        if (currentSelectedTrack !== track) return;
+        status.textContent = data.is_available ? 'Có vân tay để so sánh bản thu; không xác minh nguồn master.' : `Chưa có vân tay. ${data.error || 'Không tạo được vân tay cho tệp này.'}`;
+        document.getElementById('track-fingerprint-data').innerHTML = [
+            ['Trạng thái', data.is_available ? 'Có sẵn' : 'Không có'],
+            ['Thời lượng', formatMeasurement(data.duration, ' giây')],
+            ['Số giá trị vân tay', formatMeasurement(data.sample_count)]
+        ].map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join('');
+        retry.hidden = data.is_available;
+    } catch (error) {
+        if (currentSelectedTrack !== track) return;
+        status.textContent = `Không đọc được vân tay: ${error.message}`;
+        retry.hidden = false;
+    } finally {
+        track.fingerprintLoading = false;
+    }
 }
 
 function loadTrackDiagnostics(filepath) {
@@ -2985,7 +3092,12 @@ function loadTrackDiagnostics(filepath) {
     img.src = `/api/spectrogram?filepath=${encodeURIComponent(filepath)}`;
 }
 
-async function tagSingleTrack(filepath, btnElement = null) {
+async function tagSingleTrack(filepath, btnElement = null, diagnostics = true) {
+    const confirmed = await showConfirm(
+        diagnostics ? 'Đo & ghi tag' : 'Ghi nhãn phân loại',
+        `Phạm vi: 1 bài:\n${filepath}\n${diagnostics ? 'Đo chẩn đoán, ghi ghi chú và trạng thái chưa xác minh, thêm ReplayGain khi đo được.' : 'Ghi ghi chú phân nhóm và trạng thái chưa xác minh, không thêm ReplayGain.'} Có thể thay đổi ghi chú hiện có; tag gốc được sao lưu. Tiếp tục?`
+    );
+    if (!confirmed) return;
     const originalText = btnElement?.textContent;
     if (btnElement) {
         btnElement.textContent = '⏳...';
@@ -2993,7 +3105,7 @@ async function tagSingleTrack(filepath, btnElement = null) {
     }
     try {
         const naviCfg = getNavidromeConfigFromStorage();
-        const res = await postJSON('/api/audiophile/tag', { filepath, navidrome_config: naviCfg });
+        const res = await postJSON(diagnostics ? '/api/audiophile/tag' : '/api/tag/single', { filepath, navidrome_config: naviCfg });
         const data = await res.json();
         if (data.navidrome_scan) handleNavidromeResult(data.navidrome_scan);
         if (data.success) {
