@@ -5,16 +5,36 @@ import json
 import re
 import time
 import sqlite3
+import os
+import tempfile
+from threading import Lock
 from pathlib import Path
 from typing import Dict, Any, Tuple, List
 from mediafile import MediaFile, MediaField, StorageStyle, MP3DescStorageStyle, MP4StorageStyle
 from mutagen.id3 import ID3, COMM, TXXX
 from mutagen.mp4 import MP4FreeForm
+from core.paths import cache_directory
+
+_backup_db_lock = Lock()
 
 def get_backup_db() -> sqlite3.Connection:
-    cache_dir = Path(__file__).resolve().parent.parent / 'cache'
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_dir = cache_directory()
     db_path = cache_dir / 'tag_backups.sqlite'
+    legacy = Path(__file__).resolve().parent.parent / 'cache' / 'tag_backups.sqlite'
+    with _backup_db_lock:
+        if not db_path.exists() and legacy.exists() and legacy.resolve() != db_path:
+            # Publish a complete SQLite backup, including committed WAL data.
+            # An interruption must not leave an empty DB that hides old backups.
+            from contextlib import closing
+            fd, temporary = tempfile.mkstemp(prefix='.tag-backups-', dir=cache_dir)
+            os.close(fd)
+            try:
+                with closing(sqlite3.connect(legacy.as_uri() + '?mode=ro', uri=True)) as source:
+                    with closing(sqlite3.connect(temporary)) as target:
+                        source.backup(target)
+                os.replace(temporary, db_path)
+            finally:
+                Path(temporary).unlink(missing_ok=True)
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
     c.execute("""

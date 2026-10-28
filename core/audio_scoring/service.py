@@ -164,6 +164,9 @@ class AnalysisService:
         expectations = Expectations.model_validate(expectations or {}).model_dump(exclude_none=True)
         options = {'filepaths': filepaths, 'folder': folder, 'mode': mode, 'concurrency': concurrency,
                    'expectations': expectations, 'reference': reference}
+        return self._submit_options(options)
+
+    def _submit_options(self, options):
         with self.lock:
             if len(self.events) >= self.config['limits']['max_jobs']:
                 raise ToolError('Hàng đợi đã đầy')
@@ -176,6 +179,24 @@ class AnalysisService:
             threading.Thread(target=self._work, args=(job_id, options, self.events[job_id]), daemon=True).start()
         return job_id
 
+    def recover(self, job_id, retry_errors=False):
+        previous = self.job(job_id)
+        if previous['status'] in ('QUEUED', 'SCANNING', 'RUNNING', 'CANCELLING'):
+            raise ValueError('Hãy dừng lượt quét trước khi tiếp tục hoặc thử lại')
+        options = dict(previous['options'])
+        options.pop('resume_from', None)
+        if retry_errors:
+            with closing(self.connect()) as conn:
+                rows = conn.execute("SELECT filepath FROM scoring_results WHERE job_id=? AND json_extract(payload, '$.error') IS NOT NULL", (job_id,)).fetchall()
+            if not rows:
+                raise ValueError('Không có tệp lỗi để thử lại')
+            options['filepaths'] = [row[0] for row in rows]
+            options['folder'] = None
+            options.pop('scan_paths', None)
+        else:
+            options['resume_from'] = job_id
+        return self._submit_options(options)
+
     def _update(self, job_id, **fields):
         # Column names are fixed internal keys, values use SQL parameters.
         allowed = {'status', 'total', 'completed', 'errors', 'message'}
@@ -185,6 +206,9 @@ class AnalysisService:
             conn.commit()
 
     def _paths(self, options, cancel):
+        if 'scan_paths' in options:
+            yield from options['scan_paths']
+            return
         if options['filepaths']:
             yield from options['filepaths']
             return
@@ -215,6 +239,35 @@ class AnalysisService:
         try:
             self._update(job_id, status='SCANNING')
             paths = list(self._paths(options, event))
+            if options.get('resume_from'):
+                with closing(self.connect()) as conn:
+                    rows = conn.execute("SELECT filepath,payload FROM scoring_results WHERE job_id=?", (options['resume_from'],)).fetchall()
+                finished = {}
+                for name, payload in rows:
+                    result = json.loads(payload).get('result')
+                    if result:
+                        finished[name] = result
+                remaining = []
+                for name in paths:
+                    checkpoint(event)
+                    result = finished.get(name)
+                    try:
+                        st = self.resolve(name).stat()
+                        current = (result and result.get('file_stat') == {'size_bytes': st.st_size, 'mtime_ns': st.st_mtime_ns, 'ctime_ns': st.st_ctime_ns}
+                                   and result.get('engine_signature') == engine_signature() and result.get('rule_version') == self.config['version'])
+                        if options.get('reference'):
+                            # Reference changes can invalidate an otherwise unchanged result.
+                            current = False
+                    except (ValueError, OSError):
+                        current = False
+                    if not current:
+                        remaining.append(name)
+                paths = remaining
+            # Keep a stable manifest for recovery even if the folder later changes.
+            options['scan_paths'] = paths
+            with closing(self.connect()) as conn:
+                conn.execute('UPDATE scoring_jobs SET options=? WHERE id=?', (json.dumps(options, ensure_ascii=False), job_id))
+                conn.commit()
             checkpoint(event)
             self._update(job_id, status='RUNNING', total=len(paths))
             versions = tool_versions(event)
@@ -222,7 +275,6 @@ class AnalysisService:
             with ThreadPoolExecutor(max_workers=options['concurrency']) as pool:
                 pending = {}
                 write_conn = self.connect()
-                pending_writes = 0
                 def fill():
                     while len(pending) < options['concurrency']:
                         checkpoint(event)
@@ -236,37 +288,44 @@ class AnalysisService:
                 while pending:
                     checkpoint(event)
                     done, _ = wait(pending, timeout=.2, return_when=FIRST_COMPLETED)
-                    for future in done:
-                        path = pending.pop(future)
-                        try:
-                            data = {'filepath': path, 'result': future.result(), 'error': None}
-                        except AnalysisCancelled:
-                            raise
-                        except Exception as exc:
-                            errors += 1
-                            # Relative path is stored separately; avoid exposing decoder/private paths.
-                            message = str(exc) if isinstance(exc, (ToolError, ValueError, FileNotFoundError)) else 'Lỗi phân tích; kết quả chưa có'
-                            message = message.replace(str(self.root), '<vault>')[:1000]
-                            data = {'filepath': path, 'result': None, 'error': message}
-                        completed += 1
-                        write_conn.execute('INSERT INTO scoring_results(job_id,filepath,payload) VALUES (?,?,?)',
-                                           (job_id, path, json.dumps(data, ensure_ascii=False, allow_nan=False)))
-                        write_conn.execute('UPDATE scoring_jobs SET completed=?, errors=? WHERE id=?',
-                                           (completed, errors, job_id))
-                        pending_writes += 1
-                        if pending_writes >= 32:
-                            write_conn.commit()
-                            pending_writes = 0
+                    try:
+                        for future in done:
+                            path = pending.pop(future)
+                            try:
+                                data = {'filepath': path, 'result': future.result(), 'error': None}
+                            except AnalysisCancelled:
+                                raise
+                            except Exception as exc:
+                                errors += 1
+                                # Relative path is stored separately; avoid exposing decoder/private paths.
+                                message = str(exc) if isinstance(exc, (ToolError, ValueError, FileNotFoundError)) else 'Lỗi phân tích; kết quả chưa có'
+                                message = message.replace(str(self.root), '<vault>')[:1000]
+                                data = {'filepath': path, 'result': None, 'error': message}
+                            completed += 1
+                            write_conn.execute('INSERT INTO scoring_results(job_id,filepath,payload) VALUES (?,?,?)',
+                                               (job_id, path, json.dumps(data, ensure_ascii=False, allow_nan=False)))
+                            write_conn.execute('UPDATE scoring_jobs SET completed=?, errors=? WHERE id=?',
+                                               (completed, errors, job_id))
+                    finally:
+                        # Release SQLite before executor shutdown can wait for
+                        # cache-writing workers, including cancellation paths.
+                        write_conn.commit()
                     fill()
-                if pending_writes:
-                    write_conn.commit()
                 write_conn.close()
                 write_conn = None
             checkpoint(event)
             self._update(job_id, status='COMPLETED')
         except AnalysisCancelled:
+            if write_conn is not None:
+                write_conn.commit()
+                write_conn.close()
+                write_conn = None
             self._update(job_id, status='CANCELLED', message='Đã hủy; kết quả hoàn tất trước đó vẫn được giữ.')
         except Exception as exc:
+            if write_conn is not None:
+                write_conn.rollback()
+                write_conn.close()
+                write_conn = None
             self._update(job_id, status='FAILED', message=(str(exc).replace(str(self.root), '<vault>')[:1000] if isinstance(exc, (ToolError, ValueError, OSError)) else 'Lỗi hàng đợi'))
         finally:
             if write_conn is not None:

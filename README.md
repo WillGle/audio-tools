@@ -182,3 +182,38 @@ Trong **Cài đặt**, lưu URL, tài khoản và mật khẩu Navidrome một l
 Sau mỗi đợt thay đổi tệp/tag hoặc hoàn tác, ứng dụng yêu cầu Navidrome quét một lần, kể cả khi chỉ một phần thao tác thành công. Kết quả cục bộ và trạng thái quét hiển thị riêng; lỗi kết nối không đảo ngược thay đổi cục bộ và có nút thử cập nhật lại. Quét đầy đủ là lựa chọn thủ công. Hoàn tất quét chỉ xác nhận lượt quét chung, không chứng minh mọi bài đã xuất hiện trên Navidrome.
 
 Danh sách kho được dùng lại tối đa 15 giây và làm mới sau thao tác thay đổi; bấm **Làm mới** để nhận ngay thay đổi bên ngoài. Không thêm dependency runtime; Playwright vẫn chỉ là tùy chọn kiểm tra trình duyệt.
+
+## Duyệt bản trùng và phục hồi lượt quét
+
+Đề xuất giữ bản trùng ưu tiên kết quả toàn vẹn còn khớp tệp và phiên bản engine,
+sau đó mới đến metadata và vị trí. Tên có `(1)`, DSD hoặc độ phân giải cao không
+chứng minh chất lượng nghe hay nguồn master. Trùng metadata, tên hoặc fingerprint
+chỉ là nhóm cần xem xét; không được dùng để tự lưu trữ các bản phát hành khác nhau.
+
+Chọn **Giữ tất cả**, **Khác bản phát hành** hoặc **Bỏ qua nhóm này** để lưu quyết
+định trên máy chủ. Nhóm đã duyệt được ẩn mặc định; bật **Hiện nhóm đã duyệt** để
+xem lại và hoàn tác quyết định. Quyết định gắn với kho, thành viên nhóm và trạng
+thái tệp; nhóm thay đổi sẽ cần duyệt lại.
+
+Chỉ bản trùng từng byte được lưu trữ, sau khi đọc lại và đối chiếu SHA-256 với
+bản còn giữ. Không cho phép chuyển hết các bản của một nhóm. Nhật ký được ghi
+trước mỗi lần chuyển vào `_Duplicates_Archive/<mã thao tác>/...`; **Hoàn tác lưu
+trữ** khôi phục các thao tác còn trong nhật ký, không ghi đè tệp hiện có và không
+đi qua symlink. Bản lưu trữ bị sửa hoặc xung đột được giữ lại cùng thông báo lỗi.
+Nguồn và thư mục lưu trữ phải cùng filesystem có hỗ trợ hard link; nếu không,
+thao tác báo lỗi và giữ nguyên nguồn. Lưu trữ trong cùng kho không giảm dung lượng
+đĩa đã dùng. Giữ bản sao lưu riêng ngoài ứng dụng.
+
+Lượt quét bị gián đoạn, hủy hoặc lỗi có nút **Tiếp tục tệp còn lại**; nút
+**Thử lại tệp lỗi** chỉ tạo lượt mới cho các tệp đã báo lỗi. Lịch sử cũ được giữ.
+Tiếp tục dùng danh sách tệp đã tìm được và tùy chọn cũ, bỏ qua kết quả thành công
+còn hiệu lực; tệp đã đổi sẽ được kiểm tra lại. Nếu có tệp tham chiếu, các kết quả
+được kiểm tra lại để tránh dùng bằng chứng tham chiếu cũ. Nếu gián đoạn trước khi
+ghi danh sách tệp, thư mục sẽ được liệt kê lại. Đây là tiếp tục theo tệp, không
+tiếp tục giải mã ở giữa một tệp.
+
+Mọi cache, quyết định, nhật ký lưu trữ và backup tag dùng `AUDIO_TOOLS_CACHE_DIR`.
+Lần đầu dùng vị trí mới, backup tag cũ trong `cache/tag_backups.sqlite` được sao
+chép nguyên vẹn nếu đích chưa có DB; nguồn cũ được giữ nguyên. Cache quét trùng
+tách theo kho. Sao lưu thư mục cache để giữ quyết định và khả năng hoàn tác;
+không dùng cache tạm thời cho tác vụ ghi tag hoặc quản lý tệp cần phục hồi lâu dài.

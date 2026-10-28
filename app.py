@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import shutil
 from pathlib import Path
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -12,7 +11,7 @@ from pydantic import BaseModel
 # Add current folder to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from core.analyzer import analyze_audio_file, generate_spectrogram_image, format_audio_specs
-from core.paths import vault_path
+from core.paths import vault_path, cache_directory
 from core.navidrome_config import read_config, resolve_config, public_config, write_config
 from core.tagger import apply_quality_tag
 from core.dedup import scan_duplicates, get_metadata_duplicates_map
@@ -58,9 +57,7 @@ async def add_no_cache_headers(request: Request, call_next):
 
 TOOLS_DIR = Path(__file__).resolve().parent
 ROOT_DIR = Path(os.environ.get('HIRES_VAULT_DIR', '/mnt/vault/GleVault/Hires')).resolve()
-DEFAULT_CACHE_DIR = Path('/tmp/audio-tools/cache') if os.environ.get('VERCEL') else TOOLS_DIR / 'cache'
-CACHE_DIR = Path(os.environ.get('AUDIO_TOOLS_CACHE_DIR', str(DEFAULT_CACHE_DIR)))
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
+CACHE_DIR = cache_directory()
 SPECTROGRAM_CACHE = CACHE_DIR / 'spectrograms'
 SPECTROGRAM_CACHE.mkdir(parents=True, exist_ok=True)
 
@@ -712,61 +709,35 @@ class ArchiveDupesRequest(BaseModel):
 
 @app.post("/api/duplicates/archive-byte-dupes")
 def archive_byte_duplicates(payload: Optional[ArchiveDupesRequest] = None):
-    archive_dir = vault_path(ROOT_DIR, '_Duplicates_Archive')
-    archive_dir.mkdir(parents=True, exist_ok=True)
-    
-    files_to_move = []
-    if payload and payload.files_to_archive is not None:
-        files_to_move = payload.files_to_archive
-    else:
-        dupes = scan_duplicates(ROOT_DIR)
-        byte_dupes = dupes.get('byte_duplicates', [])
-        for grp in byte_dupes:
-            files = grp.get('files', [])
-            # Giữ lại file đầu tiên (đã được score_file_for_keeping xếp hạng cao nhất), chuyển các bản sau
-            files_to_move.extend(files[1:])
-            
-    archived_count = 0
-    moved_paths = []
-    sources = [audio_path(value) for value in files_to_move]
-    for src in sources:
-        f_rel = str(src.relative_to(ROOT_DIR.resolve()))
-        if src.exists() and src.is_file():
-            # Giữ nguyên cấu trúc thư mục tương đối bên trong _Duplicates_Archive
-            dst = vault_path(archive_dir, f_rel)
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            if dst.exists():
-                counter = 1
-                while dst.exists():
-                    dst = dst.parent / f"{dst.stem}_{counter}{dst.suffix}"
-                    counter += 1
-            try:
-                shutil.move(src, dst)
-                archived_count += 1
-                moved_paths.append(f_rel)
-            except Exception as e:
-                print(f"Lỗi di chuyển {src} -> {dst}: {e}")
+    from core.duplicate_review import archive_duplicates
+    result = archive_duplicates(ROOT_DIR, payload.files_to_archive if payload else None)
+    return finish_library_change(result, result['archived_count'])
 
-    # Xóa các file đã chuyển khỏi SQLite cache để lần sau quét cực nhanh
-    if moved_paths:
-        try:
-            from core.dedup import get_cache_db
-            conn = get_cache_db(ROOT_DIR)
-            c = conn.cursor()
-            c.executemany("DELETE FROM file_cache WHERE path = ?", [(p,) for p in moved_paths])
-            conn.commit()
-            conn.close()
-        except Exception:
-            pass
 
-    return finish_library_change({
-        'success': True,
-        'message': f"Đã di chuyển an toàn {archived_count} tệp trùng lặp vào thư mục '_Duplicates_Archive/' (bảo toàn cấu trúc thư mục gốc)!",
-        'archived_count': archived_count
-    }, archived_count)
+@app.post('/api/duplicates/rollback')
+def rollback_duplicate_archives():
+    from core.duplicate_review import restore_archives
+    result = restore_archives(ROOT_DIR)
+    return finish_library_change(result, result['restored_count'])
+
+
+class DuplicateDecisionRequest(BaseModel):
+    group_key: str
+    decision: Optional[str] = None
+
+
+@app.post('/api/duplicates/decision')
+def duplicate_decision(req: DuplicateDecisionRequest):
+    from core.duplicate_review import save_decision
+    try:
+        save_decision(ROOT_DIR, req.group_key, req.decision)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, str(exc))
+    invalidate_library()
+    return {'success': True}
 
 # ==============================================================================
-# 7 AUDIOPHILE PILLARS & VAULT TIERING ENDPOINTS
+# AUDIO DIAGNOSTICS, TAGGING & LIBRARY GROUPING ENDPOINTS
 # ==============================================================================
 from core.audiophile_engine import run_full_audiophile_audit, audit_album_gapless_and_dr
 from core.tagger import apply_audiophile_tags, revert_audiophile_tags, rollback_all_audiophile_tags

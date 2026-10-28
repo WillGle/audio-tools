@@ -7,12 +7,14 @@ from pathlib import Path
 from collections import defaultdict
 import mutagen
 from core.fingerprint import compare_audio_files
+from core.paths import cache_directory
 
 AUDIO_EXTENSIONS = {'.flac', '.wav', '.dsf', '.dff', '.m4a', '.mp3', '.ape', '.ogg', '.opus', '.wma'}
 IGNORE_DIRS = {'_Vault_3_Tier_Symlinks', '.git', '.agents', '.gemini', 'brain', 'scratch', 'tools', 'cache', '_Duplicates_Archive'}
 
 def get_cache_db(root_dir=None):
-    cache_path = Path(__file__).resolve().parent.parent / 'cache' / 'scan_cache.sqlite'
+    vault_id = hashlib.sha256(str(Path(root_dir).resolve()).encode()).hexdigest()[:16] if root_dir else 'default'
+    cache_path = cache_directory() / f'scan_cache-{vault_id}.sqlite'
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(cache_path)
     c = conn.cursor()
@@ -64,123 +66,57 @@ def clean_title_for_clustering(title, artist, rel_path):
     t = re.sub(r'[\(\[](?:official\s*(?:mv|music\s*video|audio|video)|320\s*kbps|128\s*kbps)[\)\]]', '', t, flags=re.I)
     return normalize_text(t)
 
-def score_file_for_keeping(rel_path, cache_row=None, specs=''):
-    """
-    Chấm điểm mức độ ưu tiên GIỮ LẠI của tệp (Điểm càng cao càng ưu tiên giữ lại).
-    Bộ tiêu chuẩn chất âm Audiophile & Độ tin cậy tệp:
-    1. Định dạng âm thanh: DSD (SACD) > Hi-Res Lossless 24-bit > CD Lossless 16-bit (WAV/FLAC) > High Lossy (AAC/M4A/320k) > Low Lossy.
-    2. Thông số kỹ thuật: Ưu tiên Bit-depth (24bit > 16bit) và Sample rate (192k > 96k > 48k > 44.1k).
-    3. Trừ điểm RẤT NẶNG tệp bản sao tải trùng: (1), (2), [1], _1, - Copy (-8000đ).
-    4. Trừ điểm nặng tệp rip trôi nổi từ web kèm tên miền: NhacPro.net, ChiaSeNhac, NhacCuaTui, ZingMP3, Y2mate (-3000đ).
-    5. Cấu trúc thư mục: Ưu tiên tệp nằm trong thư mục Album hoàn chỉnh có năm phát hành [1984], [2016] thay vì vứt bừa ngoài thư mục gốc.
-    6. Độ trọn vẹn Metadata & tiếng Việt có dấu.
-    """
-    score = 1000.0
-    p = Path(rel_path)
-    fn = p.name
-    fn_lower = fn.lower()
-    ext = p.suffix.lower().lstrip('.')
-    parts = p.parts
+def score_file_for_keeping(rel_path, cache_row=None, specs='', integrity=None):
+    """Preference only: verified integrity outranks metadata and naming."""
+    status = (integrity or {}).get('rules', {}).get('integrity', {}).get('status')
+    rank = 0 if status == 'FAIL' or (integrity or {}).get('critical_failure') else 2 if status == 'PASS' else 1
+    # Resolution/DSD and filename suffixes cannot establish sound quality.
+    metadata = sum(bool(cache_row[i]) for i in (5, 6, 7)) if cache_row else 0
+    filename = Path(rel_path).name
+    duplicate_suffix = bool(re.search(r'\(\s*\d+\s*\)|[-_\s]copy\b|_1\.[^.]+$', filename, re.I))
+    return rank * 10000 + metadata * 100 + min(len(Path(rel_path).parts) - 1, 5) * 10 - int(duplicate_suffix)
 
-    specs_lower = (specs or '').lower()
-    size_mb = 0.0
 
-    if cache_row:
-        # cache_row: [rel, mtime, size, header_hash, full_md5, artist, title, album, duration, ext]
-        if len(cache_row) > 2 and cache_row[2]:
-            size_mb = round(cache_row[2] / (1024 * 1024), 2)
-        if len(cache_row) > 9 and cache_row[9]:
-            ext = cache_row[9].lower().lstrip('.')
+def current_integrity_results(root):
+    from contextlib import closing
+    from core.audio_scoring import engine_signature, load_config
+    db = cache_directory() / 'audio_scoring.sqlite'
+    if not db.exists():
+        return {}
+    results = {}
+    try:
+        with closing(sqlite3.connect(db.as_uri() + '?mode=ro', uri=True)) as conn:
+            rows = conn.execute('SELECT filepath,result FROM analysis_files').fetchall()
+        for name, payload in rows:
+            result = json.loads(payload)
+            try:
+                path = (root / name).resolve()
+                if not path.is_relative_to(root):
+                    continue
+                st = path.stat()
+                if (result.get('file_stat') == {'size_bytes': st.st_size, 'mtime_ns': st.st_mtime_ns, 'ctime_ns': st.st_ctime_ns}
+                        and result.get('engine_signature') == engine_signature()
+                        and result.get('rule_version') == load_config()['version'] and not result.get('preliminary')):
+                    results[name] = result
+            except OSError:
+                continue
+    except (sqlite3.Error, ValueError):
+        return {}
+    return results
 
-    # 1. Format Tier (Thứ hạng định dạng)
-    if ext in ('dsf', 'dff'):
-        score += 5000.0
-    elif ext in ('flac', 'wav', 'aif', 'aiff', 'alac', 'ape'):
-        if any(h in specs_lower for h in ('24bit', '32bit', '96k', '192k', '88.2k', '176.4k')):
-            score += 4500.0
-        else:
-            score += 3500.0
-    elif ext in ('m4a', 'aac', 'ogg', 'opus'):
-        score += 1800.0
-    elif ext == 'mp3':
-        score += 1200.0
-    else:
-        score += 800.0
 
-    # 2. Specs Precision (Độ phân giải & Tần số lấy mẫu)
-    if '24bit' in specs_lower or '32bit' in specs_lower: score += 600.0
-    if '192k' in specs_lower or '176.4k' in specs_lower: score += 500.0
-    elif '96k' in specs_lower or '88.2k' in specs_lower: score += 400.0
-    elif '48k' in specs_lower: score += 100.0
+def recommendation_reason(result):
+    status = (result or {}).get('rules', {}).get('integrity', {}).get('status')
+    if status == 'FAIL' or (result or {}).get('critical_failure'):
+        return 'Có lỗi toàn vẹn; không ưu tiên giữ khi còn bản khác.'
+    if status == 'PASS':
+        return 'Đã đạt kiểm tra toàn vẹn; metadata và vị trí chỉ là ưu tiên phụ.'
+    return 'Chưa có kiểm tra toàn vẹn còn hiệu lực; chỉ ưu tiên metadata và vị trí. Không xác minh chất lượng nghe hoặc bản master.'
 
-    if '320k' in specs_lower: score += 250.0
-    elif '256k' in specs_lower: score += 150.0
-    elif '128k' in specs_lower: score -= 300.0
-
-    # Kích thước tệp (Bảo vệ tránh tệp bị cắt cụt / tải dở)
-    score += min(size_mb * 2.0, 300.0)
-
-    # 3. Trừ điểm rất nặng bản sao lưu tải trùng lặp
-    if re.search(r'\(\s*\d+\s*\)', fn): score -= 8000.0
-    if re.search(r'\[\s*\d+\s*\](?!\s*[\.\w])', fn): score -= 6000.0
-    if re.search(r'[-_\s]copy\b', fn_lower): score -= 8000.0
-    if re.search(r'_1\.[a-zA-Z0-9]+$', fn_lower): score -= 5000.0
-
-    # 4. Trừ điểm tệp dán nhãn web rip / tag video rác
-    if re.search(r'nhacpro\.net|chiasenhac|nhaccuatui|zingmp3|y2mate|tubidy', fn_lower):
-        score -= 3000.0
-    if re.search(r'\((official\s*(?:mv|music\s*video|audio|video)|lyric\s*video)\)', fn_lower):
-        score -= 1500.0
-    if re.search(r'\((128\s*kbps)\)', fn_lower):
-        score -= 2500.0
-    if re.search(r'\((320\s*kbps)\)', fn_lower):
-        score -= 300.0
-    if fn.startswith('#') or fn.startswith('.'):
-        score -= 500.0
-    if ' - -' in fn or '--' in fn:
-        score -= 300.0
-
-    # 5. Cấu trúc thư mục: Ưu tiên nằm trong album thay vì root
-    depth = len(parts) - 1
-    if depth >= 2:
-        score += 500.0
-        parent = parts[-2].lower()
-        if re.search(r'\[\d{4}\]|\(\d{4}\)|\b(19\d\d|20\d\d)\b', parent):
-            score += 300.0
-        if any(kw in parent for kw in ('album', 'disc', 'cd', 'vinyl', 'remaster', 'soundtrack', 'ost')):
-            score += 200.0
-    elif depth == 1:
-        score += 200.0
-    else:
-        score -= 400.0  # File vứt mồ côi ở root
-
-    # Track number chuẩn ở đầu tên file (ví dụ "08. Your Eyes.flac")
-    if re.match(r'^\d{2,3}[\.\s_-]', fn):
-        score += 150.0
-
-    # 6. Ưu tiên Metadata đầy đủ
-    if cache_row:
-        art = (cache_row[5] or '').strip().lower() if len(cache_row) > 5 else ''
-        tit = (cache_row[6] or '').strip().lower() if len(cache_row) > 6 else ''
-        alb = (cache_row[7] or '').strip().lower() if len(cache_row) > 7 else ''
-
-        if tit and tit not in ('track', 'untitled', 'no title'): score += 150.0
-        if art and art not in ('unknown', 'unknown artist', 'none'): score += 150.0
-        if alb and alb not in ('unknown', 'unknown album', 'none', 'singles'): score += 150.0
-
-    # Ký tự tiếng Việt có dấu
-    vn_chars = r'[àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ]'
-    if re.search(vn_chars, fn, flags=re.I):
-        score += 200.0
-
-    # Tie-breaker: mtime cũ hơn (tệp tải về trước là bản gốc)
-    if cache_row and len(cache_row) > 1 and cache_row[1]:
-        score -= (float(cache_row[1]) / 1e11)
-
-    return score
 
 def scan_duplicates(root_dir, force_refresh=False):
     root = Path(root_dir).resolve()
+    integrity_results = current_integrity_results(root)
     conn = get_cache_db(root)
     c = conn.cursor()
 
@@ -197,7 +133,7 @@ def scan_duplicates(root_dir, force_refresh=False):
             if ext in AUDIO_EXTENSIONS:
                 p = os.path.join(dirpath, fn)
                 try:
-                    if not Path(p).resolve().is_relative_to(root):
+                    if Path(p).is_symlink() or not Path(p).resolve().is_relative_to(root):
                         continue
                     st = os.stat(p)
                     rel = os.path.relpath(p, root)
@@ -295,7 +231,7 @@ def scan_duplicates(root_dir, force_refresh=False):
                             # Sắp xếp theo điểm ưu tiên giữ lại (điểm cao nhất ở vị trí 0)
                             dupes_sorted = sorted(
                                 dupes,
-                                key=lambda f: score_file_for_keeping(f, active_cache.get(f)),
+                                key=lambda f: score_file_for_keeping(f, active_cache.get(f), integrity=integrity_results.get(f)),
                                 reverse=True
                             )
                             byte_duplicates.append({
@@ -336,7 +272,7 @@ def scan_duplicates(root_dir, force_refresh=False):
     name_duplicates = []
     for fn, flist in by_name.items():
         if len(flist) > 1:
-            flist_sorted = sorted(flist, key=lambda x: score_file_for_keeping(x[0], active_cache.get(x[0])), reverse=True)
+            flist_sorted = sorted(flist, key=lambda x: score_file_for_keeping(x[0], active_cache.get(x[0]), integrity=integrity_results.get(x[0])), reverse=True)
             name_id = f"name_{hashlib.md5(fn.encode('utf-8')).hexdigest()[:12]}"
             files_items = []
             for rel, sz in flist_sorted:
@@ -351,7 +287,8 @@ def scan_duplicates(root_dir, force_refresh=False):
                     'ext': ext_part,
                     'specs': specs_map.get(rel, ''),
                     'is_lossless': is_lossless,
-                    'has_number_suffix': has_num
+                    'has_number_suffix': has_num,
+                    'recommendation_reason': recommendation_reason(integrity_results.get(rel))
                 })
             name_duplicates.append({
                 'id': name_id,
@@ -409,7 +346,7 @@ def scan_duplicates(root_dir, force_refresh=False):
                 if len(cluster) > 1:
                     cluster_sorted = sorted(
                         cluster,
-                        key=lambda it: score_file_for_keeping(it['path'], active_cache.get(it['path']), specs_map.get(it['path'], '')),
+                        key=lambda it: score_file_for_keeping(it['path'], active_cache.get(it['path']), integrity=integrity_results.get(it['path'])),
                         reverse=True
                     )
                     cluster_id = f"meta_{hashlib.md5((cluster_sorted[0]['artist'] + '_' + cluster_sorted[0]['title'] + '_' + str(len(cluster_sorted))).encode('utf-8')).hexdigest()[:12]}"
@@ -443,6 +380,7 @@ def scan_duplicates(root_dir, force_refresh=False):
                             'specs': specs_map.get(f_item['path'], ''),
                             'is_lossless': is_lossless,
                             'has_number_suffix': has_num,
+                            'recommendation_reason': recommendation_reason(integrity_results.get(f_item['path'])),
                             'acoustic_match_pct': acoustic_pct
                         })
 
@@ -458,6 +396,9 @@ def scan_duplicates(root_dir, force_refresh=False):
                         'recommended_keep': enriched_files[0],
                         'duplicates': enriched_files[1:]
                     })
+
+    from core.duplicate_review import apply_decisions
+    apply_decisions(root, {'byte_duplicates': byte_duplicates, 'name_duplicates': name_duplicates, 'meta_duplicates': meta_duplicates})
 
     return {
         'total_scanned': len(active_cache),
@@ -478,6 +419,8 @@ def get_metadata_duplicates_map(root_dir):
     meta_dupes = res.get('meta_duplicates', [])
     dupe_map = {}
     for g in meta_dupes:
+        if g.get('review_decision'):
+            continue
         rec_keep = g.get('recommended_keep', {}).get('path') if isinstance(g.get('recommended_keep'), dict) else (g['files'][0]['path'] if isinstance(g['files'][0], dict) else g['files'][0])
         for f in g['files']:
             fp = f['path'] if isinstance(f, dict) else f
@@ -490,4 +433,4 @@ def get_metadata_duplicates_map(root_dir):
                 'recommended_keep': rec_keep,
                 'all_group_files': [x['path'] if isinstance(x, dict) else x for x in g['files']]
             }
-    return dupe_map, len(meta_dupes)
+    return dupe_map, sum(not g.get('review_decision') for g in meta_dupes)

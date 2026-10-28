@@ -1,5 +1,34 @@
 # Audio scoring validation results
 
+## Library reliability validation — 2026-10-29
+
+The existing Python suite passed **31/31** in 64.73 seconds after the archive
+and scan recovery changes. The existing Chromium workflow passed all 18 checks
+with 25 batch rows and no JavaScript errors. These runs used disposable generated
+audio and caches; the real music vault was not modified. Python/API/Chromium runs
+used execution outside the managed sandbox because of its thread-wakeup behavior.
+
+Additional temporary probes (not new maintained tests) checked integrity-first
+ordering; all three persistent review decisions and undo; changed-group reopening;
+vault-specific duplicate caches; configured tag backup location; arbitrary-file
+and last-copy archive rejection; archive/restore, destination conflicts, repeated
+undo, interrupted journal intents and interrupted hard-link moves. Original and
+archive symlink replacements, including parent-directory aliases, were rejected
+while preserving audio and the recovery journal.
+
+Recovery probes verified restart/interruption handling, skipping unchanged
+successful files, rescanning changed files, retrying only failed files, retaining
+original history and the resume API. A four-worker cancellation after committed
+progress exited promptly, retained completed rows and released the SQLite writer.
+New Chromium controls were exercised for resume/retry, evidence before score,
+review persistence across reload, decision undo, byte archive/restore and disabled
+non-byte archiving. At 390px there was no document overflow or JavaScript error.
+
+Limits: this does not validate large-vault throughput, arbitrary external file
+changes during an operation, power-loss durability or cross-browser behavior.
+Archive operations require same-filesystem hard-link support and fail without
+removing the source when that support is unavailable.
+
 Measured locally on 2026-10-16, Linux x86_64, Python 3.14, NumPy 2.5.4,
 FFmpeg/ffprobe 8.0, FLAC 1.5.0, optional flaccheck 0.1.2. Rules: 1.0.0.
 These results verify implementation behavior on generated signals. They do

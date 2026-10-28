@@ -256,7 +256,8 @@ def main():
 
     # Đọc cache specs
     pre_scanned_specs = {}
-    spec_cache = script_dir / 'cache' / 'metadata_results.json'
+    from core.paths import cache_directory
+    spec_cache = cache_directory() / 'metadata_results.json'
     if spec_cache.exists():
         with open(spec_cache, encoding='utf-8') as f:
             for item in json.load(f):
@@ -264,7 +265,7 @@ def main():
 
     # Đọc kết quả kiểm định Hi-Res
     hires_verdicts = {}
-    verdict_file = script_dir / 'cache' / 'hires_verdicts.json'
+    verdict_file = cache_directory() / 'hires_verdicts.json'
     if verdict_file.exists():
         with open(verdict_file, encoding='utf-8') as f:
             for item in json.load(f):

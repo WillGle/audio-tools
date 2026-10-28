@@ -1,4 +1,12 @@
 from pathlib import Path
+import os
+
+
+def cache_directory():
+    default = Path('/tmp/audio-tools/cache') if os.environ.get('VERCEL') else Path(__file__).resolve().parent.parent / 'cache'
+    path = Path(os.environ.get('AUDIO_TOOLS_CACHE_DIR', str(default))).expanduser().resolve()
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def vault_path(root, value):

@@ -71,6 +71,10 @@ def scoring_router(service):
         guarded(service.cancel, job_id)
         return guarded(service.job, job_id)
 
+    @router.post('/jobs/{job_id}/resume', status_code=202)
+    def resume(job_id: str, retry_errors: bool = False):
+        return {'job_id': guarded(service.recover, job_id, retry_errors)}
+
     @router.get('/jobs/{job_id}/results')
     def results(job_id: str, offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=500),
                 sort: Literal['sequence', 'filepath', 'score', 'coverage', 'warning'] = 'sequence',

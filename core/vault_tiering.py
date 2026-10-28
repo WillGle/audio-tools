@@ -4,7 +4,7 @@ import json
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
-from core.paths import vault_path
+from core.paths import vault_path, cache_directory
 from core.analyzer import get_audio_specs, format_audio_specs
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -31,7 +31,7 @@ def scan_and_generate_tiering_plan(vault_dir: Path, tools_dir: Path) -> Dict[str
     Tận dụng cache hires_verdicts.json và organize_plan.json nếu có.
     """
     vault_dir = Path(vault_dir).resolve()
-    cache_dir = tools_dir / 'cache'
+    cache_dir = cache_directory()
     verdicts_file = cache_dir / 'hires_verdicts.json'
     plan_file = tools_dir / 'organize_plan.json'
 
