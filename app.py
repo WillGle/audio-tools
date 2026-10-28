@@ -58,7 +58,8 @@ async def add_no_cache_headers(request: Request, call_next):
 
 TOOLS_DIR = Path(__file__).resolve().parent
 ROOT_DIR = Path(os.environ.get('HIRES_VAULT_DIR', '/mnt/vault/GleVault/Hires')).resolve()
-CACHE_DIR = Path(os.environ.get('AUDIO_TOOLS_CACHE_DIR', str(TOOLS_DIR / 'cache')))
+DEFAULT_CACHE_DIR = Path('/tmp/audio-tools/cache') if os.environ.get('VERCEL') else TOOLS_DIR / 'cache'
+CACHE_DIR = Path(os.environ.get('AUDIO_TOOLS_CACHE_DIR', str(DEFAULT_CACHE_DIR)))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 SPECTROGRAM_CACHE = CACHE_DIR / 'spectrograms'
 SPECTROGRAM_CACHE.mkdir(parents=True, exist_ok=True)

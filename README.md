@@ -128,7 +128,7 @@ trên Linux. flaccheck 0.1.2 là **tùy chọn, thử nghiệm**, gọi riêng q
 false positives trước khi cài. Không tải audio lên dịch vụ bên ngoài.
 
 Dùng một worker ứng dụng. `HIRES_VAULT_DIR` xác định ranh giới kho nhạc;
-`AUDIO_TOOLS_CACHE_DIR` đổi vị trí cache (mặc định `./cache`). Ví dụ:
+`AUDIO_TOOLS_CACHE_DIR` đổi vị trí cache (mặc định `./cache`; trên Vercel dùng `/tmp/audio-tools/cache`). Cache trên Vercel là tạm thời, không được chia sẻ giữa các instance và có thể mất khi instance khởi động lại. Ví dụ:
 
 ```bash
 HIRES_VAULT_DIR="/path/to/Music" ./start.sh
